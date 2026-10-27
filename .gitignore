@@ -1,0 +1,66 @@
+# Java: archivos compilados y paquetes generados
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+
+# Gradle
+.gradle/
+build/
+
+# Conservar los wrappers para construir el proyecto sin instalaciones locales
+!gradle/wrapper/gradle-wrapper.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDE: IntelliJ IDEA, Eclipse, NetBeans y VS Code
+.idea/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+.factorypath
+.metadata/
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+.vscode/
+bin/
+out/
+
+# Logs, cobertura y archivos temporales
+*.log
+logs/
+coverage/
+.jacoco/
+*.exec
+*.tmp
+*.swp
+*.swo
+*~
+
+# Variables de entorno locales (mantener las plantillas)
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+Desktop.ini
