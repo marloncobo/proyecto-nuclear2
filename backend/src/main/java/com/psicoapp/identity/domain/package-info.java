@@ -1,0 +1,5 @@
+/**
+ * Identidad, usuarios y roles.
+ * <p>Modelo y reglas de negocio, sin dependencias de Spring ni de otras capas.</p>
+ */
+package com.psicoapp.identity.domain;
