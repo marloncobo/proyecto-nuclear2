@@ -9,7 +9,9 @@ El frontend está pendiente de implementación.
 ## Ejecutar el backend
 
 Requisitos: JDK 21 o superior compatible con Spring Boot y `JAVA_HOME`
-apuntando al JDK. El Maven Wrapper descarga Maven al usarlo por primera vez;
+apuntando al JDK, y MySQL 8.0 o superior. Configura la base de datos y el
+administrador inicial según la [guía del backend](backend/README.md#configuración-local).
+El Maven Wrapper descarga Maven al usarlo por primera vez;
 se necesita acceso a internet para descargar las herramientas y dependencias.
 
 En PowerShell, desde la raíz del repositorio:
@@ -26,10 +28,10 @@ cd backend
 sh mvnw spring-boot:run
 ```
 
-El servidor usa el puerto `8080`. Esta base aún no expone endpoints de negocio,
-por lo que una petición a `/` devuelve `404`.
+El servidor usa el puerto `8080`. Los módulos `identity` y `academic` exponen
+la [API mínima protegida](backend/README.md#api-mínima) de usuarios y espacios académicos.
 
-Para compilar, ejecutar la prueba de arranque y generar el JAR:
+Para compilar, ejecutar las pruebas JUnit y de arranque y generar el JAR:
 
 ```powershell
 cd backend

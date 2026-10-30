@@ -11,6 +11,26 @@ Este archivo traduce la propuesta académica de patrones en tareas verificables 
 
 La organización sugerida respeta `api/`, `application/`, `domain/` e `infrastructure/` dentro de cada módulo. Las clases nombradas son ejemplos de diseño, no una obligación de nomenclatura ni clases ya existentes. Mantener reglas de negocio en `domain` y coordinación en `application`.
 
+### Convención obligatoria de nombres
+
+Los identificadores propios del proyecto deben estar en español: clases,
+interfaces, enumeraciones, DTO, métodos, atributos, variables, pruebas, campos
+JSON, rutas HTTP y claves de configuración propias. Usar `PascalCase` para
+tipos y `camelCase` para métodos y variables, sin tildes ni letra ñ en los
+identificadores; las constantes usan `UPPER_SNAKE_CASE` con palabras españolas.
+Las clases de prueba nuevas se nombran `Prueba<Clase>` y Maven las descubre
+mediante su configuración de Surefire.
+
+Se conservan las firmas y símbolos impuestos por Java, Spring, JUnit, SQL y
+otras dependencias, por ejemplo `authenticate`, `supports`, `toString` y
+`spring.datasource.url`. También se conservan los nombres de paquetes y la
+clase de arranque preexistentes de la arquitectura (`identity`, `academic`,
+`application`, `domain`, `infrastructure`, `shared`, `PsicoappApplication`).
+Estas excepciones de integración no autorizan nombres nuevos en inglés.
+Los nombres técnicos de patrones como Facade y Builder pueden citarse en la
+explicación, pero los identificadores se escriben en español: por ejemplo,
+`FachadaAdministracion`, `ConstructorCaso` y `EstadoSesion`.
+
 ## 2. Resumen de aplicación
 
 | Patrón | Módulo principal | Problema que aborda | RF citados en el documento | Prioridad propuesta |
@@ -31,7 +51,7 @@ La organización sugerida respeta `api/`, `application/`, `domain/` e `infrastru
 
 **Qué hacer:**
 1. Identificar el agregado y sus invariantes en `cases/domain` según el modelo vigente.
-2. Diseñar `CasoBuilder` o una fábrica/servicio de aplicación que añada elementos progresivamente; no duplicar una API CRUD sin necesidad.
+2. Diseñar `ConstructorCaso` o una fábrica/servicio de aplicación que añada elementos progresivamente; no duplicar una API CRUD sin necesidad.
 3. Construir un `Caso` válido para borrador; mantener la validación de publicación como proceso independiente.
 4. Probar casos completos, elementos opcionales y datos inválidos.
 
@@ -49,7 +69,7 @@ La organización sugerida respeta `api/`, `application/`, `domain/` e `infrastru
 3. Dejar la lógica de dominio en los módulos propietarios; usar DTO para consultas transversales.
 4. Probar coordinación, manejo de fallos y permisos.
 
-**No hacer:** crear una clase `AdministracionFacade` gigante que dependa de todos los repositorios y concentre todas las funcionalidades del proyecto.
+**No hacer:** crear una clase `FachadaAdministracion` gigante que dependa de todos los repositorios y concentre todas las funcionalidades del proyecto.
 
 **Criterio de aceptación:** una operación externa tiene una interfaz sencilla sin romper los límites de los módulos.
 
@@ -74,7 +94,7 @@ La organización sugerida respeta `api/`, `application/`, `domain/` e `infrastru
 **Qué hacer:**
 1. Definir una tabla de transiciones y eventos permitidos con los requisitos vigentes.
 2. Separar **estado de la sesión programada** de **estado/progreso de cada intento individual**.
-3. Implementar reglas de transición en `sessions/domain`; valorar clases `SesionState` cuando el comportamiento por estado sea suficientemente complejo.
+3. Implementar reglas de transición en `sessions/domain`; valorar clases `EstadoSesion` cuando el comportamiento por estado sea suficientemente complejo.
 4. Activar el cierre docente y el cierre automático mediante casos de uso de aplicación. El programador temporal solicita la transición, no se salta las reglas.
 5. Probar transiciones válidas, repetidas, prohibidas y cierres por vencimiento.
 
@@ -86,11 +106,11 @@ La organización sugerida respeta `api/`, `application/`, `domain/` e `infrastru
 
 **Qué hacer:**
 1. Confirmar reglas de rúbrica, pesos y penalizaciones en `docs/requisitos/` antes de diseñar fórmulas.
-2. Si hay varias modalidades reales, declarar `CalculoNotaStrategy` y las implementaciones necesarias en `evaluation`.
+2. Si hay varias modalidades reales, declarar `EstrategiaCalculoNota` y las implementaciones necesarias en `evaluation`.
 3. Hacer que `EvaluadorCalificacion` seleccione una estrategia y suministre respuestas/rúbrica.
 4. Probar el cálculo, preguntas no respondidas, última respuesta válida y límites de la escala.
 
-**No hacer:** implementar obligatoriamente `CalculoPorPuntosStrategy` y `CalculoPonderadoStrategy` sin que los requisitos confirmen ambas modalidades.
+**No hacer:** implementar obligatoriamente `EstrategiaCalculoPorPuntos` y `EstrategiaCalculoPonderado` sin que los requisitos confirmen ambas modalidades.
 
 **Criterio de aceptación:** la nota cumple las reglas vigentes; nuevas modalidades pueden añadirse sin modificar el contrato del evaluador.
 
@@ -113,7 +133,7 @@ La organización sugerida respeta `api/`, `application/`, `domain/` e `infrastru
 
 **Qué hacer:**
 1. Precisar condiciones de publicación con RF-09 y RN vigentes.
-2. Si hay variantes por tipo de caso, considerar `ValidacionPublicacionTemplate` con `validarEstructura`, `validarPreguntas` y `validarRubrica`, especializadas por subclases.
+2. Si hay variantes por tipo de caso, considerar `PlantillaValidacionPublicacion` con `validarEstructura`, `validarPreguntas` y `validarRubrica`, especializadas por subclases.
 3. Acumular errores en `ResultadoValidacion` y bloquear publicación si se incumplen restricciones.
 4. Probar casos incompletos, rúbricas inválidas y publicaciones exitosas.
 
@@ -125,15 +145,17 @@ La organización sugerida respeta `api/`, `application/`, `domain/` e `infrastru
 
 La sección **4. Trazabilidad y coherencia** de la versión actualizada del documento académico confirma estas asociaciones:
 
+Los identificadores de esta tabla se adaptan al español conforme a la convención del repositorio. No son una transcripción literal de los nombres del UML original; esta adaptación no modifica el documento académico de referencia.
+
 | Necesidad | RF | Patrón | Elemento UML propuesto |
 | --- | --- | --- | --- |
-| Construcción de casos académicos | RF-05, RF-07, RF-17 | Builder | `CasoBuilder` |
-| Coordinación de administración y consulta | RF-03, RF-04, RF-15 | Facade | `AdministracionFacade` |
-| Protección de acceso a sesiones | RF-02, RF-20 | Proxy | `ParticipacionProxy` |
-| Ciclo de vida de las sesiones | RF-19, RF-25 | State | `SesionState` |
-| Cálculos alternativos de nota | RF-13, RF-14, RF-24 | Strategy | `CalculoNotaStrategy` |
-| Notificaciones a partir de eventos | RF-21, RF-27 | Observer | `NotificacionObserver` |
-| Validación secuencial de publicación | RF-09 | Template Method | `ValidacionPublicacionTemplate` |
+| Construcción de casos académicos | RF-05, RF-07, RF-17 | Builder | `ConstructorCaso` |
+| Coordinación de administración y consulta | RF-03, RF-04, RF-15 | Facade | `FachadaAdministracion` |
+| Protección de acceso a sesiones | RF-02, RF-20 | Proxy | `IntermediarioParticipacion` |
+| Ciclo de vida de las sesiones | RF-19, RF-25 | State | `EstadoSesion` |
+| Cálculos alternativos de nota | RF-13, RF-14, RF-24 | Strategy | `EstrategiaCalculoNota` |
+| Notificaciones a partir de eventos | RF-21, RF-27 | Observer | `ObservadorNotificacion` |
+| Validación secuencial de publicación | RF-09 | Template Method | `PlantillaValidacionPublicacion` |
 
 La propuesta de **Template Method** es la seleccionada para publicación; **Chain of Responsibility** permanece como alternativa no prioritaria. **Strategy** se vincula a los requisitos de evaluación, no a RF-10. Estas relaciones están corregidas en el documento fuente y ya no constituyen inconsistencias pendientes.
 
@@ -148,14 +170,14 @@ La propuesta de **Template Method** es la seleccionada para publicación; **Chai
 
 | Ticket sugerido | Trabajo verificable | Módulo |
 | --- | --- | --- |
-| `design: confirm-patterns-traceability` | Revisar RF/RN y aprobar dónde aplica cada patrón | `docs` |
-| `feat: session-lifecycle` | Definir/transicionar estados de sesiones con pruebas | `sessions` |
-| `feat: participation-access` | Implementar y probar autorización del lado del servidor | `identity`, `participation` |
-| `feat: case-publication-validation` | Validar requisitos de publicación con errores comprensibles | `cases` |
-| `feat: rubric-grading` | Calcular notas con reglas vigentes y pruebas; Strategy solo si procede | `evaluation` |
-| `feat: case-assembly` | Ensamblar casos y validar composición; Builder solo si aporta valor | `cases` |
-| `feat: domain-notifications` | Emitir y consumir eventos de aviso, manejar fallos | `notifications` |
-| `refactor: administrative-facade` | Simplificar coordinación de operaciones reales cuando aparezca complejidad | `academic` / aplicación |
+| `docs: confirmar-trazabilidad-patrones` | Revisar RF/RN y aprobar dónde aplica cada patrón | `docs` |
+| `feat: ciclo-vida-sesiones` | Definir/transicionar estados de sesiones con pruebas | `sessions` |
+| `feat: acceso-participacion` | Implementar y probar autorización del lado del servidor | `identity`, `participation` |
+| `feat: validacion-publicacion-casos` | Validar requisitos de publicación con errores comprensibles | `cases` |
+| `feat: calificacion-rubrica` | Calcular notas con reglas vigentes y pruebas; Strategy solo si procede | `evaluation` |
+| `feat: construccion-casos` | Ensamblar casos y validar composición; Builder solo si aporta valor | `cases` |
+| `feat: notificaciones-eventos` | Emitir y consumir eventos de aviso, manejar fallos | `notifications` |
+| `refactor: fachada-administracion` | Simplificar coordinación de operaciones reales cuando aparezca complejidad | `academic` / aplicación |
 
 ## 6. Definición de terminado para cualquier patrón
 
@@ -169,6 +191,6 @@ La propuesta de **Template Method** es la seleccionada para publicación; **Chai
 
 ## 7. Fuente y mantenimiento
 
-Documento de referencia (versión con trazabilidad corregida): [Análisis y aplicación de patrones de diseño — primer corte](https://docs.google.com/document/d/1tGt3zkiF4kqQCofAttMvSFDjbzAhvkZulB8gqW2V2yk/edit).
+Documento de referencia (versión con trazabilidad corregida): [Análisis y aplicación de patrones de diseño — primer corte](https://docs.google.com/document/d/1HNopS8XdbuWhGxF1Ptrd_EFtbzTmdlaF/edit).
 
 Este Markdown es una **guía técnica derivada**, no una transcripción literal de la entrega académica. Ante discrepancias, prevalecen los requisitos y reglas de negocio oficialmente vigentes del proyecto. Revisar este archivo cuando cambien los requisitos o los límites de módulos.

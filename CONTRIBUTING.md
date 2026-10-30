@@ -12,9 +12,10 @@ organizar los cambios y enviarlos para revisión.
   en un issue. Para corregir un error pequeño o mejorar documentación, puedes
   preparar directamente un pull request.
 
-El proyecto está en una fase inicial: el backend tiene una estructura modular
-y una prueba de arranque; el frontend está pendiente de implementación. Todavía
-no se han definido base de datos, autenticación ni endpoints de negocio.
+El proyecto está en una fase inicial: el backend incluye una base de usuarios,
+roles, permisos y espacios académicos con MySQL, autenticación y pruebas JUnit.
+El frontend está pendiente de implementación. Consulta el README del backend
+para conocer el alcance implementado y las integraciones pendientes.
 
 ## Flujo de trabajo con Gitflow
 
@@ -118,7 +119,9 @@ La etiqueta debe crearse sobre el commit de `main` que representa la versión en
 
 ## Preparar el entorno
 
-Necesitas Git y JDK 21, con `JAVA_HOME` apuntando al JDK. Usa el Maven Wrapper
+Necesitas Git, MySQL 8.0 o superior y JDK 21, con `JAVA_HOME` apuntando al JDK.
+Configura la base de datos y las variables de entorno según el
+[README del backend](backend/README.md#configuración-local). Usa el Maven Wrapper
 incluido en `backend/`; no necesitas instalar Maven por separado. La primera
 ejecución requiere acceso a internet para descargar Maven y las dependencias.
 
@@ -141,8 +144,8 @@ cd backend
 sh mvnw spring-boot:run
 ```
 
-El servidor usa el puerto `8080`. En el estado actual, una petición a `/`
-devuelve `404` porque aún no hay endpoints de negocio.
+El servidor usa el puerto `8080`. La API protegida de identidad se publica bajo
+`/api/identidad` y la de espacios académicos bajo `/api/academico/espacios`.
 
 ## Organización y convenciones
 
@@ -166,6 +169,26 @@ devuelve `404` porque aún no hay endpoints de negocio.
 - Cuando implementes el frontend, documenta sus herramientas y comandos en
   `frontend/` y actualiza esta guía.
 
+### Convención obligatoria de nombres
+
+Los identificadores propios del proyecto deben estar en español: clases,
+interfaces, enumeraciones, DTO, métodos, atributos, variables, pruebas, campos
+JSON, rutas HTTP y claves de configuración propias. Usar `PascalCase` para
+tipos y `camelCase` para métodos y variables, sin tildes ni letra ñ en los
+identificadores; las constantes usan `UPPER_SNAKE_CASE` con palabras españolas.
+Las clases de prueba nuevas se nombran `Prueba<Clase>` y Maven las descubre
+mediante su configuración de Surefire.
+
+Se conservan las firmas y símbolos impuestos por Java, Spring, JUnit, SQL y
+otras dependencias, por ejemplo `authenticate`, `supports`, `toString` y
+`spring.datasource.url`. También se conservan los nombres de paquetes y la
+clase de arranque preexistentes de la arquitectura (`identity`, `academic`,
+`application`, `domain`, `infrastructure`, `shared`, `PsicoappApplication`).
+Estas excepciones de integración no autorizan nombres nuevos en inglés.
+Los nombres técnicos de patrones como Facade y Builder pueden citarse en la
+explicación, pero los identificadores se escriben en español: por ejemplo,
+`FachadaAdministracion`, `ConstructorCaso` y `EstadoSesion`.
+
 ## Verificar los cambios
 
 Coloca las pruebas en `backend/src/test/java/com/psicoapp`, reflejando los
@@ -186,9 +209,10 @@ Antes de enviar cambios de código del backend, ejecuta desde `backend/`:
 sh mvnw verify
 ```
 
-Este comando compila, ejecuta las pruebas y genera el JAR. Actualmente la prueba
-existente comprueba que el contexto de Spring arranque; no valida todavía reglas
-de negocio ni los límites entre capas.
+Este comando compila, ejecuta las pruebas y genera el JAR. Las pruebas actuales
+comprueban reglas de usuarios y espacios académicos, autorización, autenticación,
+contratos HTTP y carga del contexto de Spring. Las pruebas unitarias usan dobles
+de los puertos y no requieren una instancia de MySQL.
 
 Para cambios exclusivos de documentación, revisa los enlaces, los comandos y
 la coherencia con el estado del proyecto. Antes de crear el commit, revisa
