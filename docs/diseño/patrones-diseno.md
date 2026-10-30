@@ -11,6 +11,26 @@ Este archivo traduce la propuesta académica de patrones en tareas verificables 
 
 La organización sugerida respeta `api/`, `application/`, `domain/` e `infrastructure/` dentro de cada módulo. Las clases nombradas son ejemplos de diseño, no una obligación de nomenclatura ni clases ya existentes. Mantener reglas de negocio en `domain` y coordinación en `application`.
 
+### Convención obligatoria de nombres
+
+Los identificadores propios del proyecto deben estar en español: clases,
+interfaces, enumeraciones, DTO, métodos, atributos, variables, pruebas, campos
+JSON, rutas HTTP y claves de configuración propias. Usar `PascalCase` para
+tipos y `camelCase` para métodos y variables, sin tildes ni letra ñ en los
+identificadores; las constantes usan `UPPER_SNAKE_CASE` con palabras españolas.
+Las clases de prueba nuevas se nombran `Prueba<Clase>` y Maven las descubre
+mediante su configuración de Surefire.
+
+Se conservan las firmas y símbolos impuestos por Java, Spring, JUnit, SQL y
+otras dependencias, por ejemplo `authenticate`, `supports`, `toString` y
+`spring.datasource.url`. También se conservan los nombres de paquetes y la
+clase de arranque preexistentes de la arquitectura (`identity`, `academic`,
+`application`, `domain`, `infrastructure`, `shared`, `PsicoappApplication`).
+Estas excepciones de integración no autorizan nombres nuevos en inglés.
+Los nombres técnicos de patrones como Facade y Builder pueden citarse en la
+explicación, pero los identificadores se escriben en español: por ejemplo,
+`FachadaAdministracion`, `ConstructorCaso` y `EstadoSesion`.
+
 ## 2. Resumen de aplicación
 
 | Patrón | Módulo principal | Problema que aborda | RF citados en el documento | Prioridad propuesta |

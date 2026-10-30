@@ -166,6 +166,26 @@ devuelve `404` porque aún no hay endpoints de negocio.
 - Cuando implementes el frontend, documenta sus herramientas y comandos en
   `frontend/` y actualiza esta guía.
 
+### Convención obligatoria de nombres
+
+Los identificadores propios del proyecto deben estar en español: clases,
+interfaces, enumeraciones, DTO, métodos, atributos, variables, pruebas, campos
+JSON, rutas HTTP y claves de configuración propias. Usar `PascalCase` para
+tipos y `camelCase` para métodos y variables, sin tildes ni letra ñ en los
+identificadores; las constantes usan `UPPER_SNAKE_CASE` con palabras españolas.
+Las clases de prueba nuevas se nombran `Prueba<Clase>` y Maven las descubre
+mediante su configuración de Surefire.
+
+Se conservan las firmas y símbolos impuestos por Java, Spring, JUnit, SQL y
+otras dependencias, por ejemplo `authenticate`, `supports`, `toString` y
+`spring.datasource.url`. También se conservan los nombres de paquetes y la
+clase de arranque preexistentes de la arquitectura (`identity`, `academic`,
+`application`, `domain`, `infrastructure`, `shared`, `PsicoappApplication`).
+Estas excepciones de integración no autorizan nombres nuevos en inglés.
+Los nombres técnicos de patrones como Facade y Builder pueden citarse en la
+explicación, pero los identificadores se escriben en español: por ejemplo,
+`FachadaAdministracion`, `ConstructorCaso` y `EstadoSesion`.
+
 ## Verificar los cambios
 
 Coloca las pruebas en `backend/src/test/java/com/psicoapp`, reflejando los
