@@ -84,7 +84,7 @@ las dependencias entre capas.
 `shared` no debe depender de los módulos funcionales. El código específico de
 un único módulo debe permanecer en ese módulo.
 
-## Identity y academic — MVP
+## Identidad y organización académica — MVP
 
 Se implementan usuarios, los tres roles, asignación de roles por administrador,
 permiso `CREAR_CASOS` para el rol docente, registro de estudiantes institucionales
@@ -98,11 +98,25 @@ El esquema `src/main/resources/schema.sql` reproduce exclusivamente `USUARIO`,
 afecta a todos los docentes. No hay permisos individuales ni tablas de membresía
 de estudiantes a espacios académicos en ese modelo.
 
-La fachada acotada `AcademicAdministrationFacade` coordina autorización mediante
-el contrato público `IdentityDirectory` y operaciones de espacios académicos.
+La fachada acotada `FachadaAdministracion` coordina autorización mediante
+el contrato público `DirectorioIdentidad` y operaciones de espacios académicos.
 Los repositorios son puertos implementados en `infrastructure`; los dominios
 son Java independiente de Spring y JDBC. No se introducen Proxy, Builder ni
 otros patrones sin un caso de uso que los necesite.
+
+### Nombres y compatibilidad
+
+Los identificadores propios se escriben en español según `CONTRIBUTING.md`.
+La fachada se llama `FachadaAdministracion`, el servicio de identidad
+`ServicioUsuarios` y los puertos `DirectorioIdentidad`, `RepositorioUsuarios`
+y `RepositorioEspaciosAcademicos`. Las pruebas se llaman `Prueba<Clase>`.
+Se mantienen los paquetes existentes y las firmas requeridas por las bibliotecas.
+
+Esta refactorización cambia los contratos públicos anteriores: las rutas usan
+`/api/identidad` y `/api/academico/espacios`, los campos JSON usan nombres como
+`correo`, `nombre`, `clave`, `rol` y `periodo`, y las variables propias de entorno
+son las indicadas abajo. Los clientes deben actualizar rutas, campos y variables;
+no se mantienen alias en inglés. El esquema MySQL y el alcance funcional no cambian.
 
 ### Configuración local
 
@@ -116,12 +130,12 @@ Configura estas variables de entorno antes del arranque (sin versionar secretos)
 
 | Variable | Uso / valor predeterminado |
 | --- | --- |
-| `PSICOAPP_DB_URL` | `jdbc:mysql://localhost:3306/psicoapp` |
-| `PSICOAPP_DB_USER` | Usuario MySQL; predeterminado `psicoapp` |
-| `PSICOAPP_DB_PASSWORD` | Contraseña MySQL; sin valor predeterminado |
-| `PSICOAPP_ADMIN_EMAIL` | Correo del administrador inicial |
-| `PSICOAPP_ADMIN_PASSWORD` | Clave inicial de al menos 8 caracteres y hasta 72 bytes |
-| `PSICOAPP_INSTITUTIONAL_DOMAINS` | Dominios institucionales exactos separados por comas |
+| `PSICOAPP_BD_URL` | `jdbc:mysql://localhost:3306/psicoapp` |
+| `PSICOAPP_BD_USUARIO` | Usuario MySQL; predeterminado `psicoapp` |
+| `PSICOAPP_BD_CLAVE` | Contraseña MySQL; sin valor predeterminado |
+| `PSICOAPP_CORREO_ADMINISTRADOR` | Correo del administrador inicial |
+| `PSICOAPP_CLAVE_ADMINISTRADOR` | Clave inicial de al menos 8 caracteres y hasta 72 bytes |
+| `PSICOAPP_DOMINIOS_INSTITUCIONALES` | Dominios institucionales exactos separados por comas |
 
 El arranque crea las cinco tablas si no existen e inserta los roles y el permiso
 sin duplicarlos. El administrador inicial se crea solo si no existe; no se
@@ -138,22 +152,22 @@ Para usarla fuera de localhost, servir la API mediante HTTPS.
 
 | Método y ruta | Actor / resultado |
 | --- | --- |
-| `GET /api/identity/me` | Usuario autenticado: identidad y permiso, sin hashes |
-| `GET /api/identity/csrf` | Usuario autenticado: token y nombre de cabecera CSRF |
-| `POST /api/identity/teachers` | Administrador: `{ "email": "docente@universidad.edu.co", "name": "Docente", "password": "clave-ficticia" }` |
-| `PUT /api/identity/users/{id}/role` | Administrador: `{ "role": "DOCENTE" }`; también `ADMINISTRADOR` o `ESTUDIANTE` |
-| `PUT /api/identity/roles/DOCENTE/case-creation` | Administrador: `{ "enabled": true }` concede; `false` retira |
-| `POST /api/identity/students` | Docente: `{ "email": "estudiante@universidad.edu.co", "name": "Estudiante" }`; reutiliza cuentas estudiantiles existentes |
-| `POST /api/academic/spaces` | Docente: `{ "name": "Psicología social", "period": "2026-2" }` |
-| `GET /api/academic/spaces` | Docente: espacios disponibles |
-| `GET /api/academic/spaces/{id}` | Docente: espacio por UUID |
+| `GET /api/identidad/yo` | Usuario autenticado: identidad y permiso, sin hashes |
+| `GET /api/identidad/csrf` | Usuario autenticado: token y nombre de cabecera CSRF |
+| `POST /api/identidad/docentes` | Administrador: `{ "correo": "docente@universidad.edu.co", "nombre": "Docente", "clave": "clave-ficticia" }` |
+| `PUT /api/identidad/usuarios/{idUsuario}/rol` | Administrador: `{ "rol": "DOCENTE" }`; también `ADMINISTRADOR` o `ESTUDIANTE` |
+| `PUT /api/identidad/roles/DOCENTE/creacion-casos` | Administrador: `{ "habilitado": true }` concede; `false` retira |
+| `POST /api/identidad/estudiantes` | Docente: `{ "correo": "estudiante@universidad.edu.co", "nombre": "Estudiante" }`; reutiliza cuentas estudiantiles existentes |
+| `POST /api/academico/espacios` | Docente: `{ "nombre": "Psicología social", "periodo": "2026-2" }` |
+| `GET /api/academico/espacios` | Docente: espacios disponibles |
+| `GET /api/academico/espacios/{id}` | Docente: espacio por UUID |
 
-Antes de POST/PUT, consultar `/api/identity/csrf`, conservar la cookie recibida
+Antes de POST/PUT, consultar `/api/identidad/csrf`, conservar la cookie recibida
 y enviar el token devuelto en la cabecera indicada. Las peticiones incluyen
 también HTTP Basic. La API responde 400 por datos inválidos, 401 por credenciales
 inválidas, 403 por permisos/CSRF, 404 por registros inexistentes y 409 por conflictos.
 
-`IdentityService.requireCaseCreation` expone la comprobación del permiso
+`ServicioUsuarios.exigirCreacionCasos` expone la comprobación del permiso
 específico para futuros casos de uso de creación de casos. El rol docente solo
 no basta. Una cuenta estudiante sin contraseña no puede promoverse a personal;
 el administrador crea las cuentas docentes con su contraseña.
@@ -162,7 +176,7 @@ el administrador crea las cuentas docentes con su contraseña.
 
 - RF-02, RF-03, RN-10 y CU-02/CU-03: administración de docentes, roles y permisos.
 - RF-01: validación del correo institucional y autenticación estudiantil mediante
-  el puerto `StudentAccessVerifier`. El futuro módulo propietario de las
+  el puerto `VerificadorAccesoEstudiante`. El futuro módulo propietario de las
   convocatorias debe implementar ese puerto verificando correo/usuario y código.
   **Sin adaptador de convocatorias, todo acceso estudiantil se deniega**; esta
   entrega no declara completo RF-01 ni RN-04/RF-20.

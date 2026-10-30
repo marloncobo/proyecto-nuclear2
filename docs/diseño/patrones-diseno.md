@@ -51,7 +51,7 @@ explicación, pero los identificadores se escriben en español: por ejemplo,
 
 **Qué hacer:**
 1. Identificar el agregado y sus invariantes en `cases/domain` según el modelo vigente.
-2. Diseñar `CasoBuilder` o una fábrica/servicio de aplicación que añada elementos progresivamente; no duplicar una API CRUD sin necesidad.
+2. Diseñar `ConstructorCaso` o una fábrica/servicio de aplicación que añada elementos progresivamente; no duplicar una API CRUD sin necesidad.
 3. Construir un `Caso` válido para borrador; mantener la validación de publicación como proceso independiente.
 4. Probar casos completos, elementos opcionales y datos inválidos.
 
@@ -69,7 +69,7 @@ explicación, pero los identificadores se escriben en español: por ejemplo,
 3. Dejar la lógica de dominio en los módulos propietarios; usar DTO para consultas transversales.
 4. Probar coordinación, manejo de fallos y permisos.
 
-**No hacer:** crear una clase `AdministracionFacade` gigante que dependa de todos los repositorios y concentre todas las funcionalidades del proyecto.
+**No hacer:** crear una clase `FachadaAdministracion` gigante que dependa de todos los repositorios y concentre todas las funcionalidades del proyecto.
 
 **Criterio de aceptación:** una operación externa tiene una interfaz sencilla sin romper los límites de los módulos.
 
@@ -94,7 +94,7 @@ explicación, pero los identificadores se escriben en español: por ejemplo,
 **Qué hacer:**
 1. Definir una tabla de transiciones y eventos permitidos con los requisitos vigentes.
 2. Separar **estado de la sesión programada** de **estado/progreso de cada intento individual**.
-3. Implementar reglas de transición en `sessions/domain`; valorar clases `SesionState` cuando el comportamiento por estado sea suficientemente complejo.
+3. Implementar reglas de transición en `sessions/domain`; valorar clases `EstadoSesion` cuando el comportamiento por estado sea suficientemente complejo.
 4. Activar el cierre docente y el cierre automático mediante casos de uso de aplicación. El programador temporal solicita la transición, no se salta las reglas.
 5. Probar transiciones válidas, repetidas, prohibidas y cierres por vencimiento.
 
@@ -106,11 +106,11 @@ explicación, pero los identificadores se escriben en español: por ejemplo,
 
 **Qué hacer:**
 1. Confirmar reglas de rúbrica, pesos y penalizaciones en `docs/requisitos/` antes de diseñar fórmulas.
-2. Si hay varias modalidades reales, declarar `CalculoNotaStrategy` y las implementaciones necesarias en `evaluation`.
+2. Si hay varias modalidades reales, declarar `EstrategiaCalculoNota` y las implementaciones necesarias en `evaluation`.
 3. Hacer que `EvaluadorCalificacion` seleccione una estrategia y suministre respuestas/rúbrica.
 4. Probar el cálculo, preguntas no respondidas, última respuesta válida y límites de la escala.
 
-**No hacer:** implementar obligatoriamente `CalculoPorPuntosStrategy` y `CalculoPonderadoStrategy` sin que los requisitos confirmen ambas modalidades.
+**No hacer:** implementar obligatoriamente `EstrategiaCalculoPorPuntos` y `EstrategiaCalculoPonderado` sin que los requisitos confirmen ambas modalidades.
 
 **Criterio de aceptación:** la nota cumple las reglas vigentes; nuevas modalidades pueden añadirse sin modificar el contrato del evaluador.
 
@@ -133,7 +133,7 @@ explicación, pero los identificadores se escriben en español: por ejemplo,
 
 **Qué hacer:**
 1. Precisar condiciones de publicación con RF-09 y RN vigentes.
-2. Si hay variantes por tipo de caso, considerar `ValidacionPublicacionTemplate` con `validarEstructura`, `validarPreguntas` y `validarRubrica`, especializadas por subclases.
+2. Si hay variantes por tipo de caso, considerar `PlantillaValidacionPublicacion` con `validarEstructura`, `validarPreguntas` y `validarRubrica`, especializadas por subclases.
 3. Acumular errores en `ResultadoValidacion` y bloquear publicación si se incumplen restricciones.
 4. Probar casos incompletos, rúbricas inválidas y publicaciones exitosas.
 
@@ -147,13 +147,13 @@ La sección **4. Trazabilidad y coherencia** de la versión actualizada del docu
 
 | Necesidad | RF | Patrón | Elemento UML propuesto |
 | --- | --- | --- | --- |
-| Construcción de casos académicos | RF-05, RF-07, RF-17 | Builder | `CasoBuilder` |
-| Coordinación de administración y consulta | RF-03, RF-04, RF-15 | Facade | `AdministracionFacade` |
-| Protección de acceso a sesiones | RF-02, RF-20 | Proxy | `ParticipacionProxy` |
-| Ciclo de vida de las sesiones | RF-19, RF-25 | State | `SesionState` |
-| Cálculos alternativos de nota | RF-13, RF-14, RF-24 | Strategy | `CalculoNotaStrategy` |
-| Notificaciones a partir de eventos | RF-21, RF-27 | Observer | `NotificacionObserver` |
-| Validación secuencial de publicación | RF-09 | Template Method | `ValidacionPublicacionTemplate` |
+| Construcción de casos académicos | RF-05, RF-07, RF-17 | Builder | `ConstructorCaso` |
+| Coordinación de administración y consulta | RF-03, RF-04, RF-15 | Facade | `FachadaAdministracion` |
+| Protección de acceso a sesiones | RF-02, RF-20 | Proxy | `IntermediarioParticipacion` |
+| Ciclo de vida de las sesiones | RF-19, RF-25 | State | `EstadoSesion` |
+| Cálculos alternativos de nota | RF-13, RF-14, RF-24 | Strategy | `EstrategiaCalculoNota` |
+| Notificaciones a partir de eventos | RF-21, RF-27 | Observer | `ObservadorNotificacion` |
+| Validación secuencial de publicación | RF-09 | Template Method | `PlantillaValidacionPublicacion` |
 
 La propuesta de **Template Method** es la seleccionada para publicación; **Chain of Responsibility** permanece como alternativa no prioritaria. **Strategy** se vincula a los requisitos de evaluación, no a RF-10. Estas relaciones están corregidas en el documento fuente y ya no constituyen inconsistencias pendientes.
 
@@ -169,8 +169,8 @@ La propuesta de **Template Method** es la seleccionada para publicación; **Chai
 | Ticket sugerido | Trabajo verificable | Módulo |
 | --- | --- | --- |
 | `design: confirm-patterns-traceability` | Revisar RF/RN y aprobar dónde aplica cada patrón | `docs` |
-| `feat: session-lifecycle` | Definir/transicionar estados de sesiones con pruebas | `sessions` |
-| `feat: participation-access` | Implementar y probar autorización del lado del servidor | `identity`, `participation` |
+| `feat: sesion-lifecycle` | Definir/transicionar estados de sesiones con pruebas | `sessions` |
+| `feat: participation-acceso` | Implementar y probar autorización del lado del servidor | `identity`, `participation` |
 | `feat: case-publication-validation` | Validar requisitos de publicación con errores comprensibles | `cases` |
 | `feat: rubric-grading` | Calcular notas con reglas vigentes y pruebas; Strategy solo si procede | `evaluation` |
 | `feat: case-assembly` | Ensamblar casos y validar composición; Builder solo si aporta valor | `cases` |
