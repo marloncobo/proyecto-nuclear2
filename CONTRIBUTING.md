@@ -81,6 +81,8 @@ Cuando una funcionalidad esté terminada:
 
 **No deben realizarse commits directamente en `develop` ni en `main`.**
 
+Toda funcionalidad nueva o corrección de una regla de negocio deberá incluir pruebas unitarias con JUnit cuando exista lógica comprobable. Cada prueba deberá estar relacionada con el requisito o caso de prueba correspondiente al plan aprobado. Los Pull Requests hacia develop deberán indicar las pruebas ejecutadas y sus resultados.
+
 ### Pull Requests hacia main
 
 Cuando el equipo considere que `develop` contiene una versión estable y lista para una entrega académica:
