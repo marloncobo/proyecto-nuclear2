@@ -26,6 +26,11 @@ CREATE TABLE IF NOT EXISTS usuario (
     id_rol CHAR(36) NOT NULL,
     FOREIGN KEY (id_rol) REFERENCES rol(id_rol)
 );
+CREATE TABLE IF NOT EXISTS espacio_academico (
+    id_espacio CHAR(36) PRIMARY KEY,
+    nombre VARCHAR(150) NOT NULL,
+    periodo VARCHAR(30) NOT NULL
+);
 INSERT INTO rol (id_rol, nombre, descripcion)
 SELECT '00000000-0000-0000-0000-000000000001', 'ADMINISTRADOR', 'Administra usuarios, roles y permisos'
 WHERE NOT EXISTS (SELECT 1 FROM rol WHERE nombre = 'ADMINISTRADOR');
