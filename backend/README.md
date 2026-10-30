@@ -188,6 +188,11 @@ el administrador crea las cuentas docentes con su contraseña.
 
 ### Pruebas
 
+El [plan de pruebas por casos de uso](../docs/pruebas/plan-pruebas.md) reúne las
+fichas funcionales de identidad y organización académica, su trazabilidad y
+los escenarios pendientes de integración. Las fichas están planeadas; sus
+veredictos se completan al ejecutarlas.
+
 Desde `backend/`, ejecutar `./mvnw.cmd verify` (PowerShell) o `sh mvnw verify`.
 Las pruebas JUnit cubren reglas de usuarios y espacios, coordinación de la
 fachada, credenciales y controles HTTP de rol/CSRF. Los nombres de las pruebas
