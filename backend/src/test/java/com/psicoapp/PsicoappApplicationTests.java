@@ -5,8 +5,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest(properties = {
         "spring.sql.init.mode=never",
-        "psicoapp.identity.admin-email=",
-        "psicoapp.identity.admin-password="
+        "psicoapp.identidad.correo-administrador=",
+        "psicoapp.identidad.clave-administrador="
 })
 class PsicoappApplicationTests {
 

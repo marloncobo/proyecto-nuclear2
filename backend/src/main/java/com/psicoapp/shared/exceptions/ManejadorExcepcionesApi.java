@@ -8,29 +8,29 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
-public class ApiExceptionHandler {
-    @ExceptionHandler(AccessDenied.class)
-    ProblemDetail forbidden(AccessDenied error) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, error.getMessage());
+public class ManejadorExcepcionesApi {
+    @ExceptionHandler(AccesoDenegado.class)
+    ProblemDetail accesoDenegado(AccesoDenegado excepcion) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, excepcion.getMessage());
     }
 
-    @ExceptionHandler(NotFound.class)
-    ProblemDetail notFound(NotFound error) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, error.getMessage());
+    @ExceptionHandler(NoEncontrado.class)
+    ProblemDetail noEncontrado(NoEncontrado excepcion) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, excepcion.getMessage());
     }
 
-    @ExceptionHandler(Conflict.class)
-    ProblemDetail conflict(Conflict error) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, error.getMessage());
+    @ExceptionHandler(Conflicto.class)
+    ProblemDetail conflicto(Conflicto excepcion) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, excepcion.getMessage());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    ProblemDetail integrity() {
+    ProblemDetail integridad() {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Los datos entran en conflicto con un registro existente");
     }
 
     @ExceptionHandler({IllegalArgumentException.class, MethodArgumentNotValidException.class})
-    ProblemDetail invalidRequest() {
+    ProblemDetail solicitudInvalida() {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Solicitud inválida: revise los campos enviados");
     }
 }

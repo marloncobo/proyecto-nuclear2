@@ -8,34 +8,34 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class AcademicSpaceTest {
+class PruebaEspacioAcademico {
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {" ", "\t"})
     @DisplayName("RF-04 / ER: nombre del espacio obligatorio")
-    void requiresName(String name) {
-        assertThrows(IllegalArgumentException.class, () -> new AcademicSpace(UUID.randomUUID(), name, "2026-2"));
+    void exigeNombre(String nombre) {
+        assertThrows(IllegalArgumentException.class, () -> new EspacioAcademico(UUID.randomUUID(), nombre, "2026-2"));
     }
 
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {" ", "\t"})
     @DisplayName("RF-04 / ER: periodo obligatorio")
-    void requiresPeriod(String period) {
-        assertThrows(IllegalArgumentException.class, () -> new AcademicSpace(UUID.randomUUID(), "Psicologia", period));
+    void exigePeriodo(String periodo) {
+        assertThrows(IllegalArgumentException.class, () -> new EspacioAcademico(UUID.randomUUID(), "Psicologia", periodo));
     }
 
     @ParameterizedTest
     @ValueSource(ints = {151, 200})
     @DisplayName("RF-04 / ER: respeta longitud maxima del nombre")
-    void limitsNameLength(int length) {
-        assertThrows(IllegalArgumentException.class, () -> new AcademicSpace(UUID.randomUUID(), "x".repeat(length), "2026-2"));
+    void limitaLongitudDelNombre(int longitud) {
+        assertThrows(IllegalArgumentException.class, () -> new EspacioAcademico(UUID.randomUUID(), "x".repeat(longitud), "2026-2"));
     }
 
     @ParameterizedTest
     @ValueSource(ints = {31, 100})
     @DisplayName("RF-04 / ER: respeta longitud maxima del periodo")
-    void limitsPeriodLength(int length) {
-        assertThrows(IllegalArgumentException.class, () -> new AcademicSpace(UUID.randomUUID(), "Psicologia", "x".repeat(length)));
+    void limitaLongitudDelPeriodo(int longitud) {
+        assertThrows(IllegalArgumentException.class, () -> new EspacioAcademico(UUID.randomUUID(), "Psicologia", "x".repeat(longitud)));
     }
 }

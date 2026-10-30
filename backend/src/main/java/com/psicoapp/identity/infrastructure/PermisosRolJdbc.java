@@ -1,42 +1,42 @@
 package com.psicoapp.identity.infrastructure;
 
-import com.psicoapp.identity.application.RolePermissions;
-import com.psicoapp.identity.domain.Role;
+import com.psicoapp.identity.application.PermisosRol;
+import com.psicoapp.identity.domain.Rol;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public class JdbcRolePermissions implements RolePermissions {
+public class PermisosRolJdbc implements PermisosRol {
     private final JdbcClient jdbc;
 
-    public JdbcRolePermissions(JdbcClient jdbc) {
+    public PermisosRolJdbc(JdbcClient jdbc) {
         this.jdbc = jdbc;
     }
 
     @Override
-    public boolean canCreateCases(Role role) {
+    public boolean puedeCrearCasos(Rol rol) {
         return jdbc.sql("""
                 SELECT COUNT(*) FROM rol_permiso rp
                 JOIN rol r ON r.id_rol = rp.id_rol JOIN permiso p ON p.id_permiso = rp.id_permiso
                 WHERE r.nombre = ? AND p.nombre = 'CREAR_CASOS'
-                """).param(role.name()).query(Integer.class).single() > 0;
+                """).param(rol.name()).query(Integer.class).single() > 0;
     }
 
     @Override
-    public void setCaseCreation(Role role, boolean enabled) {
-        if (enabled) {
+    public void configurarCreacionCasos(Rol rol, boolean habilitado) {
+        if (habilitado) {
             jdbc.sql("""
                     INSERT INTO rol_permiso (id_rol, id_permiso)
                     SELECT r.id_rol, p.id_permiso FROM rol r CROSS JOIN permiso p
                     WHERE r.nombre = ? AND p.nombre = 'CREAR_CASOS'
                     ON DUPLICATE KEY UPDATE id_permiso = rol_permiso.id_permiso
-                    """).param(role.name()).update();
+                    """).param(rol.name()).update();
         } else {
             jdbc.sql("""
                     DELETE rp FROM rol_permiso rp JOIN rol r ON r.id_rol = rp.id_rol
                     JOIN permiso p ON p.id_permiso = rp.id_permiso
                     WHERE r.nombre = ? AND p.nombre = 'CREAR_CASOS'
-                    """).param(role.name()).update();
+                    """).param(rol.name()).update();
         }
     }
 }

@@ -1,5 +1,5 @@
 package com.psicoapp.identity.domain;
 
-public enum Role {
+public enum Rol {
     ADMINISTRADOR, DOCENTE, ESTUDIANTE
 }

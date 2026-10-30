@@ -1,4 +1,4 @@
--- MySQL 8.0+. UUIDs from ModeloER.drawio are represented as CHAR(36).
+-- MySQL 8.0+. Los UUID del ModeloER.drawio se representan mediante CHAR(36).
 CREATE TABLE IF NOT EXISTS rol (
     id_rol CHAR(36) PRIMARY KEY,
     nombre VARCHAR(30) NOT NULL UNIQUE,

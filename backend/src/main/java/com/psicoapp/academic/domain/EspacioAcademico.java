@@ -3,16 +3,16 @@ package com.psicoapp.academic.domain;
 import java.util.Objects;
 import java.util.UUID;
 
-public record AcademicSpace(UUID id, String name, String period) {
-    public AcademicSpace {
+public record EspacioAcademico(UUID id, String nombre, String periodo) {
+    public EspacioAcademico {
         Objects.requireNonNull(id, "El identificador es obligatorio");
-        if (name == null || name.isBlank() || name.strip().length() > 150) {
+        if (nombre == null || nombre.isBlank() || nombre.strip().length() > 150) {
             throw new IllegalArgumentException("El nombre es obligatorio y admite hasta 150 caracteres");
         }
-        if (period == null || period.isBlank() || period.strip().length() > 30) {
+        if (periodo == null || periodo.isBlank() || periodo.strip().length() > 30) {
             throw new IllegalArgumentException("El periodo es obligatorio y admite hasta 30 caracteres");
         }
-        name = name.strip();
-        period = period.strip();
+        nombre = nombre.strip();
+        periodo = periodo.strip();
     }
 }
