@@ -145,6 +145,8 @@ explicación, pero los identificadores se escriben en español: por ejemplo,
 
 La sección **4. Trazabilidad y coherencia** de la versión actualizada del documento académico confirma estas asociaciones:
 
+Los identificadores de esta tabla se adaptan al español conforme a la convención del repositorio. No son una transcripción literal de los nombres del UML original; esta adaptación no modifica el documento académico de referencia.
+
 | Necesidad | RF | Patrón | Elemento UML propuesto |
 | --- | --- | --- | --- |
 | Construcción de casos académicos | RF-05, RF-07, RF-17 | Builder | `ConstructorCaso` |
@@ -168,14 +170,14 @@ La propuesta de **Template Method** es la seleccionada para publicación; **Chai
 
 | Ticket sugerido | Trabajo verificable | Módulo |
 | --- | --- | --- |
-| `design: confirm-patterns-traceability` | Revisar RF/RN y aprobar dónde aplica cada patrón | `docs` |
-| `feat: sesion-lifecycle` | Definir/transicionar estados de sesiones con pruebas | `sessions` |
-| `feat: participation-acceso` | Implementar y probar autorización del lado del servidor | `identity`, `participation` |
-| `feat: case-publication-validation` | Validar requisitos de publicación con errores comprensibles | `cases` |
-| `feat: rubric-grading` | Calcular notas con reglas vigentes y pruebas; Strategy solo si procede | `evaluation` |
-| `feat: case-assembly` | Ensamblar casos y validar composición; Builder solo si aporta valor | `cases` |
-| `feat: domain-notifications` | Emitir y consumir eventos de aviso, manejar fallos | `notifications` |
-| `refactor: administrative-facade` | Simplificar coordinación de operaciones reales cuando aparezca complejidad | `academic` / aplicación |
+| `docs: confirmar-trazabilidad-patrones` | Revisar RF/RN y aprobar dónde aplica cada patrón | `docs` |
+| `feat: ciclo-vida-sesiones` | Definir/transicionar estados de sesiones con pruebas | `sessions` |
+| `feat: acceso-participacion` | Implementar y probar autorización del lado del servidor | `identity`, `participation` |
+| `feat: validacion-publicacion-casos` | Validar requisitos de publicación con errores comprensibles | `cases` |
+| `feat: calificacion-rubrica` | Calcular notas con reglas vigentes y pruebas; Strategy solo si procede | `evaluation` |
+| `feat: construccion-casos` | Ensamblar casos y validar composición; Builder solo si aporta valor | `cases` |
+| `feat: notificaciones-eventos` | Emitir y consumir eventos de aviso, manejar fallos | `notifications` |
+| `refactor: fachada-administracion` | Simplificar coordinación de operaciones reales cuando aparezca complejidad | `academic` / aplicación |
 
 ## 6. Definición de terminado para cualquier patrón
 
@@ -189,6 +191,6 @@ La propuesta de **Template Method** es la seleccionada para publicación; **Chai
 
 ## 7. Fuente y mantenimiento
 
-Documento de referencia (versión con trazabilidad corregida): [Análisis y aplicación de patrones de diseño — primer corte](https://docs.google.com/document/d/1tGt3zkiF4kqQCofAttMvSFDjbzAhvkZulB8gqW2V2yk/edit).
+Documento de referencia (versión con trazabilidad corregida): [Análisis y aplicación de patrones de diseño — primer corte](https://docs.google.com/document/d/1HNopS8XdbuWhGxF1Ptrd_EFtbzTmdlaF/edit).
 
 Este Markdown es una **guía técnica derivada**, no una transcripción literal de la entrega académica. Ante discrepancias, prevalecen los requisitos y reglas de negocio oficialmente vigentes del proyecto. Revisar este archivo cuando cambien los requisitos o los límites de módulos.
