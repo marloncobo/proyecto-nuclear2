@@ -65,11 +65,11 @@ class PruebaServicioEvaluacion {
 
     @Test
     void evaluaUnaSolaVezYConservaElResultado() {
-        ServicioEvaluacion.DatosEvaluacion resultado = servicio.evaluar(intentoId);
+        ServicioEvaluacion.DatosEvaluacion resultado = servicio.evaluar(estudianteId, intentoId);
 
         assertEquals(new BigDecimal("5.00"), resultado.resultado().calificacion());
         assertEquals(EstadoIntento.FINALIZADO.name(), resultado.estadoIntento());
-        assertSame(resultado.resultado(), servicio.evaluar(intentoId).resultado());
+        assertSame(resultado.resultado(), servicio.evaluar(estudianteId, intentoId).resultado());
     }
 
     @Test
@@ -78,6 +78,6 @@ class PruebaServicioEvaluacion {
                 ModoNavegacion.FLEXIBLE, List.of(preguntaId));
         intentos.guardar(enProgreso);
 
-        assertThrows(Conflicto.class, () -> servicio.evaluar(enProgreso.id()));
+        assertThrows(Conflicto.class, () -> servicio.evaluar(estudianteId, enProgreso.id()));
     }
 }

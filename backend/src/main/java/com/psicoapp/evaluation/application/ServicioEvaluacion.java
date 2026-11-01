@@ -7,6 +7,7 @@ import com.psicoapp.participation.domain.EstadoIntento;
 import com.psicoapp.participation.domain.Intento;
 import com.psicoapp.shared.exceptions.Conflicto;
 import com.psicoapp.shared.exceptions.NoEncontrado;
+import com.psicoapp.shared.exceptions.AccesoDenegado;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
@@ -34,9 +35,10 @@ public class ServicioEvaluacion {
         this.reloj = reloj;
     }
 
-    public DatosEvaluacion evaluar(UUID idIntento) {
+    public DatosEvaluacion evaluar(UUID idEstudiante, UUID idIntento) {
         Intento intento = intentos.buscarPorId(idIntento).orElseThrow(
                 () -> new NoEncontrado("Intento no encontrado"));
+        exigirPropietario(idEstudiante, intento);
         if (intento.estado() == EstadoIntento.EN_PROGRESO) {
             throw new Conflicto("Solo se pueden evaluar intentos finalizados");
         }
@@ -51,10 +53,19 @@ public class ServicioEvaluacion {
     }
 
     @Transactional(readOnly = true)
-    public DatosEvaluacion consultar(UUID idIntento) {
+    public DatosEvaluacion consultar(UUID idEstudiante, UUID idIntento) {
         RepositorioEvaluaciones.EvaluacionPersistida evaluacion = evaluaciones.buscarPorIntento(idIntento)
                 .orElseThrow(() -> new NoEncontrado("La evaluacion aun no esta disponible"));
+        Intento intento = intentos.buscarPorId(idIntento).orElseThrow(
+                () -> new NoEncontrado("Intento no encontrado"));
+        exigirPropietario(idEstudiante, intento);
         return representar(evaluacion);
+    }
+
+    private void exigirPropietario(UUID idEstudiante, Intento intento) {
+        if (!intento.idEstudiante().equals(idEstudiante)) {
+            throw new AccesoDenegado("Solo el estudiante propietario puede consultar la evaluacion");
+        }
     }
 
     private DatosEvaluacion representar(RepositorioEvaluaciones.EvaluacionPersistida evaluacion) {

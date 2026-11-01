@@ -50,3 +50,15 @@ cd backend
 
 Los contratos HTTP, el esquema y los ejemplos se actualizaran en
 `backend/README.md` y en este documento cuando la API quede implementada.
+
+## API inicial
+
+La API protegida usa la identidad del `Principal` autenticado como estudiante:
+
+- `POST /api/evaluaciones/{idIntento}` calcula y almacena el resultado de un
+  intento finalizado. La operación es idempotente para el mismo intento.
+- `GET /api/evaluaciones/{idIntento}` devuelve la calificacion y el detalle
+  por pregunta, incluyendo retroalimentacion.
+
+Un intento `EN_PROGRESO` no puede evaluarse y un estudiante no puede consultar
+resultados de otro estudiante.
