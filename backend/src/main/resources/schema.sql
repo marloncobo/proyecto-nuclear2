@@ -108,3 +108,26 @@ CREATE TABLE IF NOT EXISTS criterio_pregunta (
     FOREIGN KEY (id_criterio) REFERENCES criterio_rubrica(id_criterio),
     FOREIGN KEY (id_pregunta) REFERENCES pregunta(id_pregunta)
 );
+
+-- Programacion y ciclo de vida. Convocatorias e intentos se agregan en sus entregas.
+CREATE TABLE IF NOT EXISTS sesion (
+    id_sesion CHAR(36) PRIMARY KEY,
+    id_caso CHAR(36) NOT NULL,
+    id_espacio CHAR(36) NOT NULL,
+    id_docente CHAR(36) NOT NULL,
+    fecha_inicio TIMESTAMP NOT NULL,
+    fecha_fin TIMESTAMP NOT NULL,
+    duracion_maxima_min INT NOT NULL,
+    modo_navegacion VARCHAR(12) NOT NULL,
+    estado VARCHAR(20) NOT NULL,
+    lugar VARCHAR(160) NULL,
+    mensaje TEXT NULL,
+    FOREIGN KEY (id_caso) REFERENCES caso(id_caso),
+    FOREIGN KEY (id_espacio) REFERENCES espacio_academico(id_espacio),
+    FOREIGN KEY (id_docente) REFERENCES usuario(id_usuario),
+    CHECK (fecha_inicio < fecha_fin),
+    CHECK (duracion_maxima_min > 0),
+    CHECK (modo_navegacion IN ('FLEXIBLE', 'RESTRINGIDA')),
+    CHECK (estado IN ('SIN_INICIAR', 'EN_CURSO', 'FINALIZADO')),
+    INDEX indice_sesion_vencida (estado, fecha_fin)
+);

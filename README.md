@@ -6,6 +6,10 @@ El backend usa Java 21, Spring Boot 4.1.2 y Maven. Su estructura es un
 monolito modular con paquete base `com.psicoapp`.
 El frontend está pendiente de implementación.
 
+El backend tambien incluye construccion/publicacion de casos y programacion
+base de sesiones con State. Convocatorias, participacion y evaluacion siguen
+pendientes; consulta los limites en el [README del backend](backend/README.md).
+
 ## Ejecutar el backend
 
 Requisitos: JDK 21 o superior compatible con Spring Boot y `JAVA_HOME`

@@ -15,6 +15,20 @@ del MVP. Edicion, archivado y programacion todavia no estan implementados.
 Consulta el [alcance, ejemplo y pruebas de construccion](../docs/pruebas/casos-construccion.md).
 Consulta tambien las [reglas y pruebas de publicacion](../docs/pruebas/casos-publicacion.md).
 
+## Sesiones — State
+
+`sessions` programa casos publicados propios en espacios academicos existentes,
+con duracion no mayor al tiempo estimado. El docente responsable inicia/finaliza
+la sesion mediante los estados `SinIniciar`, `EnCurso` y `Finalizado`.
+Un planificador cierra automaticamente al alcanzar fin previsto + 24 horas,
+incluidas sesiones nunca iniciadas. Las transiciones usan bloqueo transaccional.
+
+Rutas docentes: `POST /api/sesiones`, `GET /api/sesiones/{id}`,
+`POST /api/sesiones/{id}/iniciar` y `POST /api/sesiones/{id}/finalizar`.
+Usan HTTP Basic y CSRF en POST. Convocatorias, intentos y consolidacion de
+ausencias siguen pendientes; no se declaran completos CU-12/CU-16.
+Consulta [reglas, tiempo, integraciones y pruebas](../docs/pruebas/sesiones.md).
+
 Un único proyecto Maven y una aplicación Spring Boot, organizados por módulos
 funcionales. `PsicoappApplication` está en el paquete raíz para que Spring
 descubra los componentes de todos los módulos.
@@ -66,6 +80,7 @@ versionar los paquetes incluso antes de añadir sus primeras clases.
 `identity` y `academic` implementan la primera base funcional descrita abajo.
 `cases` implementa la construccion de borradores y su validacion/publicacion,
 descritas al inicio de esta guia.
+`sessions` implementa programacion base y ciclo de vida descritos arriba.
 Los demas modulos conservan unicamente su estructura inicial.
 
 ## Capas y dependencias
@@ -154,7 +169,7 @@ Configura estas variables de entorno antes del arranque (sin versionar secretos)
 | `PSICOAPP_CLAVE_ADMINISTRADOR` | Clave inicial de al menos 8 caracteres y hasta 72 bytes |
 | `PSICOAPP_DOMINIOS_INSTITUCIONALES` | Dominios institucionales exactos separados por comas |
 
-El arranque crea las tablas de identidad, espacios y casos si no existen e inserta los roles y el permiso
+El arranque crea las tablas de identidad, espacios, casos y sesiones si no existen e inserta los roles y el permiso
 sin duplicarlos. El administrador inicial se crea solo si no existe; no se
 sobrescribe su contraseña en cada arranque. Sin variables de administrador no
 se crea una cuenta predeterminada. Sin dominios configurados no se admiten
