@@ -200,6 +200,39 @@ enlazan RF/RN y el ER. Usan dobles de los puertos y no requieren MySQL.
 La prueba de contexto desactiva solo la inicialización SQL y el alta inicial
 del administrador; no verifica conectividad ni persistencia.
 
+`PruebaFlujosIdentidadAcademica` complementa las pruebas unitarias y de seguridad
+con los recorridos HTTP disponibles de CP-ID-001 a CP-ID-014 y CP-AC-001 a
+CP-AC-007. Usa controladores, autenticación, validación y servicios reales;
+solo sustituye los puertos de almacenamiento con dobles en memoria reiniciados
+antes de cada ejecución. Las modificaciones obtienen cookie y token del endpoint
+CSRF real. Comprueba también el estado posterior a los rechazos, la autorización
+después de cambiar un rol y los permisos compartidos entre dos docentes.
+No verifica JDBC, transacciones, restricciones ni orden de MySQL, ni supervivencia
+de los datos al reiniciar. Las convocatorias y la programación siguen pendientes.
+
+#### Integración con MySQL real
+
+El perfil `pruebas-mysql` añade `PruebaPersistenciaMysqlIT` mediante Maven
+Failsafe. Ejecuta HTTP, seguridad, servicios y adaptadores JDBC reales, sin
+dobles. Crea un esquema aleatorio `psicoapp_pruebas_<uuid>` con el esquema del
+backend y lo elimina al finalizar. No utiliza ni vacía la base de desarrollo.
+El usuario de pruebas necesita permisos para crear y eliminar ese esquema.
+
+```powershell
+cd backend
+$env:PSICOAPP_PRUEBAS_MYSQL_USUARIO = '<usuario-local>'
+$env:PSICOAPP_PRUEBAS_MYSQL_CLAVE = '<clave-local>'
+# Opcional; debe ser una URL de servidor sin base de datos ni parámetros:
+$env:PSICOAPP_PRUEBAS_MYSQL_URL = 'jdbc:mysql://localhost:3306/'
+.\mvnw.cmd -Ppruebas-mysql verify
+```
+
+Las credenciales se leen del entorno y no tienen valores predeterminados.
+El perfil falla si faltan o MySQL no está disponible. Sin el perfil, `verify`
+conserva las pruebas que no requieren base de datos; los archivos `*IT.java`
+se reservan para Failsafe. Los informes de integración quedan en
+`target/failsafe-reports/`. Consulta la [cobertura MySQL y sus resultados](../docs/pruebas/cobertura-mysql.md).
+
 Las pruebas se ubican en `src/test/java/com/psicoapp`, siguiendo los mismos
 módulos y capas cuando se incorporen funcionalidades. Las instrucciones de
 arranque y compilación están en el [README principal](../README.md).

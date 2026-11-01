@@ -121,6 +121,27 @@ En Linux/macOS: `cd backend` y `sh mvnw verify`. Sus informes se generan en `bac
 
 Para ejecuciones exclusivamente JUnit, registrar clase/método, comando e informe generado. Si una prueba solo cubre un fragmento del recorrido, no marcar por ello como pasado el caso funcional completo. La columna de apoyo automatizado describe cobertura existente, no un resultado de esta ejecución.
 
+#### Ampliación automatizada del 01-11-2026
+
+Se añadió `PruebaFlujosIdentidadAcademica`, con 33 ejecuciones nuevas (incluidas
+las variantes parametrizadas), para los escenarios disponibles de CP-ID-001 a
+CP-ID-014 y CP-AC-001 a CP-AC-007. La suite completa se ejecutó mediante
+`.\mvnw.cmd verify`: **87 pruebas, 0 fallos, 0 errores y 0 omitidas**.
+Los informes se generan en `backend/target/surefire-reports/`; el archivo
+`com.psicoapp.identity.api.PruebaFlujosIdentidadAcademica.txt` identifica la suite
+nueva. Las fichas indican los métodos correspondientes.
+
+Esta ampliación integra HTTP, autenticación, CSRF y servicios reales usando
+dobles de almacenamiento aislados por ejecución. No utiliza un adaptador de
+convocatorias. La [ampliación con MySQL real](cobertura-mysql.md) añade 27
+ejecuciones para comprobar persistencia y reinicio, restricciones, transacciones
+y orden SQL: el comando `.\mvnw.cmd -Ppruebas-mysql verify` ejecuta ambas suites,
+con un total de **114 pruebas, sin fallos, errores ni omisiones**. Usa un esquema
+temporal exclusivo que se crea y elimina automáticamente, con credenciales del
+entorno. CP-ID-015, CP-ID-016 y CP-AC-008 conservan su bloqueo. Los veredictos de
+las fichas funcionales se mantienen pendientes de completar el procedimiento
+manual y sus evidencias.
+
 ### 5.4 Criterios de evaluación
 
 - **Pasado:** todas las variantes ejecutadas coinciden con lo esperado, se verifican las postcondiciones y hay evidencia.
@@ -137,6 +158,6 @@ Para ejecuciones exclusivamente JUnit, registrar clase/método, comando e inform
 | [Organización académica](casos-academicos.md) | 8 | 7 | 1 |
 | Total | 24 | 21 | 3 |
 
-Todas las fichas se entregan con versión y fecha de ejecución pendientes, respuesta observada pendiente, columnas de coincidencia sin marcar y veredicto **No ejecutado**. No se han generado evidencias funcionales nuevas para este plan.
+Todas las fichas conservan versión y fecha de ejecución manual pendientes, respuesta observada pendiente, columnas de coincidencia sin marcar y veredicto **No ejecutado**. Las suites JUnit aportan evidencia automatizada con dobles de almacenamiento y con MySQL real, registrada en la ampliación anterior y en el informe de cobertura MySQL. Las fichas manuales aún requieren probador y evidencias conforme al procedimiento.
 
 Este documento y sus fichas requieren revisión del equipo antes de tratarse como un plan aprobado; no alteran el catálogo oficial de CU/RF/RN.

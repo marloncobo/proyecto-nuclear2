@@ -62,7 +62,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaFachadaAdministracion.creaEspacioDespuesDeAutorizarDocente; consultaEspacioExistente; PruebaSeguridadIdentidad.docenteCreaYConsultaEspacioConCamposEnEspanol. El reinicio y MySQL se verifican manualmente. |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.creaConsultaYRechazaEspacioAusente. Alta y consulta HTTP con servicios reales; reinicio y persistencia MySQL comprobados por la suite de integración. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-ac-002"></a>
 
@@ -103,7 +103,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaEspacioAcademico.exigeNombre; exigePeriodo; PruebaFachadaAdministracion.rechazaEspacioAcademicoIncompleto. Las variantes HTTP son complementarias. |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.rechazaEspaciosIncompletosPorHttp. Seis variantes (vacío, blanco y omitido en cada campo) devuelven 400 y conservan el catálogo previo. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-ac-003"></a>
 
@@ -144,7 +144,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaEspacioAcademico.limitaLongitudDelNombre y limitaLongitudDelPeriodo cubren el exceso. La aceptación exacta de máximos queda como prueba manual planeada. |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.validaLongitudesExactasPorHttp. Acepta 150/30 caracteres, rechaza 151/31 y comprueba que solo se guarda el espacio válido. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-ac-004"></a>
 
@@ -184,7 +184,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | No hay una prueba dedicada al catálogo vacío; la fachada usa el listado del repositorio. Caso funcional manual planeado. |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.consultaCatalogoVacioPorHttp. Verifica HTTP 200 y [] sin crear registros. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-ac-005"></a>
 
@@ -225,7 +225,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaFachadaAdministracion.listaEspaciosAcademicos valida la delegación. El orden SQL y el acceso de dos docentes son comprobaciones manuales. |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.catalogoEsCompartidoEntreDocentes. Verifica tres espacios y el mismo catálogo para dos docentes sin modificar datos. El orden SQL también se comprueba con MySQL real. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-ac-006"></a>
 
@@ -266,7 +266,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaFachadaAdministracion.consultaEspacioExistente e informaEspacioInexistente; PruebaSeguridadIdentidad.docenteCreaYConsultaEspacioConCamposEnEspanol cubre la lectura HTTP positiva. |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.creaConsultaYRechazaEspacioAusente. Verifica HTTP 200 con los campos del espacio, HTTP 404 para UUID ausente y conservación del catálogo. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-ac-007"></a>
 
@@ -307,7 +307,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaFachadaAdministracion.rechazaUsuarioSinPermisosAntesDeConsultarPersistencia; PruebaSeguridadIdentidad.estudianteNoAdministraEspaciosAcademicos. Las variantes de administrador y anónimo del catálogo son manuales planeadas. |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.restringeCatalogoPorRolYAutenticacion. Administrador recibe 403 al listar, consultar y crear; anónimo recibe 401; no se accede a persistencia. PruebaSeguridadIdentidad.estudianteNoAdministraEspaciosAcademicos cubre el rol ESTUDIANTE con identidad controlada. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-ac-008"></a>
 

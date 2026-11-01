@@ -69,7 +69,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaServicioUsuarios.administradorRegistraDocenteConClaveCifrada; PruebaSeguridadIdentidad.administradorRegistraDocenteYRechazaDatosInvalidos. El recorrido completo con MySQL es manual. |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.registraDocenteYAutenticaCuentaCreada. Alta, inicio de sesión y BCrypt verificados con servicios reales; persistencia MySQL comprobada por la suite de integración. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-id-002"></a>
 
@@ -110,7 +110,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaServicioUsuarios.rechazaCorreoDuplicado; la normalización y la restricción UNIQUE de MySQL deben verificarse juntas mediante la API. |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.rechazaDuplicadoSinModificarCuenta. Incluye mayúsculas, HTTP 409 y conservación de cuenta y credenciales; UNIQUE de MySQL comprobado por la suite de integración. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-id-003"></a>
 
@@ -151,7 +151,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaServicioUsuarios.rechazaClavesInvalidas; PruebaUsuario.validaNombreCorreoYClaveDelPersonal; PruebaSeguridadIdentidad.administradorRegistraDocenteYRechazaDatosInvalidos. Cobertura parcial de las variantes HTTP. |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.rechazaDatosDocenteInvalidosPorHttp. Ejecuta por separado las cinco variantes HTTP, incluido el límite de bytes UTF-8, sin guardar cuentas. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-id-004"></a>
 
@@ -191,7 +191,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaServicioUsuarios.docenteNoAdministraUsuariosNiPermisos; PruebaSeguridadIdentidad.docenteNoRegistraOtroDocente. |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.docenteNoAdministraIdentidadesNiPermisos. Verifica HTTP 403 con credenciales y CSRF reales, sin guardar cuentas. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-id-005"></a>
 
@@ -233,7 +233,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaServicioUsuarios.administradorCambiaRol. La lectura autenticada posterior se comprueba manualmente. |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.cambiaRolYRestituyeAutorizacion. Promoción, lectura autenticada, autorización efectiva y restitución por HTTP; persistencia MySQL comprobada por la suite de integración. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-id-006"></a>
 
@@ -274,7 +274,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaServicioUsuarios.impideRetirarRolPropioDeAdministrador. |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.rechazaRetirarRolPropioPorHttp. Verifica HTTP 409, conservación del estado y acceso posterior. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-id-007"></a>
 
@@ -317,7 +317,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaServicioUsuarios.administradorGestionaPermisosDelRol; exigePermisoEspecificoParaCasos; PruebaSeguridadIdentidad.administradorConfiguraPermisosConCamposEnEspanol. El efecto sobre dos cuentas con MySQL es manual. |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.permisoDelRolAfectaDosDocentes. Concesión y revocación comprobadas con dos cuentas mediante HTTP; tabla rol_permiso en MySQL comprobada por la suite de integración. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-id-008"></a>
 
@@ -358,7 +358,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaServicioUsuarios.docenteNoAdministraUsuariosNiPermisos; administradorGestionaPermisosDelRol. La segunda variante no tiene una prueba HTTP específica. |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.docenteNoAdministraIdentidadesNiPermisos y rechazaPermisoParaEstudiantePorHttp. Ambas variantes HTTP y ausencia de modificación verificadas. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-id-009"></a>
 
@@ -399,7 +399,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaProveedorAutenticacionIdentidad.autenticaPersonalSinExponerCredenciales; rechazaClaveIncorrectaDelPersonal; PruebaSeguridadIdentidad.autenticaCredencialesBasicasReales; solicitudAnonimaNoEstaAutorizada. |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.autenticaPersonalPorHttp. Administrador y docente: identidad completa sin credenciales, contraseña incorrecta y solicitud anónima. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-id-010"></a>
 
@@ -440,7 +440,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaServicioUsuarios.registraEstudianteInstitucional; reutilizaEstudianteExistente. La persistencia y el estado HTTP de reutilización se comprueban manualmente. |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.registraYReutilizaEstudiantePorHttp. HTTP 201, mismo UUID con mayúsculas, una sola escritura y contraseña nula; persistencia MySQL comprobada por la suite de integración. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-id-011"></a>
 
@@ -481,7 +481,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaServicioUsuarios.rechazaCorreoNoInstitucional; rechazaCorreoDelPersonalParaEstudiante. |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.rechazaCorreoEstudiantilPorHttp. Las tres variantes HTTP no modifican las cuentas. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-id-012"></a>
 
@@ -522,7 +522,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaUsuario.validaNombreCorreoYClaveDelPersonal verifica la invariante; el cambio de rol del estudiante por HTTP no tiene prueba específica. |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.rechazaPromoverEstudiantePorHttp. Las dos promociones devuelven HTTP 400 y conservan el estudiante sin contraseña. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-id-013"></a>
 
@@ -562,7 +562,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaSeguridadIdentidad.rechazaModificacionSinCsrf cubre el mismo control sobre alta de espacios; este recorrido de alta docente es un caso manual complementario. |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.altaDocenteRequiereCsrf. El alta sin CSRF devuelve 403 sin escritura; el mismo registro funciona con cookie y token obtenidos del endpoint real. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-id-014"></a>
 
@@ -602,7 +602,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaProveedorAutenticacionIdentidad.rechazaEstudianteSinConvocatoriaVerificada; usa dobles de integración. |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.rechazaEstudianteSinAdaptadorPorHttp. Verifica HTTP 401 sin adaptador real de convocatorias y conserva las cuentas. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-id-015"></a>
 
