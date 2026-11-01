@@ -46,11 +46,28 @@ generados no se versionan.
 
 ## Límites
 
-CP-ID-015, CP-ID-016 y CP-AC-008 continúan bloqueados porque las convocatorias
-y la programación no están implementadas en esta base de código. Tener MySQL
-disponible no completa esas integraciones.
+En la base original `37070ef`, CP-ID-015, CP-ID-016 y CP-AC-008 estaban bloqueados
+porque convocatorias y programación no estaban implementadas. Esta limitación
+histórica cambió con la actualización desde develop descrita a continuación.
 
 Las fichas conservan el veredicto funcional pendiente: esta evidencia automatizada
 no sustituye la asignación de probador, las capturas y la cumplimentación de todos
 los campos del procedimiento manual. El reinicio comprobado es del backend;
 no se detiene el servicio MySQL del equipo.
+
+## Verificación tras actualizar desde develop
+
+Antes de subir la rama se incorporó `origin/develop` en `706a6e5`, que añade
+casos, sesiones, convocatorias y sus pruebas. La limitación histórica de los tres
+casos anteriores debe consultarse ahora junto con las
+[correcciones de revisión](correcciones-revision.md).
+
+Se ejecutó `.\mvnw.cmd -Ppruebas-mysql verify`: 165 pruebas habituales aprobadas,
+27 pruebas de persistencia MySQL aprobadas y una prueba optativa de develop
+omitida por no haber configurado todavía su variable URL. Después se configuró
+`PSICOAPP_PRUEBAS_MYSQL_URL` y se ejecutó
+`.\mvnw.cmd -Dtest=PruebaFlujoMySql test`: el flujo real de casos, convocatorias
+y sesiones también pasó contra MySQL. Resultado combinado: **193 pruebas
+aprobadas, sin fallos ni errores y sin pruebas pendientes de ejecutar entre
+ambas comprobaciones**. Los informes de esta actualización quedan en los mismos
+directorios Surefire y Failsafe.

@@ -3,6 +3,12 @@
 **Versión del documento:** 0.1.0
 **Fecha de elaboración:** 30-10-2026
 **Estado:** propuesta para revisión; ejecución funcional pendiente.
+
+**Nota de actualización:** el alcance y los bloqueos de las fichas corresponden
+a la base original indicada abajo. La rama se actualizó desde develop `706a6e5`,
+que incorpora casos y convocatorias. Véase la
+[verificación actualizada con MySQL](cobertura-mysql.md#verificación-tras-actualizar-desde-develop)
+y las [correcciones de revisión](correcciones-revision.md) para el estado posterior.
 **Base prevista del software:** `0.0.1-SNAPSHOT`, commit `388b7bf`, rama `feat/identity-academic`. Registrar el hash realmente ejecutado en cada ficha.
 
 Este plan adapta la [plantilla «Documento plan de pruebas»](https://docs.google.com/document/d/1zRXhuL-_D1xWvpCxZwF_iMPJmI1W9963/edit) a Markdown. Conserva sus seis secciones y los campos de información global, precondiciones, pasos, datos de entrada, respuesta esperada, coincidencia, respuesta observada, postcondiciones, defectos, veredicto, observaciones y probador. Se eliminan únicamente las repeticiones y celdas combinadas de presentación de la plantilla.

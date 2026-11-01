@@ -253,8 +253,10 @@ solo sustituye los puertos de almacenamiento con dobles en memoria reiniciados
 antes de cada ejecución. Las modificaciones obtienen cookie y token del endpoint
 CSRF real. Comprueba también el estado posterior a los rechazos, la autorización
 después de cambiar un rol y los permisos compartidos entre dos docentes.
-No verifica JDBC, transacciones, restricciones ni orden de MySQL, ni supervivencia
-de los datos al reiniciar. Las convocatorias y la programación siguen pendientes.
+Esta clase no verifica JDBC, transacciones, restricciones ni orden de MySQL, ni
+supervivencia de los datos al reiniciar; esas comprobaciones están en la suite
+de integración siguiente. Los flujos de convocatorias y programación incorporados
+en develop tienen sus pruebas en `com.psicoapp.integracion`.
 
 #### Integración con MySQL real
 
