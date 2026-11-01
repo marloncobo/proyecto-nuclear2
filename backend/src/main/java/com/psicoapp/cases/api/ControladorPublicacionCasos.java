@@ -19,4 +19,9 @@ public class ControladorPublicacionCasos {
     public DatosPublicacion publicar(Principal principal, @PathVariable UUID id) {
         return publicacion.publicar(UUID.fromString(principal.getName()), id);
     }
+
+    @PostMapping("/{id}/archivar")
+    public DatosPublicacion archivar(Principal principal, @PathVariable UUID id) {
+        return publicacion.archivar(UUID.fromString(principal.getName()), id);
+    }
 }

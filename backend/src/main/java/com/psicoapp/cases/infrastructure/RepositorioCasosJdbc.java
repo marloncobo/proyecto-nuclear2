@@ -31,6 +31,10 @@ public class RepositorioCasosJdbc implements RepositorioCasos {
                     contexto, tiempo_estimado_min, estado) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """).params(java.util.Arrays.asList(caso.id().toString(), caso.idDocente().toString(), caso.nombre(),
                         caso.desarrolloSituacional(), caso.contexto(), caso.tiempoEstimadoMin(), caso.estado())).update();
+        guardarContenido(caso);
+    }
+
+    private void guardarContenido(Caso caso) {
         for (Escenario escenario : caso.escenarios()) {
             jdbc.sql("""
                     INSERT INTO escenario (id_escenario, id_caso, titulo, contexto_situacional, orden)
@@ -68,12 +72,48 @@ public class RepositorioCasosJdbc implements RepositorioCasos {
     @Override
     @Transactional(readOnly = true)
     public Optional<Caso> buscarPorId(UUID id) {
-        return jdbc.sql("SELECT * FROM caso WHERE id_caso = ?").param(id.toString()).query((fila, indice) -> {
+        return consultar(id, false);
+    }
+
+    @Override
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public Optional<Caso> bloquearPorId(UUID id) {
+        return consultar(id, true);
+    }
+
+    private Optional<Caso> consultar(UUID id, boolean bloquear) {
+        return jdbc.sql("SELECT * FROM caso WHERE id_caso = ?" + (bloquear ? " FOR UPDATE" : "")).param(id.toString()).query((fila, indice) -> {
             return new Caso(id, uuid(fila, "id_usuario_docente"), fila.getString("nombre"),
                     fila.getString("desarrollo_situacional"), fila.getString("contexto"),
                     fila.getObject("tiempo_estimado_min", Integer.class), cargarEscenarios(id), cargarRubrica(id),
                     EstadoCaso.valueOf(fila.getString("estado")));
         }).optional();
+    }
+
+    @Override
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public void actualizarBorrador(Caso caso) {
+        if (caso.estadoCaso() != EstadoCaso.BORRADOR) throw new IllegalArgumentException("Solo se actualizan borradores");
+        int filas = jdbc.sql("""
+                UPDATE caso SET nombre=?, desarrollo_situacional=?, contexto=?, tiempo_estimado_min=?
+                WHERE id_caso=? AND id_usuario_docente=? AND estado='BORRADOR'
+                """).params(java.util.Arrays.asList(caso.nombre(), caso.desarrolloSituacional(), caso.contexto(),
+                        caso.tiempoEstimadoMin(), caso.id().toString(), caso.idDocente().toString())).update();
+        if (filas != 1) throw new com.psicoapp.shared.exceptions.Conflicto("El caso ya no es un borrador propio");
+        String id = caso.id().toString();
+        jdbc.sql("DELETE FROM criterio_pregunta WHERE id_criterio IN (SELECT c.id_criterio FROM criterio_rubrica c JOIN rubrica r ON r.id_rubrica=c.id_rubrica WHERE r.id_caso=?)").param(id).update();
+        jdbc.sql("DELETE FROM criterio_rubrica WHERE id_rubrica IN (SELECT id_rubrica FROM rubrica WHERE id_caso=?)").param(id).update();
+        jdbc.sql("DELETE FROM rubrica WHERE id_caso=?").param(id).update();
+        jdbc.sql("DELETE FROM opcion_respuesta WHERE id_pregunta IN (SELECT p.id_pregunta FROM pregunta p JOIN escenario e ON e.id_escenario=p.id_escenario WHERE e.id_caso=?)").param(id).update();
+        jdbc.sql("DELETE FROM pregunta WHERE id_escenario IN (SELECT id_escenario FROM escenario WHERE id_caso=?)").param(id).update();
+        jdbc.sql("DELETE FROM escenario WHERE id_caso=?").param(id).update();
+        guardarContenido(caso);
+    }
+
+    @Override
+    public boolean archivar(UUID id, UUID idDocente) {
+        return jdbc.sql("UPDATE caso SET estado='ARCHIVADO' WHERE id_caso=? AND id_usuario_docente=? AND estado IN ('BORRADOR','PUBLICADO')")
+                .params(id.toString(), idDocente.toString()).update() == 1;
     }
 
     @Override

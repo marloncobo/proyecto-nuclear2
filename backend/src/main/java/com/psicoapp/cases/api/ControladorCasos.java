@@ -27,4 +27,9 @@ public class ControladorCasos {
     public DatosCaso consultar(Principal principal, @PathVariable UUID id) {
         return casos.consultar(UUID.fromString(principal.getName()), id);
     }
+
+    @PutMapping("/{id}")
+    public DatosCaso actualizar(Principal principal, @PathVariable UUID id, @RequestBody DatosCreacionCaso solicitud) {
+        return casos.actualizar(UUID.fromString(principal.getName()), id, solicitud);
+    }
 }

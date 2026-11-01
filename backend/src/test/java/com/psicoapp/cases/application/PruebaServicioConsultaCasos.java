@@ -26,7 +26,7 @@ class PruebaServicioConsultaCasos {
     @Test
     @DisplayName("RN-03 / RF-18: contrato de programacion expone solo id y tiempo de caso publicado propio")
     void permiteCasoPublicadoDelDocente() {
-        when(casos.buscarPorId(base.id())).thenReturn(Optional.of(conEstado(EstadoCaso.PUBLICADO)));
+        when(casos.bloquearPorId(base.id())).thenReturn(Optional.of(conEstado(EstadoCaso.PUBLICADO)));
         assertEquals(new CatalogoCasos.CasoProgramable(base.id(), 40), servicio.exigirPublicado(docente, base.id()));
     }
 
@@ -34,7 +34,7 @@ class PruebaServicioConsultaCasos {
     @DisplayName("RN-03 / RF-09: no programa borradores ni archivados")
     void rechazaEstadoNoProgramable() {
         for (EstadoCaso estado : new EstadoCaso[]{EstadoCaso.BORRADOR, EstadoCaso.ARCHIVADO}) {
-            when(casos.buscarPorId(base.id())).thenReturn(Optional.of(conEstado(estado)));
+            when(casos.bloquearPorId(base.id())).thenReturn(Optional.of(conEstado(estado)));
             assertThrows(Conflicto.class, () -> servicio.exigirPublicado(docente, base.id()));
         }
     }
@@ -42,7 +42,7 @@ class PruebaServicioConsultaCasos {
     @Test
     @DisplayName("RF-02: exige identidad, propietario y existencia")
     void protegeContratoEntreModulos() {
-        when(casos.buscarPorId(base.id())).thenReturn(Optional.of(conEstado(EstadoCaso.PUBLICADO)));
+        when(casos.bloquearPorId(base.id())).thenReturn(Optional.of(conEstado(EstadoCaso.PUBLICADO)));
         assertThrows(AccesoDenegado.class, () -> servicio.exigirPublicado(UUID.randomUUID(), base.id()));
         assertThrows(NoEncontrado.class, () -> servicio.exigirPublicado(docente, UUID.randomUUID()));
         doThrow(new AccesoDenegado("No docente")).when(identidades).exigirDocente(docente);

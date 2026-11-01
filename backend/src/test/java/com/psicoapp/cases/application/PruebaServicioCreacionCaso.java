@@ -18,6 +18,23 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PruebaServicioCreacionCaso {
+
+    @Test
+    void actualizaBorradorYProtegeEstados() {
+        Caso base = com.psicoapp.cases.DatosPruebaCasos.completo(docente);
+        when(casos.bloquearPorId(base.id())).thenReturn(Optional.of(base));
+        var actualizado = servicio.actualizar(docente, base.id(), datos(30));
+        assertEquals(base.id(), actualizado.id());
+        assertEquals(30, actualizado.tiempoEstimadoMin());
+        verify(casos).actualizarBorrador(argThat(c -> c.id().equals(base.id()) && c.nombre().equals("Caso")));
+        assertThrows(AccesoDenegado.class, () -> servicio.actualizar(UUID.randomUUID(), base.id(), datos(30)));
+        assertThrows(IllegalArgumentException.class, () -> servicio.actualizar(docente, base.id(), datos(-1)));
+        var publicado = new Caso(base.id(), docente, base.nombre(), base.desarrolloSituacional(), base.contexto(),
+                base.tiempoEstimadoMin(), base.escenarios(), base.rubrica(), EstadoCaso.PUBLICADO);
+        when(casos.bloquearPorId(base.id())).thenReturn(Optional.of(publicado));
+        assertThrows(com.psicoapp.shared.exceptions.Conflicto.class, () -> servicio.actualizar(docente, base.id(), datos(30)));
+        verify(casos, times(1)).actualizarBorrador(any());
+    }
     @Mock DirectorioIdentidad identidades;
     @Mock RepositorioCasos casos;
     private ServicioCreacionCaso servicio;

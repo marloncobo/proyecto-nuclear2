@@ -4,6 +4,7 @@ import com.psicoapp.cases.domain.*;
 import com.psicoapp.identity.application.DirectorioIdentidad;
 import com.psicoapp.shared.exceptions.AccesoDenegado;
 import com.psicoapp.shared.exceptions.NoEncontrado;
+import com.psicoapp.shared.exceptions.Conflicto;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -47,6 +48,21 @@ public class ServicioCreacionCaso {
             throw new AccesoDenegado("Solo el docente responsable puede consultar el caso");
         }
         return representar(caso);
+    }
+
+    /** Sustituye el contenido del borrador completo manteniendo id y propietario. */
+    public DatosCaso actualizar(UUID idDocente, UUID idCaso, DatosCreacionCaso datos) {
+        identidades.exigirCreacionCasos(idDocente);
+        Caso anterior = casos.bloquearPorId(idCaso).orElseThrow(() -> new NoEncontrado("Caso no encontrado"));
+        if (!anterior.idDocente().equals(idDocente)) throw new AccesoDenegado("Solo el responsable puede editar el caso");
+        if (anterior.estadoCaso() != EstadoCaso.BORRADOR) throw new Conflicto("Solo puede editar borradores");
+        if (datos == null || datos.escenarios() == null) throw new IllegalArgumentException("Los datos y escenarios son obligatorios");
+        ConstructorCaso constructor = new ConstructorCasoAcademico(idCaso, idDocente)
+                .definirDatos(datos.nombre(), datos.desarrolloSituacional(), datos.contexto(), datos.tiempoEstimadoMin());
+        datos.escenarios().forEach(constructor::agregarEscenario);
+        Caso actualizado = constructor.asociarRubrica(datos.rubrica()).construir();
+        casos.actualizarBorrador(actualizado);
+        return representar(actualizado);
     }
 
     private DatosCaso representar(Caso caso) {

@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
 
 @Service
-@Transactional(readOnly = true)
+@Transactional
 public class ServicioConsultaCasos implements CatalogoCasos {
     private final RepositorioCasos casos;
     private final DirectorioIdentidad identidades;
@@ -22,7 +22,7 @@ public class ServicioConsultaCasos implements CatalogoCasos {
     @Override
     public CasoProgramable exigirPublicado(UUID idDocente, UUID idCaso) {
         identidades.exigirDocente(idDocente);
-        var caso = casos.buscarPorId(idCaso).orElseThrow(() -> new NoEncontrado("Caso no encontrado"));
+        var caso = casos.bloquearPorId(idCaso).orElseThrow(() -> new NoEncontrado("Caso no encontrado"));
         if (!caso.idDocente().equals(idDocente)) {
             throw new AccesoDenegado("Solo el docente responsable puede programar el caso");
         }

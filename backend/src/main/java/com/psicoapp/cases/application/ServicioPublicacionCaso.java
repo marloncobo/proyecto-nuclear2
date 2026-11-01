@@ -27,7 +27,7 @@ public class ServicioPublicacionCaso {
 
     public DatosPublicacion publicar(UUID idDocente, UUID idCaso) {
         identidades.exigirCreacionCasos(idDocente);
-        Caso caso = casos.buscarPorId(idCaso).orElseThrow(() -> new NoEncontrado("Caso no encontrado"));
+        Caso caso = casos.bloquearPorId(idCaso).orElseThrow(() -> new NoEncontrado("Caso no encontrado"));
         if (!caso.idDocente().equals(idDocente)) {
             throw new AccesoDenegado("Solo el docente responsable puede publicar el caso");
         }
@@ -40,5 +40,14 @@ public class ServicioPublicacionCaso {
             throw new Conflicto("El estado del caso cambio durante la publicacion");
         }
         return new DatosPublicacion(idCaso, EstadoCaso.PUBLICADO.name());
+    }
+
+    public DatosPublicacion archivar(UUID idDocente, UUID idCaso) {
+        identidades.exigirDocente(idDocente);
+        Caso caso = casos.bloquearPorId(idCaso).orElseThrow(() -> new NoEncontrado("Caso no encontrado"));
+        if (!caso.idDocente().equals(idDocente)) throw new AccesoDenegado("Solo el responsable puede archivar el caso");
+        if (caso.estadoCaso() == EstadoCaso.ARCHIVADO) return new DatosPublicacion(idCaso, "ARCHIVADO");
+        if (!casos.archivar(idCaso, idDocente)) throw new Conflicto("El estado del caso cambio al archivar");
+        return new DatosPublicacion(idCaso, "ARCHIVADO");
     }
 }

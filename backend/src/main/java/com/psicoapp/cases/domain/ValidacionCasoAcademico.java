@@ -48,6 +48,11 @@ public final class ValidacionCasoAcademico extends PlantillaValidacionPublicacio
                 if (pregunta.opciones().isEmpty()) {
                     agregar(errores, "OPCIONES_REQUERIDAS", ruta + ".opciones", "La pregunta debe contener opciones");
                 }
+                if (pregunta.opciones().stream().noneMatch(OpcionRespuesta::esCorrecta)
+                        || pregunta.opciones().stream().allMatch(OpcionRespuesta::esCorrecta)) {
+                    agregar(errores, "CORRECCION_INCOMPLETA", ruta + ".opciones",
+                            "Debe incluir al menos una opcion correcta y una incorrecta");
+                }
                 for (int opcion = 0; opcion < pregunta.opciones().size(); opcion++) {
                     OpcionRespuesta respuesta = pregunta.opciones().get(opcion);
                     String rutaOpcion = ruta + ".opciones[" + opcion + "]";

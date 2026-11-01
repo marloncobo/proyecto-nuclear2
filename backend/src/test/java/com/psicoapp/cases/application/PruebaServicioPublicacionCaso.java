@@ -17,6 +17,20 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PruebaServicioPublicacionCaso {
+
+    @Test
+    void archivaCasoPropioSinDuplicar() {
+        Caso base = DatosPruebaCasos.completo(docente);
+        when(casos.bloquearPorId(base.id())).thenReturn(Optional.of(base));
+        when(casos.archivar(base.id(), docente)).thenReturn(true);
+        assertEquals("ARCHIVADO", servicio.archivar(docente, base.id()).estado());
+        var archivado = new Caso(base.id(), docente, base.nombre(), base.desarrolloSituacional(), base.contexto(),
+                base.tiempoEstimadoMin(), base.escenarios(), base.rubrica(), EstadoCaso.ARCHIVADO);
+        when(casos.bloquearPorId(base.id())).thenReturn(Optional.of(archivado));
+        assertEquals("ARCHIVADO", servicio.archivar(docente, base.id()).estado());
+        verify(casos, times(1)).archivar(base.id(), docente);
+        assertThrows(AccesoDenegado.class, () -> servicio.archivar(UUID.randomUUID(), base.id()));
+    }
     @Mock DirectorioIdentidad identidades;
     @Mock RepositorioCasos casos;
     private ServicioPublicacionCaso servicio;
@@ -31,14 +45,14 @@ class PruebaServicioPublicacionCaso {
     @DisplayName("RF-09: autoriza, valida y publica el caso completo")
     void publicaCasoCompletoEnOrden() {
         Caso caso = DatosPruebaCasos.completo(docente);
-        when(casos.buscarPorId(caso.id())).thenReturn(Optional.of(caso));
+        when(casos.bloquearPorId(caso.id())).thenReturn(Optional.of(caso));
         when(casos.publicar(caso.id(), docente)).thenReturn(true);
         var resultado = servicio.publicar(docente, caso.id());
         assertEquals("PUBLICADO", resultado.estado());
         assertEquals(caso.id(), resultado.id());
         var orden = inOrder(identidades, casos);
         orden.verify(identidades).exigirCreacionCasos(docente);
-        orden.verify(casos).buscarPorId(caso.id());
+        orden.verify(casos).bloquearPorId(caso.id());
         orden.verify(casos).publicar(caso.id(), docente);
     }
 
@@ -54,7 +68,7 @@ class PruebaServicioPublicacionCaso {
     @DisplayName("RF-02/09: propietario ajeno y caso inexistente no publican")
     void exigePropietarioYExistencia() {
         Caso ajeno = DatosPruebaCasos.completo(UUID.randomUUID());
-        when(casos.buscarPorId(ajeno.id())).thenReturn(Optional.of(ajeno));
+        when(casos.bloquearPorId(ajeno.id())).thenReturn(Optional.of(ajeno));
         assertThrows(AccesoDenegado.class, () -> servicio.publicar(docente, ajeno.id()));
         assertThrows(NoEncontrado.class, () -> servicio.publicar(docente, UUID.randomUUID()));
         verify(casos, never()).publicar(any(), any());
@@ -64,7 +78,7 @@ class PruebaServicioPublicacionCaso {
     @DisplayName("RN-03/05: varios errores conservan borrador sin escritura parcial")
     void conservaBorradorInvalido() {
         Caso caso = new ConstructorCasoAcademico(UUID.randomUUID(), docente).construir();
-        when(casos.buscarPorId(caso.id())).thenReturn(Optional.of(caso));
+        when(casos.bloquearPorId(caso.id())).thenReturn(Optional.of(caso));
         var error = assertThrows(PublicacionInvalida.class, () -> servicio.publicar(docente, caso.id()));
         assertEquals(6, error.resultado().errores().size());
         assertEquals("BORRADOR", caso.estado());
@@ -78,7 +92,7 @@ class PruebaServicioPublicacionCaso {
         for (EstadoCaso estado : new EstadoCaso[]{EstadoCaso.PUBLICADO, EstadoCaso.ARCHIVADO}) {
             Caso caso = new Caso(base.id(), docente, base.nombre(), base.desarrolloSituacional(), base.contexto(),
                     base.tiempoEstimadoMin(), base.escenarios(), base.rubrica(), estado);
-            when(casos.buscarPorId(caso.id())).thenReturn(Optional.of(caso));
+            when(casos.bloquearPorId(caso.id())).thenReturn(Optional.of(caso));
             assertThrows(Conflicto.class, () -> servicio.publicar(docente, caso.id()));
         }
         verify(casos, never()).publicar(any(), any());
@@ -88,7 +102,7 @@ class PruebaServicioPublicacionCaso {
     @DisplayName("RF-09: detecta perdida de la actualizacion condicional ante otra publicacion")
     void detectaCambioConcurrenteDeEstado() {
         Caso caso = DatosPruebaCasos.completo(docente);
-        when(casos.buscarPorId(caso.id())).thenReturn(Optional.of(caso));
+        when(casos.bloquearPorId(caso.id())).thenReturn(Optional.of(caso));
         when(casos.publicar(caso.id(), docente)).thenReturn(false);
         assertThrows(Conflicto.class, () -> servicio.publicar(docente, caso.id()));
     }

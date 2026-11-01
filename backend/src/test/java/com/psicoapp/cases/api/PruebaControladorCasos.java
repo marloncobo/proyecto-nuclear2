@@ -30,6 +30,24 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @Import({ConfiguracionIdentidad.class, ProveedorAutenticacionIdentidad.class, ServicioCreacionCaso.class})
 class PruebaControladorCasos {
+
+    @Test
+    void editaPorHttpYNormalizaErrores() throws Exception {
+        UUID docente = UUID.randomUUID();
+        var caso = new ConstructorCasoAcademico(UUID.randomUUID(), docente).construir();
+        when(casos.bloquearPorId(caso.id())).thenReturn(Optional.of(caso));
+        mvc.perform(put("/api/casos/{id}", caso.id()).with(user(docente.toString()).roles("DOCENTE"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Editado\",\"escenarios\":[]}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(put("/api/casos/{id}", caso.id()).with(csrf()).with(user(docente.toString()).roles("DOCENTE"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Editado\",\"escenarios\":[]}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.nombre").value("Editado"));
+        mvc.perform(put("/api/casos/{id}", caso.id()).with(csrf()).with(user(docente.toString()).roles("DOCENTE"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"tiempoEstimadoMin\":0,\"escenarios\":[]}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail").value("El tiempo estimado debe ser positivo"));
+        mvc.perform(get("/api/casos/no-es-uuid").with(user(docente.toString()).roles("DOCENTE")))
+                .andExpect(status().isBadRequest());
+    }
     @Autowired MockMvc mvc;
     @MockitoBean RepositorioUsuarios usuarios;
     @MockitoBean ServicioUsuarios identidades;

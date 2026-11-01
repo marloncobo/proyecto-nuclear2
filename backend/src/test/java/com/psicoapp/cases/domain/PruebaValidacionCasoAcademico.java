@@ -116,14 +116,14 @@ class PruebaValidacionCasoAcademico {
     }
 
     @Test
-    @DisplayName("RN-11: no inventa un minimo de dos opciones pendiente de aprobacion")
-    void noImponeMinimosNoAprobados() {
+    @DisplayName("RN-11: exige opciones correctas e incorrectas segun decision academica del MVP")
+    void exigeAmbasClasesDeOpciones() {
         Caso base = DatosPruebaCasos.completo(UUID.randomUUID());
         var pregunta = base.escenarios().getFirst().preguntas().getFirst();
         var escenario = new Escenario(UUID.randomUUID(), "Titulo", "Contexto", 1, List.of(
                 new Pregunta(pregunta.id(), pregunta.enunciado(), 1, List.of(pregunta.opciones().getFirst()))));
         var caso = new Caso(base.id(), base.idDocente(), base.nombre(), base.desarrolloSituacional(), base.contexto(),
                 base.tiempoEstimadoMin(), List.of(escenario), base.rubrica());
-        assertTrue(validacion.validar(caso).esValido());
+        assertTrue(validacion.validar(caso).errores().stream().anyMatch(e -> e.codigo().equals("CORRECCION_INCOMPLETA")));
     }
 }

@@ -21,6 +21,43 @@ import org.springframework.transaction.support.TransactionTemplate;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PruebaRepositorioCasosJdbc {
+
+    @Test
+    void editaYArchivaSinHuerfanos() {
+        var original = DatosPruebaCasos.completo(docente);
+        transaccion.executeWithoutResult(estado -> repositorio.guardar(original));
+        var nuevo = DatosPruebaCasos.completo(docente);
+        var actualizado = new Caso(original.id(), docente, "Editado", nuevo.desarrolloSituacional(), nuevo.contexto(),
+                30, nuevo.escenarios(), nuevo.rubrica());
+        transaccion.executeWithoutResult(estado -> {
+            repositorio.bloquearPorId(original.id()).orElseThrow();
+            repositorio.actualizarBorrador(actualizado);
+        });
+        assertEquals(actualizado, repositorio.buscarPorId(original.id()).orElseThrow());
+        assertEquals(0, jdbc.sql("SELECT COUNT(*) FROM pregunta WHERE id_pregunta=?")
+                .param(original.escenarios().getFirst().preguntas().getFirst().id().toString()).query(Integer.class).single());
+        transaccion.executeWithoutResult(estado -> {
+            repositorio.bloquearPorId(original.id()).orElseThrow();
+            assertTrue(repositorio.archivar(original.id(), docente));
+        });
+        assertEquals("ARCHIVADO", repositorio.buscarPorId(original.id()).orElseThrow().estado());
+        assertEquals(actualizado.escenarios(), repositorio.buscarPorId(original.id()).orElseThrow().escenarios());
+        assertThrows(com.psicoapp.shared.exceptions.Conflicto.class,
+                () -> transaccion.executeWithoutResult(estado -> repositorio.actualizarBorrador(actualizado)));
+    }
+
+    @Test
+    void revierteEdicionCompletaAnteConflicto() {
+        var original = DatosPruebaCasos.completo(docente);
+        var ajeno = DatosPruebaCasos.completo(docente);
+        transaccion.executeWithoutResult(estado -> { repositorio.guardar(original); repositorio.guardar(ajeno); });
+        var invalido = new Caso(original.id(), docente, "Cambio", "Desarrollo", "Contexto", 30, ajeno.escenarios(), ajeno.rubrica());
+        assertThrows(org.springframework.dao.DataIntegrityViolationException.class, () -> transaccion.executeWithoutResult(estado -> {
+            repositorio.bloquearPorId(original.id());
+            repositorio.actualizarBorrador(invalido);
+        }));
+        assertEquals(original, repositorio.buscarPorId(original.id()).orElseThrow());
+    }
     private RepositorioCasosJdbc repositorio;
     private JdbcClient jdbc;
     private TransactionTemplate transaccion;
