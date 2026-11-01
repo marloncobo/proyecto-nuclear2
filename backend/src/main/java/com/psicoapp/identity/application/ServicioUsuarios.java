@@ -91,6 +91,7 @@ public class ServicioUsuarios implements DirectorioIdentidad {
         return representarUsuario(buscarUsuario(idUsuario));
     }
 
+    @Override
     @Transactional(readOnly = true)
     public void exigirCreacionCasos(UUID idUsuario) {
         DatosUsuario usuario = exigirRol(idUsuario, Rol.DOCENTE);

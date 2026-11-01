@@ -7,5 +7,6 @@ public interface DirectorioIdentidad {
     record DatosUsuario(UUID id, String correo, String nombre, String rol, boolean puedeCrearCasos) { }
 
     DatosUsuario exigirDocente(UUID idUsuario);
+    void exigirCreacionCasos(UUID idUsuario);
     DatosUsuario registrarEstudiante(UUID idDocente, String correo, String nombre);
 }

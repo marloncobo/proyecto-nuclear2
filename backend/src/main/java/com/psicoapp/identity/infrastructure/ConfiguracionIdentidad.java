@@ -36,6 +36,7 @@ public class ConfiguracionIdentidad {
                         .requestMatchers(HttpMethod.POST, "/api/identidad/estudiantes").hasRole("DOCENTE")
                         .requestMatchers("/api/identidad/**").hasRole("ADMINISTRADOR")
                         .requestMatchers("/api/academico/**").hasRole("DOCENTE")
+                        .requestMatchers("/api/casos", "/api/casos/**").hasRole("DOCENTE")
                         .anyRequest().denyAll())
                 .build();
     }

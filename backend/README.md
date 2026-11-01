@@ -1,5 +1,15 @@
 # Arquitectura del backend
 
+## Construccion de casos — Builder
+
+`cases` permite crear y consultar borradores con escenarios, preguntas,
+opciones y rubrica. Reutiliza `DirectorioIdentidad` para exigir el permiso
+`CREAR_CASOS`; solo su docente responsable puede consultar el borrador.
+La persistencia JDBC agrega las siete tablas del contenido academico del ER.
+Las rutas son `POST /api/casos` y `GET /api/casos/{id}`, con HTTP Basic y CSRF.
+Publicacion, edicion y programacion todavia no estan implementadas.
+Consulta el [alcance, ejemplo y pruebas de construccion](../docs/pruebas/casos-construccion.md).
+
 Un único proyecto Maven y una aplicación Spring Boot, organizados por módulos
 funcionales. `PsicoappApplication` está en el paquete raíz para que Spring
 descubra los componentes de todos los módulos.
@@ -49,7 +59,8 @@ versionar los paquetes incluso antes de añadir sus primeras clases.
 | `reports` | Generación y consulta de reportes |
 
 `identity` y `academic` implementan la primera base funcional descrita abajo.
-Los demás módulos conservan únicamente su estructura inicial.
+`cases` implementa la construccion de borradores descrita al inicio de esta guia.
+Los demas modulos conservan unicamente su estructura inicial.
 
 ## Capas y dependencias
 
@@ -91,7 +102,7 @@ permiso `CREAR_CASOS` para el rol docente, registro de estudiantes institucional
 y creación/consulta de espacios académicos con nombre y periodo. La persistencia
 usa MySQL y JDBC; las contraseñas se almacenan con BCrypt.
 
-El esquema `src/main/resources/schema.sql` reproduce exclusivamente `USUARIO`,
+La base de identidad y espacios en `src/main/resources/schema.sql` reproduce `USUARIO`,
 `ROL`, `PERMISO`, `ROL_PERMISO` y `ESPACIO_ACADEMICO` del
 [modelo ER](../docs/diseño/ModeloER.drawio). Los UUID se representan mediante
 `CHAR(36)`. Los permisos pertenecen al rol según el ER: conceder `CREAR_CASOS`
@@ -137,7 +148,7 @@ Configura estas variables de entorno antes del arranque (sin versionar secretos)
 | `PSICOAPP_CLAVE_ADMINISTRADOR` | Clave inicial de al menos 8 caracteres y hasta 72 bytes |
 | `PSICOAPP_DOMINIOS_INSTITUCIONALES` | Dominios institucionales exactos separados por comas |
 
-El arranque crea las cinco tablas si no existen e inserta los roles y el permiso
+El arranque crea las tablas de identidad, espacios y casos si no existen e inserta los roles y el permiso
 sin duplicarlos. El administrador inicial se crea solo si no existe; no se
 sobrescribe su contraseña en cada arranque. Sin variables de administrador no
 se crea una cuenta predeterminada. Sin dominios configurados no se admiten
