@@ -10,6 +10,9 @@ public final class SinIniciar implements EstadoSesion {
 
     @Override
     public Sesion iniciar(Sesion sesion, Instant ahora) {
+        if (ahora.isBefore(sesion.inicioPrevisto())) {
+            throw new TransicionSesionInvalida("Aun no se alcanza el inicio previsto");
+        }
         if (sesion.estaVencida(ahora)) {
             throw new TransicionSesionInvalida("La sesion ya alcanzo su cierre automatico");
         }

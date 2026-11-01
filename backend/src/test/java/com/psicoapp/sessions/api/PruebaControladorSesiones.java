@@ -36,6 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PruebaControladorSesiones {
     @Autowired MockMvc mvc;
     @MockitoBean RepositorioSesiones sesiones;
+    @MockitoBean RepositorioConvocatorias convocatorias;
     @MockitoBean ServicioUsuarios identidades;
     @MockitoBean RepositorioUsuarios usuarios;
     @MockitoBean CatalogoCasos casos;
@@ -76,7 +77,7 @@ class PruebaControladorSesiones {
                         .contentType(MediaType.APPLICATION_JSON).content("""
                                 {"idCaso":"%s","idEspacio":"%s","inicioPrevisto":"2026-11-01T09:00:00-05:00",
                                  "finPrevisto":"2026-11-01T10:00:00-05:00","duracionMaximaMin":30,
-                                 "modoNavegacion":"FLEXIBLE","lugar":"Aula",
+                                 "modoNavegacion":"FLEXIBLE","lugar":"Aula","estudiantes":["00000000-0000-0000-0000-000000000099"],
                                  "idDocente":"00000000-0000-0000-0000-000000000001","estado":"FINALIZADO"}
                                 """.formatted(sesion.idCaso(), sesion.idEspacio())))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.estado").value("SIN_INICIAR"))
@@ -132,7 +133,8 @@ class PruebaControladorSesiones {
         mvc.perform(post("/api/sesiones").with(csrf()).with(user(docente.toString()).roles("DOCENTE"))
                         .contentType(MediaType.APPLICATION_JSON).content("""
                                 {"idCaso":"%s","idEspacio":"%s","inicioPrevisto":"2026-11-01T16:00:00Z",
-                                "finPrevisto":"2026-11-01T15:00:00Z","duracionMaximaMin":30,"modoNavegacion":"FLEXIBLE"}
+                                "finPrevisto":"2026-11-01T15:00:00Z","duracionMaximaMin":30,"modoNavegacion":"FLEXIBLE",
+                                "estudiantes":["00000000-0000-0000-0000-000000000099"]}
                                 """.formatted(sesion.idCaso(), sesion.idEspacio()))).andExpect(status().isBadRequest());
         verify(sesiones, never()).guardar(any());
     }

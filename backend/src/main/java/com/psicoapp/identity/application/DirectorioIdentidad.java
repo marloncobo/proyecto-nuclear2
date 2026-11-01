@@ -8,5 +8,6 @@ public interface DirectorioIdentidad {
 
     DatosUsuario exigirDocente(UUID idUsuario);
     void exigirCreacionCasos(UUID idUsuario);
+    void exigirEstudiante(UUID idUsuario);
     DatosUsuario registrarEstudiante(UUID idDocente, String correo, String nombre);
 }

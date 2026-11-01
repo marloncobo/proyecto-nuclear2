@@ -9,6 +9,13 @@ import static com.psicoapp.sessions.DatosPruebaSesiones.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PruebaSesion {
+
+    @Test
+    void noIniciaAntesDelHorarioPrevisto() {
+        Sesion programada = DatosPruebaSesiones.programada(UUID.randomUUID());
+        assertThrows(TransicionSesionInvalida.class, () -> programada.iniciar(INICIO.minusNanos(1)));
+        assertEquals(TipoEstadoSesion.EN_CURSO, programada.iniciar(INICIO).estado().codigo());
+    }
     private final Sesion sesion = DatosPruebaSesiones.programada(UUID.randomUUID());
 
     @Test

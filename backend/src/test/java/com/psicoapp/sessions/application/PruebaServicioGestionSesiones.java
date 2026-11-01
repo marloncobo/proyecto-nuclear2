@@ -25,7 +25,19 @@ import static org.mockito.ArgumentMatchers.*;
 
 @ExtendWith(MockitoExtension.class)
 class PruebaServicioGestionSesiones {
+
+    @Test
+    void requiereConvocadosValidosYSinDuplicados() {
+        var base = datos(30);
+        for (List<UUID> estudiantes : List.of(List.<UUID>of(), List.of(docente, docente))) {
+            var invalido = new ServicioGestionSesiones.DatosProgramacion(base.idCaso(), base.idEspacio(), INICIO, FIN,
+                    30, ModoNavegacion.FLEXIBLE, null, null, estudiantes);
+            assertThrows(IllegalArgumentException.class, () -> servicio.programar(docente, invalido));
+        }
+        verifyNoInteractions(sesiones, convocatorias);
+    }
     @Mock RepositorioSesiones sesiones;
+    @Mock RepositorioConvocatorias convocatorias;
     @Mock DirectorioIdentidad identidades;
     @Mock CatalogoCasos casos;
     @Mock FachadaAdministracion academico;
@@ -35,12 +47,12 @@ class PruebaServicioGestionSesiones {
 
     @BeforeEach
     void preparar() {
-        servicio = new ServicioGestionSesiones(sesiones, identidades, casos, academico, Clock.fixed(INICIO, ZoneOffset.UTC));
+        servicio = new ServicioGestionSesiones(sesiones, identidades, casos, academico, Clock.fixed(INICIO, ZoneOffset.UTC), convocatorias);
     }
 
     private ServicioGestionSesiones.DatosProgramacion datos(int duracion) {
         return new ServicioGestionSesiones.DatosProgramacion(sesion.idCaso(), sesion.idEspacio(), INICIO, FIN,
-                duracion, ModoNavegacion.FLEXIBLE, null, null);
+                duracion, ModoNavegacion.FLEXIBLE, null, null, List.of(UUID.randomUUID()));
     }
 
     @Test

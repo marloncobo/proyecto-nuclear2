@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS criterio_pregunta (
     FOREIGN KEY (id_pregunta) REFERENCES pregunta(id_pregunta)
 );
 
--- Programacion y ciclo de vida. Convocatorias e intentos se agregan en sus entregas.
+-- Programacion y ciclo de vida. Los intentos individuales pertenecen a participation.
 CREATE TABLE IF NOT EXISTS sesion (
     id_sesion CHAR(36) PRIMARY KEY,
     id_caso CHAR(36) NOT NULL,
@@ -130,4 +130,16 @@ CREATE TABLE IF NOT EXISTS sesion (
     CHECK (modo_navegacion IN ('FLEXIBLE', 'RESTRINGIDA')),
     CHECK (estado IN ('SIN_INICIAR', 'EN_CURSO', 'FINALIZADO')),
     INDEX indice_sesion_vencida (estado, fecha_fin)
+);
+
+CREATE TABLE IF NOT EXISTS convocatoria (
+    id_convocatoria CHAR(36) PRIMARY KEY,
+    id_sesion CHAR(36) NOT NULL,
+    id_estudiante CHAR(36) NOT NULL,
+    codigo_acceso VARCHAR(80) NOT NULL UNIQUE,
+    estado VARCHAR(20) NOT NULL,
+    UNIQUE (id_sesion, id_estudiante),
+    FOREIGN KEY (id_sesion) REFERENCES sesion(id_sesion),
+    FOREIGN KEY (id_estudiante) REFERENCES usuario(id_usuario),
+    CHECK (estado IN ('AUTORIZADA','RETIRADA'))
 );

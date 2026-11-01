@@ -2,6 +2,7 @@ package com.psicoapp.sessions.infrastructure;
 
 import com.psicoapp.sessions.domain.*;
 import com.psicoapp.cases.DatosPruebaCasos;
+import com.psicoapp.cases.domain.ConstructorCasoAcademico;
 import com.psicoapp.cases.infrastructure.RepositorioCasosJdbc;
 import com.zaxxer.hikari.HikariDataSource;
 import java.time.Duration;
@@ -21,6 +22,69 @@ import static com.psicoapp.sessions.DatosPruebaSesiones.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PruebaRepositorioSesionesJdbc {
+
+    @Test
+    void falloDeConvocatoriaRevierteSesionYAltasPrevias() {
+        var jdbc = JdbcClient.create(fuente);
+        UUID estudiante = UUID.randomUUID();
+        jdbc.sql("""
+                INSERT INTO usuario (id_usuario,nombre,correo,activo,fecha_creacion,id_rol)
+                VALUES (?,'Alumno','alumno@example.test',true,CURRENT_TIMESTAMP,
+                    '00000000-0000-0000-0000-000000000003')
+                """).param(estudiante.toString()).update();
+        var convocatorias = new RepositorioConvocatoriasJdbc(jdbc);
+        assertThrows(org.springframework.dao.DataIntegrityViolationException.class, () -> transaccion.executeWithoutResult(estado -> {
+            repositorio.guardar(sesion);
+            convocatorias.guardar(new Convocatoria(UUID.randomUUID(),sesion.id(),estudiante,Convocatoria.resumir("uno"),true));
+            convocatorias.guardar(new Convocatoria(UUID.randomUUID(),sesion.id(),UUID.randomUUID(),Convocatoria.resumir("dos"),true));
+        }));
+        assertTrue(repositorio.buscarPorId(sesion.id()).isEmpty());
+        assertTrue(convocatorias.listarPorSesion(sesion.id()).isEmpty());
+    }
+
+    @Test
+    void publicacionEsperaEdicionYValidaElContenidoConfirmado() throws Exception {
+        var casos = new RepositorioCasosJdbc(JdbcClient.create(fuente));
+        var caso = DatosPruebaCasos.completo(sesion.idDocente());
+        transaccion.executeWithoutResult(estado -> casos.guardar(caso));
+        var edicionEnCurso = new CountDownLatch(1);
+        var liberarEdicion = new CountDownLatch(1);
+        var publicacionSolicitada = new CountDownLatch(1);
+        try (var ejecutor = Executors.newFixedThreadPool(2)) {
+            var edicion = ejecutor.submit(() -> transaccion.executeWithoutResult(estado -> {
+                casos.bloquearPorId(caso.id()).orElseThrow();
+                casos.actualizarBorrador(new ConstructorCasoAcademico(caso.id(), caso.idDocente()).construir());
+                edicionEnCurso.countDown();
+                try {
+                    if (!liberarEdicion.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("No se libero edicion");
+                } catch (InterruptedException error) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(error);
+                }
+            }));
+            assertTrue(edicionEnCurso.await(5,TimeUnit.SECONDS));
+            var publicacion = ejecutor.submit(() -> {
+                var servicio = new com.psicoapp.cases.application.ServicioPublicacionCaso(
+                        org.mockito.Mockito.mock(com.psicoapp.identity.application.DirectorioIdentidad.class),casos);
+                assertThrows(com.psicoapp.cases.application.PublicacionInvalida.class, () ->
+                    transaccion.executeWithoutResult(estado -> {
+                        publicacionSolicitada.countDown();
+                        servicio.publicar(caso.idDocente(),caso.id());
+                    }));
+            });
+            assertTrue(publicacionSolicitada.await(5,TimeUnit.SECONDS));
+            try {
+                assertThrows(TimeoutException.class, () -> publicacion.get(200,TimeUnit.MILLISECONDS));
+            } finally {
+                liberarEdicion.countDown();
+            }
+            edicion.get(5,TimeUnit.SECONDS);
+            publicacion.get(5,TimeUnit.SECONDS);
+            assertEquals("BORRADOR",casos.buscarPorId(caso.id()).orElseThrow().estado());
+        } finally {
+            liberarEdicion.countDown();
+        }
+    }
     private HikariDataSource fuente;
     private RepositorioSesionesJdbc repositorio;
     private TransactionTemplate transaccion;
