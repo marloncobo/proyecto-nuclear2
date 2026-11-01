@@ -39,8 +39,9 @@ Rutas docentes: `POST /api/sesiones`, `GET /api/sesiones/{id}`,
 `POST /api/sesiones/{id}/iniciar` y `POST /api/sesiones/{id}/finalizar`.
 Usan HTTP Basic y CSRF en POST. Programar exige una lista no vacia de UUID
 `estudiantes` institucionales existentes y devuelve codigos iniciales de convocatoria.
-Notificaciones, intentos y consolidacion de ausencias siguen pendientes;
-no se declaran completos CU-12/CU-16 con todas sus integraciones.
+Notificaciones y consolidacion de ausencias siguen pendientes; la gestion de
+intentos se implementa en `participation` y la calificacion en `evaluation`.
+Por ello CU-12/CU-16 aun no se declaran completos con todas sus integraciones.
 Consulta [reglas, tiempo, integraciones y pruebas](../docs/pruebas/sesiones.md).
 
 ## Participacion — intentos
@@ -50,7 +51,9 @@ ultima respuesta por pregunta y aplica la modalidad `FLEXIBLE` o `RESTRINGIDA`.
 Las rutas son `POST /api/participaciones`, `GET /api/participaciones/{id}`,
 `PUT /api/participaciones/{id}/respuestas` y las transiciones
 `/avanzar`, `/retroceder`, `/reanudar` y `/finalizar`. La autorizacion de la
-convocatoria y la ventana de ingreso se delegan a `sessions`.
+convocatoria y la ventana de ingreso se delegan a `sessions`. Un planificador
+marca automaticamente como vencidos los intentos cuyo limite individual se
+agota.
 
 ## Evaluacion — calificacion
 
@@ -59,7 +62,6 @@ ponderacion, asigna cero a preguntas sin respuesta y conserva la
 retroalimentacion por pregunta. Las rutas son `POST /api/evaluaciones/{idIntento}`
 y `GET /api/evaluaciones/{idIntento}`. El estudiante autenticado solo puede
 consultar su propio intento.
-
 Un único proyecto Maven y una aplicación Spring Boot, organizados por módulos
 funcionales. `PsicoappApplication` está en el paquete raíz para que Spring
 descubra los componentes de todos los módulos.

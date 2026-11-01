@@ -41,11 +41,12 @@ RN-15, RN-17, RN-18 y RN-19.
 - El calculo de la calificacion pertenece al modulo `evaluation`; participation
   solo conserva el intento y solicita su evaluacion al finalizar.
 
-## Persistencia prevista
+## Persistencia
 
-Se agregaran tablas para `intento` y `respuesta`, con restricciones que
-impidan dos intentos activos del mismo estudiante en la misma sesion y
-mantengan una sola respuesta vigente por pregunta e intento.
+Las tablas `intento`, `intento_pregunta` y `respuesta` conservan el orden de
+preguntas y una sola respuesta vigente por pregunta e intento. El planificador
+`PlanificadorCierreIntentos` revisa cada minuto los intentos vencidos y los
+marca como `VENCIDO`; el intervalo y su habilitacion son configurables.
 
 ## Verificacion
 
@@ -73,6 +74,8 @@ La API protegida usa la identidad del `Principal` autenticado como estudiante:
   `/retroceder`, `/reanudar` y `/finalizar`: ejecutan las transiciones
   permitidas por la modalidad y el estado.
 
-La lista de preguntas se sustituira por un contrato de lectura del caso
-publicado cuando se conecte la integracion definitiva con `cases`; el servicio
-de dominio nunca recibe respuestas correctas.
+La lista de preguntas se recibe actualmente como contrato de entrada para
+mantener aislado el dominio; la integracion de lectura del caso publicado y
+la validacion de que la lista no sea alterada por el cliente quedan pendientes
+para el siguiente incremento. El servicio de dominio nunca recibe respuestas
+correctas.
