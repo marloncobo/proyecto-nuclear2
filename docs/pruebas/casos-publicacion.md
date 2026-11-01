@@ -1,5 +1,7 @@
 # Publicacion de casos — segunda entrega (Template Method)
 
+> Alcance historico: las [correcciones posteriores](correcciones-revision.md) actualizan las reglas y funciones descritas en esta entrega.
+
 ## Alcance y trazabilidad
 
 Implementa CU-09 y CU-10 para el modelo academico disponible: RF-09 y

@@ -1,5 +1,9 @@
 # Guía de contribución
 
+El estado vigente incluye las [correcciones de la revision tecnica](docs/pruebas/correcciones-revision.md).
+Ese documento actualiza las limitaciones historicas de las primeras entregas,
+incluidos edicion, archivado, convocatorias y pruebas de integracion.
+
 Gracias por contribuir a Psicoapp. Esta guía describe cómo preparar el entorno,
 organizar los cambios y enviarlos para revisión.
 
@@ -15,7 +19,7 @@ organizar los cambios y enviarlos para revisión.
 El proyecto está en una fase inicial: el backend incluye una base de usuarios,
 roles, permisos y espacios académicos con MySQL, autenticación y pruebas JUnit.
 Tambien incluye construccion/publicacion de casos y programacion base/ciclo de
-vida de sesiones; convocatorias, participacion y evaluacion siguen pendientes.
+vida de sesiones y convocatorias iniciales; notificaciones, participacion y evaluacion siguen pendientes.
 El frontend está pendiente de implementación. Consulta el README del backend
 para conocer el alcance implementado y las integraciones pendientes.
 

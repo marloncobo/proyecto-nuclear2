@@ -1,5 +1,7 @@
 # Sesiones — tercera entrega (State)
 
+> Alcance historico: las [correcciones posteriores](correcciones-revision.md) actualizan las reglas y funciones descritas en esta entrega.
+
 ## Alcance
 
 Implementa programacion base (parte de RF-04/RF-18, RN-03/RN-13),

@@ -1,5 +1,15 @@
 # Arquitectura del backend
 
+## Correcciones posteriores a la revision tecnica
+
+La [guia vigente de correcciones](../docs/pruebas/correcciones-revision.md)
+actualiza los limites historicos de las entregas: agrega `PUT /api/casos/{id}`
+para sustituir borradores, archivado, bloqueo de casos compartido con programacion,
+opciones correctas e incorrectas obligatorias al publicar, estudiantes y
+convocatorias iniciales con codigos, autenticacion estudiantil por convocatoria,
+y prohibicion de inicio anticipado. Contiene los contratos de integracion,
+el alcance pendiente y las instrucciones para ejecutar la prueba MySQL optativa.
+
 ## Construccion de casos — Builder
 
 `cases` permite crear y consultar borradores con escenarios, preguntas,
@@ -11,7 +21,9 @@ Las rutas son `POST /api/casos` y `GET /api/casos/{id}`, con HTTP Basic y CSRF.
 Template Method antes de cambiar BORRADOR a PUBLICADO. Devuelve 422 con errores
 acumulados si el contenido es invalido; exige permiso de creacion y propiedad.
 Las ponderaciones de la rubrica son fracciones que suman 1,00, segun la decision
-del MVP. Edicion, archivado y programacion todavia no estan implementados.
+del MVP. PUT permite editar borradores; POST /api/casos/{id}/archivar conserva
+el contenido y evita nuevas programaciones. Cada pregunta publicada exige
+al menos una opcion correcta y una incorrecta.
 Consulta el [alcance, ejemplo y pruebas de construccion](../docs/pruebas/casos-construccion.md).
 Consulta tambien las [reglas y pruebas de publicacion](../docs/pruebas/casos-publicacion.md).
 
@@ -25,8 +37,10 @@ incluidas sesiones nunca iniciadas. Las transiciones usan bloqueo transaccional.
 
 Rutas docentes: `POST /api/sesiones`, `GET /api/sesiones/{id}`,
 `POST /api/sesiones/{id}/iniciar` y `POST /api/sesiones/{id}/finalizar`.
-Usan HTTP Basic y CSRF en POST. Convocatorias, intentos y consolidacion de
-ausencias siguen pendientes; no se declaran completos CU-12/CU-16.
+Usan HTTP Basic y CSRF en POST. Programar exige una lista no vacia de UUID
+`estudiantes` institucionales existentes y devuelve codigos iniciales de convocatoria.
+Notificaciones, intentos y consolidacion de ausencias siguen pendientes;
+no se declaran completos CU-12/CU-16 con todas sus integraciones.
 Consulta [reglas, tiempo, integraciones y pruebas](../docs/pruebas/sesiones.md).
 
 Un único proyecto Maven y una aplicación Spring Boot, organizados por módulos

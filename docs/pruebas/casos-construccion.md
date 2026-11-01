@@ -1,5 +1,7 @@
 # Construccion de casos — primera entrega (Builder)
 
+> Alcance historico: las [correcciones posteriores](correcciones-revision.md) actualizan las reglas y funciones descritas en esta entrega.
+
 > Esta pagina registra el alcance de la primera entrega. La segunda agrega
 > [validacion y publicacion con Template Method](casos-publicacion.md), sin
 > cambiar que el Builder siempre crea borradores.
