@@ -77,6 +77,13 @@ public class ServicioUsuarios implements DirectorioIdentidad {
         return exigirRol(idUsuario, Rol.DOCENTE);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public void exigirEstudiante(UUID idUsuario) {
+        DatosUsuario estudiante = exigirRol(idUsuario, Rol.ESTUDIANTE);
+        validarCorreoInstitucional(estudiante.correo());
+    }
+
     @Transactional(readOnly = true)
     public DatosUsuario exigirRol(UUID idUsuario, Rol rol) {
         Usuario usuario = buscarUsuario(idUsuario);
@@ -91,6 +98,7 @@ public class ServicioUsuarios implements DirectorioIdentidad {
         return representarUsuario(buscarUsuario(idUsuario));
     }
 
+    @Override
     @Transactional(readOnly = true)
     public void exigirCreacionCasos(UUID idUsuario) {
         DatosUsuario usuario = exigirRol(idUsuario, Rol.DOCENTE);

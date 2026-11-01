@@ -1,5 +1,48 @@
 # Arquitectura del backend
 
+## Correcciones posteriores a la revision tecnica
+
+La [guia vigente de correcciones](../docs/pruebas/correcciones-revision.md)
+actualiza los limites historicos de las entregas: agrega `PUT /api/casos/{id}`
+para sustituir borradores, archivado, bloqueo de casos compartido con programacion,
+opciones correctas e incorrectas obligatorias al publicar, estudiantes y
+convocatorias iniciales con codigos, autenticacion estudiantil por convocatoria,
+y prohibicion de inicio anticipado. Contiene los contratos de integracion,
+el alcance pendiente y las instrucciones para ejecutar la prueba MySQL optativa.
+
+## Construccion de casos — Builder
+
+`cases` permite crear y consultar borradores con escenarios, preguntas,
+opciones y rubrica. Reutiliza `DirectorioIdentidad` para exigir el permiso
+`CREAR_CASOS`; solo su docente responsable puede consultar el borrador.
+La persistencia JDBC agrega las siete tablas del contenido academico del ER.
+Las rutas son `POST /api/casos` y `GET /api/casos/{id}`, con HTTP Basic y CSRF.
+`POST /api/casos/{id}/publicar` valida estructura, preguntas y rubrica con
+Template Method antes de cambiar BORRADOR a PUBLICADO. Devuelve 422 con errores
+acumulados si el contenido es invalido; exige permiso de creacion y propiedad.
+Las ponderaciones de la rubrica son fracciones que suman 1,00, segun la decision
+del MVP. PUT permite editar borradores; POST /api/casos/{id}/archivar conserva
+el contenido y evita nuevas programaciones. Cada pregunta publicada exige
+al menos una opcion correcta y una incorrecta.
+Consulta el [alcance, ejemplo y pruebas de construccion](../docs/pruebas/casos-construccion.md).
+Consulta tambien las [reglas y pruebas de publicacion](../docs/pruebas/casos-publicacion.md).
+
+## Sesiones — State
+
+`sessions` programa casos publicados propios en espacios academicos existentes,
+con duracion no mayor al tiempo estimado. El docente responsable inicia/finaliza
+la sesion mediante los estados `SinIniciar`, `EnCurso` y `Finalizado`.
+Un planificador cierra automaticamente al alcanzar fin previsto + 24 horas,
+incluidas sesiones nunca iniciadas. Las transiciones usan bloqueo transaccional.
+
+Rutas docentes: `POST /api/sesiones`, `GET /api/sesiones/{id}`,
+`POST /api/sesiones/{id}/iniciar` y `POST /api/sesiones/{id}/finalizar`.
+Usan HTTP Basic y CSRF en POST. Programar exige una lista no vacia de UUID
+`estudiantes` institucionales existentes y devuelve codigos iniciales de convocatoria.
+Notificaciones, intentos y consolidacion de ausencias siguen pendientes;
+no se declaran completos CU-12/CU-16 con todas sus integraciones.
+Consulta [reglas, tiempo, integraciones y pruebas](../docs/pruebas/sesiones.md).
+
 Un único proyecto Maven y una aplicación Spring Boot, organizados por módulos
 funcionales. `PsicoappApplication` está en el paquete raíz para que Spring
 descubra los componentes de todos los módulos.
@@ -49,7 +92,10 @@ versionar los paquetes incluso antes de añadir sus primeras clases.
 | `reports` | Generación y consulta de reportes |
 
 `identity` y `academic` implementan la primera base funcional descrita abajo.
-Los demás módulos conservan únicamente su estructura inicial.
+`cases` implementa la construccion de borradores y su validacion/publicacion,
+descritas al inicio de esta guia.
+`sessions` implementa programacion base y ciclo de vida descritos arriba.
+Los demas modulos conservan unicamente su estructura inicial.
 
 ## Capas y dependencias
 
@@ -91,7 +137,7 @@ permiso `CREAR_CASOS` para el rol docente, registro de estudiantes institucional
 y creación/consulta de espacios académicos con nombre y periodo. La persistencia
 usa MySQL y JDBC; las contraseñas se almacenan con BCrypt.
 
-El esquema `src/main/resources/schema.sql` reproduce exclusivamente `USUARIO`,
+La base de identidad y espacios en `src/main/resources/schema.sql` reproduce `USUARIO`,
 `ROL`, `PERMISO`, `ROL_PERMISO` y `ESPACIO_ACADEMICO` del
 [modelo ER](../docs/diseño/ModeloER.drawio). Los UUID se representan mediante
 `CHAR(36)`. Los permisos pertenecen al rol según el ER: conceder `CREAR_CASOS`
@@ -137,7 +183,7 @@ Configura estas variables de entorno antes del arranque (sin versionar secretos)
 | `PSICOAPP_CLAVE_ADMINISTRADOR` | Clave inicial de al menos 8 caracteres y hasta 72 bytes |
 | `PSICOAPP_DOMINIOS_INSTITUCIONALES` | Dominios institucionales exactos separados por comas |
 
-El arranque crea las cinco tablas si no existen e inserta los roles y el permiso
+El arranque crea las tablas de identidad, espacios, casos y sesiones si no existen e inserta los roles y el permiso
 sin duplicarlos. El administrador inicial se crea solo si no existe; no se
 sobrescribe su contraseña en cada arranque. Sin variables de administrador no
 se crea una cuenta predeterminada. Sin dominios configurados no se admiten
