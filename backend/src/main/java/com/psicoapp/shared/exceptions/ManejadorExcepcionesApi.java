@@ -29,7 +29,22 @@ public class ManejadorExcepcionesApi {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Los datos entran en conflicto con un registro existente");
     }
 
-    @ExceptionHandler({IllegalArgumentException.class, MethodArgumentNotValidException.class})
+    @ExceptionHandler(IllegalArgumentException.class)
+    ProblemDetail dominioInvalido(IllegalArgumentException excepcion) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, excepcion.getMessage());
+    }
+
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    ProblemDetail cuerpoInvalido(org.springframework.http.converter.HttpMessageNotReadableException excepcion) {
+        Throwable causa = excepcion.getCause();
+        while (causa != null) {
+            if (causa instanceof IllegalArgumentException invalido) return dominioInvalido(invalido);
+            causa = causa.getCause();
+        }
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "JSON invalido o incompatible con los campos esperados");
+    }
+
+    @ExceptionHandler({MethodArgumentNotValidException.class, org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class})
     ProblemDetail solicitudInvalida() {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Solicitud inválida: revise los campos enviados");
     }
