@@ -1,5 +1,9 @@
 # Construccion de casos — primera entrega (Builder)
 
+> Esta pagina registra el alcance de la primera entrega. La segunda agrega
+> [validacion y publicacion con Template Method](casos-publicacion.md), sin
+> cambiar que el Builder siempre crea borradores.
+
 ## Alcance
 
 Esta entrega implementa la construccion y consulta de borradores de `cases`:

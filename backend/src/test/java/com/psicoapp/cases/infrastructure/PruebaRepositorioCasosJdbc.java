@@ -1,6 +1,10 @@
 package com.psicoapp.cases.infrastructure;
 
 import com.psicoapp.cases.domain.*;
+import com.psicoapp.cases.DatosPruebaCasos;
+import com.psicoapp.cases.application.ServicioPublicacionCaso;
+import com.psicoapp.cases.application.PublicacionInvalida;
+import com.psicoapp.identity.application.DirectorioIdentidad;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -40,6 +44,51 @@ class PruebaRepositorioCasosJdbc {
     @AfterEach
     void cerrar() {
         fuente.destroy();
+    }
+
+    @Test
+    @DisplayName("RF-09: publica una sola vez, conserva contenido y exige propietario")
+    void actualizaSoloEstadoDelBorradorResponsable() {
+        var caso = DatosPruebaCasos.completo(docente);
+        transaccion.executeWithoutResult(estado -> repositorio.guardar(caso));
+        assertFalse(repositorio.publicar(caso.id(), UUID.randomUUID()));
+        assertFalse(repositorio.publicar(UUID.randomUUID(), docente));
+        assertTrue(repositorio.publicar(caso.id(), docente));
+        assertFalse(repositorio.publicar(caso.id(), docente));
+        var publicado = repositorio.buscarPorId(caso.id()).orElseThrow();
+        assertEquals("PUBLICADO", publicado.estado());
+        assertEquals(caso.escenarios(), publicado.escenarios());
+        assertEquals(caso.rubrica(), publicado.rubrica());
+        assertThrows(IllegalArgumentException.class, () -> repositorio.guardar(publicado));
+    }
+
+    @Test
+    @DisplayName("RF-09 / RN-03: publicacion real conserva invalido y confirma valido sin duplicar contenido")
+    void integraValidacionYTransaccion() {
+        var identidades = org.mockito.Mockito.mock(DirectorioIdentidad.class);
+        var servicio = new ServicioPublicacionCaso(identidades, repositorio);
+        var invalido = new ConstructorCasoAcademico(UUID.randomUUID(), docente).construir();
+        var valido = DatosPruebaCasos.completo(docente);
+        transaccion.executeWithoutResult(estado -> { repositorio.guardar(invalido); repositorio.guardar(valido); });
+        assertThrows(PublicacionInvalida.class, () -> transaccion.executeWithoutResult(
+                estado -> servicio.publicar(docente, invalido.id())));
+        assertEquals("BORRADOR", repositorio.buscarPorId(invalido.id()).orElseThrow().estado());
+        transaccion.executeWithoutResult(estado -> servicio.publicar(docente, valido.id()));
+        assertEquals("PUBLICADO", repositorio.buscarPorId(valido.id()).orElseThrow().estado());
+        assertEquals(1, jdbc.sql("SELECT COUNT(*) FROM escenario WHERE id_caso = ?")
+                .param(valido.id().toString()).query(Integer.class).single());
+    }
+
+    @Test
+    @DisplayName("RF-09: un fallo transaccional posterior revierte el cambio de estado")
+    void reviertePublicacionSiFallaTransaccion() {
+        var caso = DatosPruebaCasos.completo(docente);
+        transaccion.executeWithoutResult(estado -> repositorio.guardar(caso));
+        assertThrows(IllegalStateException.class, () -> transaccion.executeWithoutResult(estado -> {
+            assertTrue(repositorio.publicar(caso.id(), docente));
+            throw new IllegalStateException("Fallo posterior");
+        }));
+        assertEquals("BORRADOR", repositorio.buscarPorId(caso.id()).orElseThrow().estado());
     }
 
     @Test

@@ -44,7 +44,7 @@ public class ServicioCreacionCaso {
         identidades.exigirDocente(idDocente);
         Caso caso = casos.buscarPorId(idCaso).orElseThrow(() -> new NoEncontrado("Caso no encontrado"));
         if (!caso.idDocente().equals(idDocente)) {
-            throw new AccesoDenegado("Solo el docente responsable puede consultar el borrador");
+            throw new AccesoDenegado("Solo el docente responsable puede consultar el caso");
         }
         return representar(caso);
     }

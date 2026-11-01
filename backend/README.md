@@ -7,8 +7,13 @@ opciones y rubrica. Reutiliza `DirectorioIdentidad` para exigir el permiso
 `CREAR_CASOS`; solo su docente responsable puede consultar el borrador.
 La persistencia JDBC agrega las siete tablas del contenido academico del ER.
 Las rutas son `POST /api/casos` y `GET /api/casos/{id}`, con HTTP Basic y CSRF.
-Publicacion, edicion y programacion todavia no estan implementadas.
+`POST /api/casos/{id}/publicar` valida estructura, preguntas y rubrica con
+Template Method antes de cambiar BORRADOR a PUBLICADO. Devuelve 422 con errores
+acumulados si el contenido es invalido; exige permiso de creacion y propiedad.
+Las ponderaciones de la rubrica son fracciones que suman 1,00, segun la decision
+del MVP. Edicion, archivado y programacion todavia no estan implementados.
 Consulta el [alcance, ejemplo y pruebas de construccion](../docs/pruebas/casos-construccion.md).
+Consulta tambien las [reglas y pruebas de publicacion](../docs/pruebas/casos-publicacion.md).
 
 Un único proyecto Maven y una aplicación Spring Boot, organizados por módulos
 funcionales. `PsicoappApplication` está en el paquete raíz para que Spring
@@ -59,7 +64,8 @@ versionar los paquetes incluso antes de añadir sus primeras clases.
 | `reports` | Generación y consulta de reportes |
 
 `identity` y `academic` implementan la primera base funcional descrita abajo.
-`cases` implementa la construccion de borradores descrita al inicio de esta guia.
+`cases` implementa la construccion de borradores y su validacion/publicacion,
+descritas al inicio de esta guia.
 Los demas modulos conservan unicamente su estructura inicial.
 
 ## Capas y dependencias

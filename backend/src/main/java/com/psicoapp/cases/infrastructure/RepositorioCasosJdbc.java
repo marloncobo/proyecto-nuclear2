@@ -11,7 +11,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Inserta el agregado completo en una transaccion; no publica ni sobrescribe casos. */
+/** Inserta contenido una vez; publica mediante una actualizacion condicional del estado. */
 @Repository
 @Transactional
 public class RepositorioCasosJdbc implements RepositorioCasos {
@@ -23,6 +23,9 @@ public class RepositorioCasosJdbc implements RepositorioCasos {
 
     @Override
     public void guardar(Caso caso) {
+        if (caso.estadoCaso() != EstadoCaso.BORRADOR) {
+            throw new IllegalArgumentException("Todo caso nuevo debe guardarse como borrador");
+        }
         jdbc.sql("""
                 INSERT INTO caso (id_caso, id_usuario_docente, nombre, desarrollo_situacional,
                     contexto, tiempo_estimado_min, estado) VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -66,13 +69,19 @@ public class RepositorioCasosJdbc implements RepositorioCasos {
     @Transactional(readOnly = true)
     public Optional<Caso> buscarPorId(UUID id) {
         return jdbc.sql("SELECT * FROM caso WHERE id_caso = ?").param(id.toString()).query((fila, indice) -> {
-            if (!"BORRADOR".equals(fila.getString("estado"))) {
-                throw new IllegalArgumentException("Esta entrega solo admite borradores");
-            }
             return new Caso(id, uuid(fila, "id_usuario_docente"), fila.getString("nombre"),
                     fila.getString("desarrollo_situacional"), fila.getString("contexto"),
-                    fila.getObject("tiempo_estimado_min", Integer.class), cargarEscenarios(id), cargarRubrica(id));
+                    fila.getObject("tiempo_estimado_min", Integer.class), cargarEscenarios(id), cargarRubrica(id),
+                    EstadoCaso.valueOf(fila.getString("estado")));
         }).optional();
+    }
+
+    @Override
+    public boolean publicar(UUID id, UUID idDocente) {
+        return jdbc.sql("""
+                UPDATE caso SET estado = 'PUBLICADO'
+                WHERE id_caso = ? AND id_usuario_docente = ? AND estado = 'BORRADOR'
+                """).params(id.toString(), idDocente.toString()).update() == 1;
     }
 
     private List<Escenario> cargarEscenarios(UUID idCaso) {

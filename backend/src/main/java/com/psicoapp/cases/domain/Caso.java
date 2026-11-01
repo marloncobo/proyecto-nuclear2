@@ -4,10 +4,16 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
-/** Agregado academico inmutable. Todo caso de esta entrega permanece en BORRADOR. */
+/** Agregado academico inmutable; el Builder siempre crea BORRADOR. */
 public record Caso(UUID id, UUID idDocente, String nombre, String desarrolloSituacional, String contexto,
-        Integer tiempoEstimadoMin, List<Escenario> escenarios, Rubrica rubrica) {
+        Integer tiempoEstimadoMin, List<Escenario> escenarios, Rubrica rubrica, EstadoCaso estadoCaso) {
+    public Caso(UUID id, UUID idDocente, String nombre, String desarrolloSituacional, String contexto,
+            Integer tiempoEstimadoMin, List<Escenario> escenarios, Rubrica rubrica) {
+        this(id, idDocente, nombre, desarrolloSituacional, contexto, tiempoEstimadoMin, escenarios, rubrica, EstadoCaso.BORRADOR);
+    }
+
     public Caso {
+        if (estadoCaso == null) throw new IllegalArgumentException("El estado es obligatorio");
         ContenidoCaso.identificador(id);
         ContenidoCaso.identificador(idDocente);
         nombre = ContenidoCaso.texto(nombre, 180);
@@ -31,6 +37,6 @@ public record Caso(UUID id, UUID idDocente, String nombre, String desarrolloSitu
     }
 
     public String estado() {
-        return "BORRADOR";
+        return estadoCaso.name();
     }
 }
