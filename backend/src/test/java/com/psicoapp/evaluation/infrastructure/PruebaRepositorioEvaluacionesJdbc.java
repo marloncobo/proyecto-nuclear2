@@ -1,5 +1,6 @@
 package com.psicoapp.evaluation.infrastructure;
 
+import com.psicoapp.evaluation.application.ProveedorCasosEvaluables;
 import com.psicoapp.evaluation.application.RepositorioEvaluaciones.EvaluacionPersistida;
 import com.psicoapp.evaluation.domain.DetalleEvaluacion;
 import com.psicoapp.evaluation.domain.ResultadoEvaluacion;
@@ -24,6 +25,7 @@ class PruebaRepositorioEvaluacionesJdbc {
     private RepositorioEvaluacionesJdbc repositorio;
     private UUID intento;
     private UUID pregunta;
+    private UUID sesion;
 
     @BeforeEach
     void preparar() {
@@ -61,7 +63,15 @@ class PruebaRepositorioEvaluacionesJdbc {
                 .params(pregunta.toString(), escenario.toString()).update();
         jdbc.sql("INSERT INTO opcion_respuesta VALUES (?,?,'Opcion',true,'Correcta')")
                 .params(opcion.toString(), pregunta.toString()).update();
-        UUID sesion = UUID.randomUUID();
+        UUID rubrica = UUID.randomUUID();
+        UUID criterio = UUID.randomUUID();
+        jdbc.sql("INSERT INTO rubrica VALUES (?,?,'Rubrica',5.00)")
+                .params(rubrica.toString(), caso.toString()).update();
+        jdbc.sql("INSERT INTO criterio_rubrica VALUES (?,?, 'Criterio', 1.00)")
+                .params(criterio.toString(), rubrica.toString()).update();
+        jdbc.sql("INSERT INTO criterio_pregunta VALUES (?,?)")
+                .params(criterio.toString(), pregunta.toString()).update();
+        sesion = UUID.randomUUID();
         jdbc.sql("INSERT INTO sesion VALUES (?, ?, ?, ?, ?, ?, 30, 'FLEXIBLE', 'EN_CURSO', NULL, NULL)")
                 .params(sesion.toString(), caso.toString(), espacio.toString(), docente.toString(),
                 java.sql.Timestamp.from(Instant.parse("2026-01-01T10:00:00Z")),
@@ -94,5 +104,17 @@ class PruebaRepositorioEvaluacionesJdbc {
         assertEquals(new BigDecimal("0.00"), recuperada.resultado().calificacion());
         assertEquals(1, recuperada.resultado().detalles().size());
         assertFalse(recuperada.resultado().detalles().get(0).contestada());
+    }
+
+    @Test
+    void obtieneContenidoPublicoDelCasoParaEvaluar() {
+        var proveedor = new ProveedorCasosEvaluablesJdbc(JdbcClient.create(fuente));
+
+        ProveedorCasosEvaluables.CasoEvaluable caso = proveedor.buscarPorSesion(sesion);
+
+        assertEquals(1, caso.preguntas().size());
+        assertEquals(pregunta, caso.preguntas().get(0).id());
+        assertEquals(new BigDecimal("5.00"), caso.rubrica().escalaMaxima());
+        assertEquals(1, caso.rubrica().criterios().size());
     }
 }
