@@ -47,6 +47,13 @@ public final class Intento {
                 Map.of(), 0, EstadoIntento.EN_PROGRESO);
     }
 
+    public static Intento desdePersistencia(UUID id, UUID idSesion, UUID idEstudiante, Instant inicio,
+            Instant limite, ModoNavegacion modoNavegacion, List<UUID> preguntas,
+            Map<UUID, UUID> respuestas, int posicionActual, EstadoIntento estado) {
+        return new Intento(id, idSesion, idEstudiante, inicio, limite, modoNavegacion,
+                preguntas, respuestas, posicionActual, estado);
+    }
+
     public Intento responder(UUID idPregunta, UUID idOpcion, Instant ahora) {
         exigirActivo(ahora);
         exigirPreguntaActual(idPregunta);
