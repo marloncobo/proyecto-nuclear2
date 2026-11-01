@@ -11,9 +11,10 @@ La primera entrega aborda:
 
 - CU-25: calcular y almacenar la calificacion con la rubrica del caso.
 - CU-26: consultar calificacion y retroalimentacion despues de finalizar.
-- CU-27: evaluar automaticamente un intento vencido.
-- CU-35: dejar preparada la consolidacion de ausencias cuando se cierre una
-  sesion.
+- CU-27: evaluar un intento vencido una vez que `participation` lo marca como
+  `VENCIDO`.
+- CU-35: dejar documentado el punto de integracion para consolidar ausencias
+  cuando se cierre una sesion.
 
 Estas reglas se relacionan con RN-08, RN-09, RN-16, RN-17 y RN-19.
 
@@ -30,6 +31,9 @@ Estas reglas se relacionan con RN-08, RN-09, RN-16, RN-17 y RN-19.
   acceder a repositorios o detalles internos de esos modulos.
 - La persistencia almacenara la nota final y el detalle evaluado por pregunta
   para conservar trazabilidad.
+- El cierre automatico del intento lo ejecuta `PlanificadorCierreIntentos`;
+  la solicitud de calculo de la nota sigue siendo
+  `POST /api/evaluaciones/{idIntento}`.
 
 ## Dependencias entre ramas
 
