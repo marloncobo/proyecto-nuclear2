@@ -59,3 +59,20 @@ cd backend
 
 Los contratos HTTP y cualquier cambio de esquema se actualizaran en
 `backend/README.md` cuando la API quede implementada.
+
+## API inicial
+
+La API protegida usa la identidad del `Principal` autenticado como estudiante:
+
+- `POST /api/participaciones`: inicia un intento con `idSesion`,
+  `codigoAcceso` y la lista ordenada de `preguntas`.
+- `GET /api/participaciones/{id}`: consulta el progreso propio.
+- `PUT /api/participaciones/{id}/respuestas`: guarda `idPregunta` e
+  `idOpcion`, reemplazando la seleccion vigente.
+- `POST /api/participaciones/{id}/avanzar`,
+  `/retroceder`, `/reanudar` y `/finalizar`: ejecutan las transiciones
+  permitidas por la modalidad y el estado.
+
+La lista de preguntas se sustituira por un contrato de lectura del caso
+publicado cuando se conecte la integracion definitiva con `cases`; el servicio
+de dominio nunca recibe respuestas correctas.
