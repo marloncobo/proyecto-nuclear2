@@ -5,7 +5,7 @@ edicion y archivado de casos, convocatorias iniciales y reglas de inicio de sesi
 
 Proyecto dividido en `backend/` y `frontend/`.
 
-El backend usa Java 25 (LTS), Spring Boot 4.1.2 y Maven. Su estructura es un
+El backend usa Java 21, Spring Boot 4.1.2 y Maven. Su estructura es un
 monolito modular con paquete base `com.psicoapp`.
 El frontend está pendiente de implementación.
 
@@ -15,7 +15,7 @@ pendientes; consulta los limites en el [README del backend](backend/README.md).
 
 ## Ejecutar el backend
 
-Requisitos: JDK 25 o superior compatible con Spring Boot y `JAVA_HOME`
+Requisitos: JDK 21 o superior compatible con Spring Boot y `JAVA_HOME`
 apuntando al JDK, y MySQL 8.0 o superior. Configura la base de datos y el
 administrador inicial según la [guía del backend](backend/README.md#configuración-local).
 El Maven Wrapper descarga Maven al usarlo por primera vez;
