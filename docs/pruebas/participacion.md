@@ -82,8 +82,7 @@ correctas.
 
 ## Pruebas unitarias ejecutadas
 
-Las pruebas unitarias del modulo se ejecutaron con Maven y release temporal
-21, porque el entorno local no dispone de JDK 25:
+Las pruebas unitarias del modulo se ejecutaron con Maven y release 21:
 
 ```powershell
 cd backend
