@@ -54,7 +54,6 @@ cd backend
 
 Los contratos HTTP, el esquema y los ejemplos se actualizaran en
 `backend/README.md` y en este documento cuando la API quede implementada.
-
 ## API inicial
 
 La API protegida usa la identidad del `Principal` autenticado como estudiante:

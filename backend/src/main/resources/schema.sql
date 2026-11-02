@@ -183,7 +183,6 @@ CREATE TABLE IF NOT EXISTS respuesta (
     FOREIGN KEY (id_intento, id_pregunta) REFERENCES intento_pregunta(id_intento, id_pregunta),
     FOREIGN KEY (id_opcion) REFERENCES opcion_respuesta(id_opcion)
 );
-
 -- Evaluacion. Se guarda una sola calificacion consolidada por intento finalizado.
 CREATE TABLE IF NOT EXISTS evaluacion (
     id_intento CHAR(36) PRIMARY KEY,
