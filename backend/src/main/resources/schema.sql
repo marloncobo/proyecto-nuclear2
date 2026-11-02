@@ -183,3 +183,26 @@ CREATE TABLE IF NOT EXISTS respuesta (
     FOREIGN KEY (id_intento, id_pregunta) REFERENCES intento_pregunta(id_intento, id_pregunta),
     FOREIGN KEY (id_opcion) REFERENCES opcion_respuesta(id_opcion)
 );
+-- Evaluacion. Se guarda una sola calificacion consolidada por intento finalizado.
+CREATE TABLE IF NOT EXISTS evaluacion (
+    id_intento CHAR(36) PRIMARY KEY,
+    calificacion DECIMAL(8,2) NOT NULL,
+    fecha_evaluacion TIMESTAMP NOT NULL,
+    FOREIGN KEY (id_intento) REFERENCES intento(id_intento),
+    CHECK (calificacion >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS detalle_evaluacion (
+    id_intento CHAR(36) NOT NULL,
+    id_pregunta CHAR(36) NOT NULL,
+    id_opcion CHAR(36) NULL,
+    contestada BOOLEAN NOT NULL,
+    correcta BOOLEAN NOT NULL,
+    puntos DECIMAL(8,2) NOT NULL,
+    retroalimentacion TEXT NOT NULL,
+    PRIMARY KEY (id_intento, id_pregunta),
+    FOREIGN KEY (id_intento) REFERENCES evaluacion(id_intento),
+    FOREIGN KEY (id_pregunta) REFERENCES pregunta(id_pregunta),
+    FOREIGN KEY (id_opcion) REFERENCES opcion_respuesta(id_opcion),
+    CHECK (puntos >= 0)
+);

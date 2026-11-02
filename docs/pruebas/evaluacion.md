@@ -11,9 +11,10 @@ La primera entrega aborda:
 
 - CU-25: calcular y almacenar la calificacion con la rubrica del caso.
 - CU-26: consultar calificacion y retroalimentacion despues de finalizar.
-- CU-27: evaluar automaticamente un intento vencido.
-- CU-35: dejar preparada la consolidacion de ausencias cuando se cierre una
-  sesion.
+- CU-27: evaluar un intento vencido una vez que `participation` lo marca como
+  `VENCIDO`.
+- CU-35: dejar documentado el punto de integracion para consolidar ausencias
+  cuando se cierre una sesion.
 
 Estas reglas se relacionan con RN-08, RN-09, RN-16, RN-17 y RN-19.
 
@@ -30,6 +31,9 @@ Estas reglas se relacionan con RN-08, RN-09, RN-16, RN-17 y RN-19.
   acceder a repositorios o detalles internos de esos modulos.
 - La persistencia almacenara la nota final y el detalle evaluado por pregunta
   para conservar trazabilidad.
+- El cierre automatico del intento lo ejecuta `PlanificadorCierreIntentos`;
+  la solicitud de calculo de la nota sigue siendo
+  `POST /api/evaluaciones/{idIntento}`.
 
 ## Dependencias entre ramas
 
@@ -50,3 +54,35 @@ cd backend
 
 Los contratos HTTP, el esquema y los ejemplos se actualizaran en
 `backend/README.md` y en este documento cuando la API quede implementada.
+## API inicial
+
+La API protegida usa la identidad del `Principal` autenticado como estudiante:
+
+- `POST /api/evaluaciones/{idIntento}` calcula y almacena el resultado de un
+  intento finalizado. La operación es idempotente para el mismo intento.
+- `GET /api/evaluaciones/{idIntento}` devuelve la calificacion y el detalle
+  por pregunta, incluyendo retroalimentacion.
+
+Un intento `EN_PROGRESO` no puede evaluarse y un estudiante no puede consultar
+resultados de otro estudiante.
+
+## Pruebas unitarias ejecutadas
+
+Las pruebas unitarias del modulo se ejecutaron con Maven y release temporal
+21, porque el entorno local no dispone de JDK 25:
+
+```powershell
+cd backend
+.\mvnw.cmd '-Dmaven.compiler.release=21' '-Dtest=com.psicoapp.evaluation.domain.PruebaCalificacionPorPonderacion,com.psicoapp.evaluation.application.PruebaServicioEvaluacion' test
+```
+
+Resultado de la ejecucion del 2026-11-01:
+
+- 5 pruebas ejecutadas.
+- 0 fallos.
+- 0 errores.
+- 0 omitidas.
+- `BUILD SUCCESS`.
+
+Se cubren la calificacion ponderada, el cero para preguntas sin respuesta,
+la evaluacion de intentos finalizados y el control de propietario.

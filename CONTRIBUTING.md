@@ -125,7 +125,7 @@ La etiqueta debe crearse sobre el commit de `main` que representa la versión en
 
 ## Preparar el entorno
 
-Necesitas Git, MySQL 8.0 o superior y JDK 21, con `JAVA_HOME` apuntando al JDK.
+Necesitas Git, MySQL 8.0 o superior y JDK 25 (LTS), con `JAVA_HOME` apuntando al JDK.
 Configura la base de datos y las variables de entorno según el
 [README del backend](backend/README.md#configuración-local). Usa el Maven Wrapper
 incluido en `backend/`; no necesitas instalar Maven por separado. La primera

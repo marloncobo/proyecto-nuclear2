@@ -79,3 +79,24 @@ mantener aislado el dominio; la integracion de lectura del caso publicado y
 la validacion de que la lista no sea alterada por el cliente quedan pendientes
 para el siguiente incremento. El servicio de dominio nunca recibe respuestas
 correctas.
+
+## Pruebas unitarias ejecutadas
+
+Las pruebas unitarias del modulo se ejecutaron con Maven y release temporal
+21, porque el entorno local no dispone de JDK 25:
+
+```powershell
+cd backend
+.\mvnw.cmd '-Dmaven.compiler.release=21' '-Dtest=com.psicoapp.participation.domain.PruebaIntento,com.psicoapp.participation.application.PruebaServicioGestionParticipacion,com.psicoapp.participation.infrastructure.PruebaPlanificadorCierreIntentos' test
+```
+
+Resultado de la ejecucion del 2026-11-01:
+
+- 14 pruebas ejecutadas.
+- 0 fallos.
+- 0 errores.
+- 0 omitidas.
+- `BUILD SUCCESS`.
+
+Se cubren el ciclo de vida del intento, respuestas y navegacion, reglas del
+servicio y cierre automatico de intentos vencidos.

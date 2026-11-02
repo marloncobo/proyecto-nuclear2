@@ -55,6 +55,13 @@ convocatoria y la ventana de ingreso se delegan a `sessions`. Un planificador
 marca automaticamente como vencidos los intentos cuyo limite individual se
 agota.
 
+## Evaluacion — calificacion
+
+`evaluation` calcula la nota de un intento finalizado con una estrategia de
+ponderacion, asigna cero a preguntas sin respuesta y conserva la
+retroalimentacion por pregunta. Las rutas son `POST /api/evaluaciones/{idIntento}`
+y `GET /api/evaluaciones/{idIntento}`. El estudiante autenticado solo puede
+consultar su propio intento.
 Un único proyecto Maven y una aplicación Spring Boot, organizados por módulos
 funcionales. `PsicoappApplication` está en el paquete raíz para que Spring
 descubra los componentes de todos los módulos.
