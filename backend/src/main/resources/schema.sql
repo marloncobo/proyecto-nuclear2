@@ -143,3 +143,43 @@ CREATE TABLE IF NOT EXISTS convocatoria (
     FOREIGN KEY (id_estudiante) REFERENCES usuario(id_usuario),
     CHECK (estado IN ('AUTORIZADA','RETIRADA'))
 );
+
+-- Participacion. Cada intento conserva el orden de preguntas y su ultima respuesta.
+CREATE TABLE IF NOT EXISTS intento (
+    id_intento CHAR(36) PRIMARY KEY,
+    id_sesion CHAR(36) NOT NULL,
+    id_estudiante CHAR(36) NOT NULL,
+    fecha_inicio TIMESTAMP NOT NULL,
+    fecha_limite TIMESTAMP NOT NULL,
+    posicion_actual INT NOT NULL,
+    modo_navegacion VARCHAR(12) NOT NULL,
+    estado VARCHAR(20) NOT NULL,
+    FOREIGN KEY (id_sesion) REFERENCES sesion(id_sesion),
+    FOREIGN KEY (id_estudiante) REFERENCES usuario(id_usuario),
+    CHECK (fecha_inicio < fecha_limite),
+    CHECK (posicion_actual >= 0),
+    CHECK (modo_navegacion IN ('FLEXIBLE','RESTRINGIDA')),
+    CHECK (estado IN ('EN_PROGRESO','FINALIZADO','VENCIDO')),
+    INDEX indice_intento_activo (id_sesion, id_estudiante, estado)
+);
+
+CREATE TABLE IF NOT EXISTS intento_pregunta (
+    id_intento CHAR(36) NOT NULL,
+    id_pregunta CHAR(36) NOT NULL,
+    orden INT NOT NULL,
+    PRIMARY KEY (id_intento, id_pregunta),
+    UNIQUE (id_intento, orden),
+    FOREIGN KEY (id_intento) REFERENCES intento(id_intento),
+    FOREIGN KEY (id_pregunta) REFERENCES pregunta(id_pregunta),
+    CHECK (orden >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS respuesta (
+    id_intento CHAR(36) NOT NULL,
+    id_pregunta CHAR(36) NOT NULL,
+    id_opcion CHAR(36) NOT NULL,
+    fecha_actualizacion TIMESTAMP NOT NULL,
+    PRIMARY KEY (id_intento, id_pregunta),
+    FOREIGN KEY (id_intento, id_pregunta) REFERENCES intento_pregunta(id_intento, id_pregunta),
+    FOREIGN KEY (id_opcion) REFERENCES opcion_respuesta(id_opcion)
+);
