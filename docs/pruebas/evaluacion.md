@@ -65,3 +65,24 @@ La API protegida usa la identidad del `Principal` autenticado como estudiante:
 
 Un intento `EN_PROGRESO` no puede evaluarse y un estudiante no puede consultar
 resultados de otro estudiante.
+
+## Pruebas unitarias ejecutadas
+
+Las pruebas unitarias del modulo se ejecutaron con Maven y release temporal
+21, porque el entorno local no dispone de JDK 25:
+
+```powershell
+cd backend
+.\mvnw.cmd '-Dmaven.compiler.release=21' '-Dtest=com.psicoapp.evaluation.domain.PruebaCalificacionPorPonderacion,com.psicoapp.evaluation.application.PruebaServicioEvaluacion' test
+```
+
+Resultado de la ejecucion del 2026-11-01:
+
+- 5 pruebas ejecutadas.
+- 0 fallos.
+- 0 errores.
+- 0 omitidas.
+- `BUILD SUCCESS`.
+
+Se cubren la calificacion ponderada, el cero para preguntas sin respuesta,
+la evaluacion de intentos finalizados y el control de propietario.
