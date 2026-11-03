@@ -37,6 +37,9 @@ sh mvnw spring-boot:run
 
 El servidor usa el puerto `8080`. Los módulos `identity` y `academic` exponen
 la [API mínima protegida](backend/README.md#api-mínima) de usuarios y espacios académicos.
+La colección y el entorno para probar todos los endpoints desde Postman están en
+[`postman/`](postman/README.md). La documentación consolidada del flujo probado
+está en [`docs/postman.md`](docs/postman.md).
 
 Para compilar, ejecutar las pruebas JUnit y de arranque y generar el JAR:
 

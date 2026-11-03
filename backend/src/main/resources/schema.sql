@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS usuario (
     correo VARCHAR(180) NOT NULL UNIQUE,
     contrasena_hash VARCHAR(255) NULL,
     activo BOOLEAN NOT NULL,
-    fecha_creacion TIMESTAMP NOT NULL,
+    fecha_creacion DATETIME NOT NULL,
     id_rol CHAR(36) NOT NULL,
     FOREIGN KEY (id_rol) REFERENCES rol(id_rol)
 );
@@ -115,8 +115,8 @@ CREATE TABLE IF NOT EXISTS sesion (
     id_caso CHAR(36) NOT NULL,
     id_espacio CHAR(36) NOT NULL,
     id_docente CHAR(36) NOT NULL,
-    fecha_inicio TIMESTAMP NOT NULL,
-    fecha_fin TIMESTAMP NOT NULL,
+    fecha_inicio DATETIME NOT NULL,
+    fecha_fin DATETIME NOT NULL,
     duracion_maxima_min INT NOT NULL,
     modo_navegacion VARCHAR(12) NOT NULL,
     estado VARCHAR(20) NOT NULL,
@@ -149,8 +149,8 @@ CREATE TABLE IF NOT EXISTS intento (
     id_intento CHAR(36) PRIMARY KEY,
     id_sesion CHAR(36) NOT NULL,
     id_estudiante CHAR(36) NOT NULL,
-    fecha_inicio TIMESTAMP NOT NULL,
-    fecha_limite TIMESTAMP NOT NULL,
+    fecha_inicio DATETIME NOT NULL,
+    fecha_limite DATETIME NOT NULL,
     posicion_actual INT NOT NULL,
     modo_navegacion VARCHAR(12) NOT NULL,
     estado VARCHAR(20) NOT NULL,
@@ -178,7 +178,7 @@ CREATE TABLE IF NOT EXISTS respuesta (
     id_intento CHAR(36) NOT NULL,
     id_pregunta CHAR(36) NOT NULL,
     id_opcion CHAR(36) NOT NULL,
-    fecha_actualizacion TIMESTAMP NOT NULL,
+    fecha_actualizacion DATETIME NOT NULL,
     PRIMARY KEY (id_intento, id_pregunta),
     FOREIGN KEY (id_intento, id_pregunta) REFERENCES intento_pregunta(id_intento, id_pregunta),
     FOREIGN KEY (id_opcion) REFERENCES opcion_respuesta(id_opcion)
@@ -187,7 +187,7 @@ CREATE TABLE IF NOT EXISTS respuesta (
 CREATE TABLE IF NOT EXISTS evaluacion (
     id_intento CHAR(36) PRIMARY KEY,
     calificacion DECIMAL(8,2) NOT NULL,
-    fecha_evaluacion TIMESTAMP NOT NULL,
+    fecha_evaluacion DATETIME NOT NULL,
     FOREIGN KEY (id_intento) REFERENCES intento(id_intento),
     CHECK (calificacion >= 0)
 );

@@ -1,0 +1,830 @@
+﻿{
+    "info":  {
+                 "_postman_id":  "psicoapp-api-collection",
+                 "name":  "Psicoapp API",
+                 "description":  "Pruebas manuales de la API REST de Psicoapp. Selecciona el entorno \u0027Psicoapp - local\u0027, configura las credenciales y ejecuta primero Identidad \u003e Obtener CSRF.",
+                 "schema":  "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+             },
+    "variable":  [
+                     {
+                         "key":  "baseUrl",
+                         "value":  "http://localhost:8080"
+                     }
+                 ],
+    "item":  [
+                 {
+                     "name":  "Identidad",
+                     "item":  [
+                                  {
+                                      "name":  "Obtener CSRF",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{adminEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{adminPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "url":  "{{baseUrl}}/api/identidad/csrf"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Consultar mi identidad",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{adminEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{adminPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "url":  "{{baseUrl}}/api/identidad/yo"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Crear docente",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{adminEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{adminPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "{{csrfHeader}}",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"correo\": \"{{teacherEmail}}\",\n  \"nombre\": \"Docente de pruebas\",\n  \"clave\": \"{{teacherPassword}}\"\n}"
+                                                               },
+                                                      "url":  "{{baseUrl}}/api/identidad/docentes"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Crear estudiante",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{teacherEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{teacherPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "{{csrfHeader}}",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"correo\": \"{{studentEmail}}\",\n  \"nombre\": \"Estudiante de pruebas\"\n}"
+                                                               },
+                                                      "url":  "{{baseUrl}}/api/identidad/estudiantes"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Habilitar creaciÃ³n de casos para docentes",
+                                      "request":  {
+                                                      "method":  "PUT",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{adminEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{adminPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "{{csrfHeader}}",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{ \"habilitado\": true }"
+                                                               },
+                                                      "url":  "{{baseUrl}}/api/identidad/roles/DOCENTE/creacion-casos"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Cambiar rol de usuario",
+                                      "request":  {
+                                                      "method":  "PUT",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{adminEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{adminPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "{{csrfHeader}}",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{ \"rol\": \"DOCENTE\" }"
+                                                               },
+                                                      "url":  "{{baseUrl}}/api/identidad/usuarios/{{teacherId}}/rol"
+                                                  }
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "AcadÃ©mico",
+                     "item":  [
+                                  {
+                                      "name":  "Crear espacio acadÃ©mico",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{teacherEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{teacherPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "{{csrfHeader}}",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{ \"nombre\": \"PsicologÃ­a social\", \"periodo\": \"2026-2\" }"
+                                                               },
+                                                      "url":  "{{baseUrl}}/api/academico/espacios"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Listar espacios acadÃ©micos",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{teacherEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{teacherPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "url":  "{{baseUrl}}/api/academico/espacios"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Consultar espacio acadÃ©mico",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{teacherEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{teacherPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "url":  "{{baseUrl}}/api/academico/espacios/{{spaceId}}"
+                                                  }
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "Casos",
+                     "item":  [
+                                  {
+                                      "name":  "Crear caso borrador",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{teacherEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{teacherPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "{{csrfHeader}}",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"nombre\": \"Caso de prueba\",\n  \"desarrolloSituacional\": \"Una situaciÃ³n acadÃ©mica para validar el flujo completo.\",\n  \"contexto\": \"Contexto de pruebas\",\n  \"tiempoEstimadoMin\": 30,\n  \"escenarios\": [{\n    \"id\": \"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa\",\n    \"titulo\": \"Escenario inicial\",\n    \"contextoSituacional\": \"Contexto del escenario\",\n    \"orden\": 1,\n    \"preguntas\": [{\n      \"id\": \"{{questionId}}\",\n      \"enunciado\": \"Â¿CuÃ¡l es la respuesta correcta?\",\n      \"orden\": 1,\n      \"opciones\": [{\n        \"id\": \"{{optionId}}\",\n        \"texto\": \"Respuesta correcta\",\n        \"esCorrecta\": true,\n        \"justificacion\": \"Porque cumple el criterio.\"\n      }, {\n        \"id\": \"33333333-3333-3333-3333-333333333333\",\n        \"texto\": \"Respuesta incorrecta\",\n        \"esCorrecta\": false,\n        \"justificacion\": \"No cumple el criterio.\"\n      }]\n    }]\n  }],\n  \"rubrica\": {\n    \"id\": \"bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb\",\n    \"nombre\": \"RÃºbrica de prueba\",\n    \"escalaMaxima\": 5.0,\n    \"criterios\": [{\n      \"id\": \"cccccccc-cccc-cccc-cccc-cccccccccccc\",\n      \"nombre\": \"Criterio Ãºnico\",\n      \"ponderacion\": 1.0,\n      \"preguntas\": [\"{{questionId}}\"]\n    }]\n  }\n}"
+                                                               },
+                                                      "url":  "{{baseUrl}}/api/casos"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Consultar caso",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{teacherEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{teacherPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "url":  "{{baseUrl}}/api/casos/{{caseId}}"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Actualizar caso borrador",
+                                      "request":  {
+                                                      "method":  "PUT",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{teacherEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{teacherPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "{{csrfHeader}}",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"nombre\": \"Caso de prueba actualizado\",\n  \"desarrolloSituacional\": \"Una situaciÃ³n acadÃ©mica actualizada.\",\n  \"contexto\": \"Contexto actualizado\",\n  \"tiempoEstimadoMin\": 30,\n  \"escenarios\": [{\n    \"id\": \"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa\",\n    \"titulo\": \"Escenario inicial\",\n    \"contextoSituacional\": \"Contexto actualizado\",\n    \"orden\": 1,\n    \"preguntas\": [{\n      \"id\": \"{{questionId}}\",\n      \"enunciado\": \"Â¿CuÃ¡l es la respuesta correcta?\",\n      \"orden\": 1,\n      \"opciones\": [{ \"id\": \"{{optionId}}\", \"texto\": \"Respuesta correcta\", \"esCorrecta\": true, \"justificacion\": \"Porque cumple el criterio.\" }, { \"id\": \"33333333-3333-3333-3333-333333333333\", \"texto\": \"Respuesta incorrecta\", \"esCorrecta\": false, \"justificacion\": \"No cumple el criterio.\" }]\n+    }]\n+  }],\n+  \"rubrica\": { \"id\": \"bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb\", \"nombre\": \"RÃºbrica de prueba\", \"escalaMaxima\": 5.0, \"criterios\": [{ \"id\": \"cccccccc-cccc-cccc-cccc-cccccccccccc\", \"nombre\": \"Criterio Ãºnico\", \"ponderacion\": 1.0, \"preguntas\": [\"{{questionId}}\"] }] }\n+}"
+                                                               },
+                                                      "url":  "{{baseUrl}}/api/casos/{{caseId}}"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Publicar caso",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{teacherEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{teacherPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "{{csrfHeader}}",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{baseUrl}}/api/casos/{{caseId}}/publicar"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Archivar caso",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{teacherEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{teacherPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "{{csrfHeader}}",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{baseUrl}}/api/casos/{{caseId}}/archivar"
+                                                  }
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "Sesiones",
+                     "item":  [
+                                  {
+                                      "name":  "Programar sesiÃ³n",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{teacherEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{teacherPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "{{csrfHeader}}",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"idCaso\": \"{{caseId}}\",\n  \"idEspacio\": \"{{spaceId}}\",\n  \"inicioPrevisto\": \"2026-12-01T14:00:00Z\",\n  \"finPrevisto\": \"2026-12-01T15:00:00Z\",\n  \"duracionMaximaMin\": 30,\n  \"modoNavegacion\": \"FLEXIBLE\",\n  \"lugar\": \"Sala virtual\",\n  \"mensaje\": \"SesiÃ³n de prueba\",\n  \"estudiantes\": [\"{{studentId}}\"]\n}"
+                                                               },
+                                                      "url":  "{{baseUrl}}/api/sesiones"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Consultar sesiÃ³n",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{teacherEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{teacherPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "url":  "{{baseUrl}}/api/sesiones/{{sessionId}}"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Iniciar sesiÃ³n",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{teacherEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{teacherPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "{{csrfHeader}}",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{baseUrl}}/api/sesiones/{{sessionId}}/iniciar"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Finalizar sesiÃ³n",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{teacherEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{teacherPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "{{csrfHeader}}",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{baseUrl}}/api/sesiones/{{sessionId}}/finalizar"
+                                                  }
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "ParticipaciÃ³n y evaluaciÃ³n",
+                     "description":  "Estos endpoints estÃ¡n incluidos para completar el contrato de la API. Su autorizaciÃ³n todavÃ­a estÃ¡ restringida por la configuraciÃ³n actual del backend.",
+                     "item":  [
+                                  {
+                                      "name":  "Iniciar participaciÃ³n",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{studentEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{studentPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "{{csrfHeader}}",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{ \"idSesion\": \"{{sessionId}}\", \"codigoAcceso\": \"REEMPLAZAR_CON_CODIGO\", \"preguntas\": [\"{{questionId}}\"] }"
+                                                               },
+                                                      "url":  "{{baseUrl}}/api/participaciones"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Consultar participaciÃ³n",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{studentEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{studentPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "url":  "{{baseUrl}}/api/participaciones/{{attemptId}}"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Responder pregunta",
+                                      "request":  {
+                                                      "method":  "PUT",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{studentEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{studentPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "{{csrfHeader}}",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{ \"idPregunta\": \"{{questionId}}\", \"idOpcion\": \"{{optionId}}\" }"
+                                                               },
+                                                      "url":  "{{baseUrl}}/api/participaciones/{{attemptId}}/respuestas"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Avanzar participaciÃ³n",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{studentEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{studentPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "{{csrfHeader}}",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{baseUrl}}/api/participaciones/{{attemptId}}/avanzar"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Retroceder participaciÃ³n",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{studentEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{studentPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "{{csrfHeader}}",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{baseUrl}}/api/participaciones/{{attemptId}}/retroceder"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Reanudar participaciÃ³n",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{studentEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{studentPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "{{csrfHeader}}",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{baseUrl}}/api/participaciones/{{attemptId}}/reanudar"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Finalizar participaciÃ³n",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{studentEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{studentPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "{{csrfHeader}}",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{baseUrl}}/api/participaciones/{{attemptId}}/finalizar"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Evaluar intento",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{teacherEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{teacherPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "{{csrfHeader}}",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{baseUrl}}/api/evaluaciones/{{attemptId}}"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Consultar evaluaciÃ³n",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "auth":  {
+                                                                   "type":  "basic",
+                                                                   "basic":  [
+                                                                                 {
+                                                                                     "key":  "username",
+                                                                                     "value":  "{{studentEmail}}",
+                                                                                     "type":  "string"
+                                                                                 },
+                                                                                 {
+                                                                                     "key":  "password",
+                                                                                     "value":  "{{studentPassword}}",
+                                                                                     "type":  "string"
+                                                                                 }
+                                                                             ]
+                                                               },
+                                                      "url":  "{{baseUrl}}/api/evaluaciones/{{attemptId}}"
+                                                  }
+                                  }
+                              ]
+                 }
+             ]
+}
