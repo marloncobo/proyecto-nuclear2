@@ -1,6 +1,9 @@
 package com.psicoapp.sessions.application;
 
 import com.psicoapp.academic.application.FachadaAdministracion;
+import com.psicoapp.shared.events.*;
+import java.net.URI;
+import org.springframework.beans.factory.annotation.Value;
 import com.psicoapp.cases.application.CatalogoCasos;
 import com.psicoapp.identity.application.DirectorioIdentidad;
 import com.psicoapp.sessions.domain.*;
@@ -20,17 +23,22 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
-public class ServicioGestionSesiones implements ConsultaSesiones, ConsultaSesionesDocente {
+public class ServicioGestionSesiones implements ConsultaSesiones, AutorizacionDocenteSesiones, ConsultaSesionesDocente {
     public record DatosProgramacion(UUID idCaso, UUID idEspacio, Instant inicioPrevisto, Instant finPrevisto,
             int duracionMaximaMin, ModoNavegacion modoNavegacion, String lugar, String mensaje,
             List<UUID> estudiantes) { }
 
-    public record DatosConvocatoria(UUID id, UUID idEstudiante, String codigoAcceso) { }
+    public record DatosConvocatoria(UUID id, UUID idEstudiante, String codigoAcceso, boolean autorizada) {
+        @Override public String toString() { return "DatosConvocatoria[id=" + id + ", codigo protegido]"; }
+    }
+    public record CambioConvocados(List<UUID> agregar, List<UUID> retirar) { }
 
     public record DatosSesion(UUID id, UUID idCaso, UUID idEspacio, UUID idDocente, Instant inicioPrevisto,
             Instant finPrevisto, int duracionMaximaMin, String modoNavegacion, String lugar, String mensaje, String estado,
             List<DatosConvocatoria> convocatorias) { }
 
+    private final NotificacionSujeto notificaciones;
+    private final URI urlAcceso;
     private final RepositorioSesiones sesiones;
     private final DirectorioIdentidad identidades;
     private final CatalogoCasos casos;
@@ -39,7 +47,11 @@ public class ServicioGestionSesiones implements ConsultaSesiones, ConsultaSesion
     private final RepositorioConvocatorias convocatorias;
 
     public ServicioGestionSesiones(RepositorioSesiones sesiones, DirectorioIdentidad identidades,
-            CatalogoCasos casos, FachadaAdministracion academico, Clock reloj, RepositorioConvocatorias convocatorias) {
+            CatalogoCasos casos, FachadaAdministracion academico, Clock reloj, RepositorioConvocatorias convocatorias,
+            NotificacionSujeto notificaciones,
+            @Value("${psicoapp.notificaciones.url-acceso:http://localhost:3000/ingreso}") String urlAcceso) {
+        this.notificaciones = notificaciones;
+        this.urlAcceso = URI.create(urlAcceso);
         this.sesiones = sesiones;
         this.identidades = identidades;
         this.casos = casos;
@@ -71,17 +83,61 @@ public class ServicioGestionSesiones implements ConsultaSesiones, ConsultaSesion
             String codigo = UUID.randomUUID().toString().replace("-", "");
             Convocatoria convocatoria = new Convocatoria(UUID.randomUUID(), sesion.id(), estudiante, Convocatoria.resumir(codigo), true);
             convocatorias.guardar(convocatoria);
-            credenciales.add(new DatosConvocatoria(convocatoria.id(), estudiante, codigo));
+            credenciales.add(new DatosConvocatoria(convocatoria.id(), estudiante, codigo, true));
+            notificaciones.publicar(eventoConvocatoria(sesion, estudiante, codigo, caso.nombre()));
         }
         return representar(sesion, List.copyOf(credenciales));
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public void exigirResponsable(UUID idDocente, UUID idSesion) {
+    public DatosSesion modificarConvocados(UUID idDocente, UUID idSesion, CambioConvocados cambio) {
         identidades.exigirDocente(idDocente);
-        Sesion sesion = sesiones.buscarPorId(idSesion).orElseThrow(() -> new NoEncontrado("Sesion no encontrada"));
+        Sesion sesion = bloquear(idSesion);
         exigirResponsable(idDocente, sesion);
+        if (sesion.estado().codigo() == TipoEstadoSesion.FINALIZADO || sesion.estaVencida(reloj.instant()))
+            throw new Conflicto("No se pueden modificar convocados de una sesion finalizada o vencida");
+        if (cambio == null || cambio.agregar() == null || cambio.retirar() == null)
+            throw new IllegalArgumentException("Indique las listas agregar y retirar");
+        var agregar = cambio.agregar(); var retirar = cambio.retirar();
+        var todos = new ArrayList<UUID>(); todos.addAll(agregar); todos.addAll(retirar);
+        if (todos.isEmpty() || todos.contains(null) || new HashSet<>(todos).size() != todos.size())
+            throw new IllegalArgumentException("Cambios vacios, duplicados o contradictorios");
+        todos.forEach(identidades::exigirEstudiante);
+        var existentes = new java.util.HashMap<UUID, Convocatoria>();
+        convocatorias.listarPorSesion(idSesion).forEach(c -> existentes.put(c.idEstudiante(), c));
+        for (UUID id : agregar) if (existentes.containsKey(id) && existentes.get(id).autorizada())
+            throw new Conflicto("El estudiante ya esta convocado");
+        for (UUID id : retirar) if (!existentes.containsKey(id) || !existentes.get(id).autorizada())
+            throw new Conflicto("El estudiante no tiene convocatoria activa");
+        String nombreCaso = casos.consultarNombre(idDocente, sesion.idCaso());
+        var resultado = new ArrayList<DatosConvocatoria>();
+        for (UUID id : retirar) {
+            var anterior = existentes.get(id);
+            convocatorias.actualizar(new Convocatoria(anterior.id(), idSesion, id, anterior.resumenCodigo(), false));
+            notificaciones.publicar(new ConvocatoriaModificada(UUID.randomUUID(), reloj.instant(), id, idSesion,
+                    ConvocatoriaModificada.TipoCambio.RETIRO, null));
+            resultado.add(new DatosConvocatoria(anterior.id(), id, null, false));
+        }
+        for (UUID id : agregar) {
+            String codigo = UUID.randomUUID().toString().replace("-", "");
+            var anterior = existentes.get(id);
+            var nueva = new Convocatoria(anterior == null ? UUID.randomUUID() : anterior.id(),
+                    idSesion, id, Convocatoria.resumir(codigo), true);
+            if (anterior == null) convocatorias.guardar(nueva); else convocatorias.actualizar(nueva);
+            var datos = eventoConvocatoria(sesion, id, codigo, nombreCaso);
+            notificaciones.publicar(new ConvocatoriaModificada(datos.idEvento(), datos.instante(), id, idSesion,
+                    ConvocatoriaModificada.TipoCambio.ALTA, datos));
+            resultado.add(new DatosConvocatoria(nueva.id(), id, codigo, true));
+        }
+        return representar(sesion, List.copyOf(resultado));
+    }
+
+    private SesionProgramada eventoConvocatoria(Sesion sesion, UUID estudiante, String codigo, String nombreCaso) {
+        String mensaje = "Inicio: " + sesion.inicioPrevisto() + "\nFin: " + sesion.finPrevisto()
+                + "\nDuracion maxima (min): " + sesion.duracionMaximaMin()
+                + (sesion.lugar() == null ? "" : "\nLugar: " + sesion.lugar())
+                + (sesion.mensaje() == null ? "" : "\n" + sesion.mensaje());
+        return new SesionProgramada(UUID.randomUUID(), reloj.instant(), estudiante,
+                sesion.id(), nombreCaso, mensaje, urlAcceso, codigo);
     }
 
     @Transactional(readOnly = true)
@@ -126,6 +182,14 @@ public class ServicioGestionSesiones implements ConsultaSesiones, ConsultaSesion
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public void exigirResponsable(UUID idDocente, UUID idSesion) {
+        identidades.exigirDocente(idDocente);
+        exigirResponsable(idDocente, sesiones.buscarPorId(idSesion)
+                .orElseThrow(() -> new NoEncontrado("Sesion no encontrada")));
+    }
+
+    @Override
     public SesionEnCurso exigirEnCurso(UUID idSesion) {
         Sesion sesion = bloquear(idSesion);
         transicion(() -> {
@@ -156,7 +220,7 @@ public class ServicioGestionSesiones implements ConsultaSesiones, ConsultaSesion
 
     private DatosSesion representar(Sesion sesion) {
         return representar(sesion, convocatorias.listarPorSesion(sesion.id()).stream()
-                .map(c -> new DatosConvocatoria(c.id(), c.idEstudiante(), null)).toList());
+                .map(c -> new DatosConvocatoria(c.id(), c.idEstudiante(), null, c.autorizada())).toList());
     }
 
     private DatosSesion representar(Sesion sesion, List<DatosConvocatoria> datosConvocatorias) {

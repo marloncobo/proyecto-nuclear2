@@ -23,6 +23,12 @@ public class ControladorSesiones {
         return sesiones.programar(UUID.fromString(principal.getName()), solicitud);
     }
 
+    @PutMapping("/{id}/convocados")
+    public DatosSesion modificarConvocados(Principal principal, @PathVariable UUID id,
+            @RequestBody ServicioGestionSesiones.CambioConvocados cambio) {
+        return sesiones.modificarConvocados(UUID.fromString(principal.getName()), id, cambio);
+    }
+
     @GetMapping("/{id}")
     public DatosSesion consultar(Principal principal, @PathVariable UUID id) {
         return sesiones.consultar(UUID.fromString(principal.getName()), id);

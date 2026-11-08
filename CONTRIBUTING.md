@@ -19,7 +19,9 @@ organizar los cambios y enviarlos para revisión.
 El proyecto está en una fase inicial: el backend incluye una base de usuarios,
 roles, permisos y espacios académicos con MySQL, autenticación y pruebas JUnit.
 Tambien incluye construccion/publicacion de casos y programacion base/ciclo de
-vida de sesiones y convocatorias iniciales; notificaciones, participacion y evaluacion siguen pendientes.
+vida de sesiones, participacion, evaluacion y notificaciones con entregas durables.
+Consulta [notificaciones](docs/pruebas/notificaciones.md) para configurar SMTP,
+URL de acceso y clave de cifrado antes de programar sesiones.
 El frontend está pendiente de implementación. Consulta el README del backend
 para conocer el alcance implementado y las integraciones pendientes.
 

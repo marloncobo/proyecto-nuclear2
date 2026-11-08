@@ -19,7 +19,8 @@ import static org.mockito.Mockito.*;
 class PruebaFachadaConsultaParticipaciones {
     private final ConsultaParticipaciones participaciones = mock(ConsultaParticipaciones.class);
     private final ConsultaResultados resultados = mock(ConsultaResultados.class);
-    private final FachadaConsultaParticipaciones fachada = new FachadaConsultaParticipaciones(participaciones, resultados);
+    private final com.psicoapp.evaluation.application.GestionValoraciones valoraciones = mock(com.psicoapp.evaluation.application.GestionValoraciones.class);
+    private final FachadaConsultaParticipaciones fachada = new FachadaConsultaParticipaciones(participaciones, resultados, valoraciones);
     private final UUID docente = UUID.randomUUID();
     private final UUID estudiante = UUID.randomUUID();
     private final UUID caso = UUID.randomUUID();
@@ -50,7 +51,7 @@ class PruebaFachadaConsultaParticipaciones {
     void sinIntentosDevuelveListaVaciaSinInventarAusencias() {
         when(participaciones.consultarPorEstudiante(docente, estudiante, caso)).thenReturn(List.of());
         assertTrue(fachada.consultarPorEstudiante(docente, estudiante, caso).isEmpty());
-        verifyNoInteractions(resultados);
+        verifyNoInteractions(resultados, valoraciones);
     }
 
     @Test
@@ -58,7 +59,29 @@ class PruebaFachadaConsultaParticipaciones {
         when(participaciones.consultarPorEstudiante(docente, estudiante, caso))
                 .thenThrow(new AccesoDenegado("Caso ajeno"));
         assertThrows(AccesoDenegado.class, () -> fachada.consultarPorEstudiante(docente, estudiante, caso));
-        verifyNoInteractions(resultados);
+        verifyNoInteractions(resultados, valoraciones);
+    }
+
+    @Test
+    void incluyeValoracionesDeCadaIntentoSinPublicarAvisosDesdeLaLectura() {
+        var intento = participacion("FINALIZADO", Map.of());
+        var valoracion = new com.psicoapp.evaluation.application.GestionValoraciones.ValoracionPublicada(
+                UUID.randomUUID(), intento.idIntento(), docente, "Valoracion formativa", Instant.EPOCH);
+        when(participaciones.consultarPorEstudiante(docente, estudiante, caso)).thenReturn(List.of(intento));
+        when(resultados.consultar(docente, intento.idIntento())).thenReturn(Optional.empty());
+        when(valoraciones.consultar(docente, intento.idIntento())).thenReturn(List.of(valoracion));
+        assertEquals(List.of(valoracion), fachada.consultarPorEstudiante(docente, estudiante, caso).getFirst().valoracionesGenerales());
+        verify(valoraciones).consultar(docente, intento.idIntento());
+        verifyNoMoreInteractions(valoraciones);
+    }
+
+    @Test
+    void registrarDelegaEnElPropietarioSinDuplicarLaSolicitudDeAviso() {
+        UUID intento = UUID.randomUUID();
+        fachada.registrarValoracion(docente, intento, "Comentario");
+        verify(valoraciones).registrar(docente, intento, "Comentario");
+        verifyNoMoreInteractions(valoraciones);
+        verifyNoInteractions(participaciones, resultados);
     }
 
     private ParticipacionFinalizada participacion(String estado, Map<UUID, UUID> respuestas) {

@@ -3,9 +3,10 @@
 Implementacion de RF-15 / CU-30, con historial independiente (RN-06) y
 retroalimentacion disponible solo al terminar el intento (RN-08/09).
 La descarga de reportes RF-16 / CU-31 sigue pospuesta segun
-[el alcance del MVP](../alcance.md). La valoracion general docente RF-26 y
-la consolidacion de ausencias CU-35 siguen pendientes en sus modulos.
-Esta entrega no declara completos esos requisitos.
+[el alcance del MVP](../alcance.md). La valoracion general docente RF-26 se implementa en `evaluation` al integrar
+notificaciones y ahora forma parte de la respuesta de reportes mediante
+`valoracionesGenerales`. Tambien puede registrarse desde el seguimiento docente. La consolidacion de ausencias CU-35 sigue pendiente.
+Esta consulta no declara completos RF-16 ni CU-35.
 
 ## Contrato HTTP
 
@@ -17,7 +18,7 @@ docentes ajenos no acceden al seguimiento. Un caso inexistente devuelve 404;
 un UUID invalido, 400. Los casos propios archivados conservan su historial.
 
 Devuelve una lista ordenada por inicio e identificador de intento. Cada elemento
-contiene `participacion` y `resultado`:
+contiene `participacion`, `resultado` y `valoracionesGenerales`:
 
 - `participacion`: `idIntento`, `idSesion`, `idEstudiante`, `estado`, `inicio`,
   `limite`, `preguntas` ordenadas y `respuestas` (mapa pregunta/opcion vigente).
@@ -25,17 +26,45 @@ contiene `participacion` y `resultado`:
   (`idPregunta`, `idOpcion`, `contestada`, `correcta`, `puntos`, `retroalimentacion`).
   Es `null` cuando la evaluacion aun no esta almacenada, sin inventar una nota.
 
+- `valoracionesGenerales`: historial de valoraciones del intento, con `id`,
+  `idIntento`, `idDocente`, `mensaje` y `fecha`. Es una lista vacia si no hay.
+
 Solo se incluyen intentos FINALIZADO o VENCIDO; cada intento conserva su propia
 entrada. Una lista vacia significa que no hay intentos terminados para ese
 estudiante y caso. No representa ausencia ni calificacion de cero. Las preguntas
 sin responder siguen en `preguntas` y, si existe evaluacion, en su detalle.
 Consultar no calcula notas, modifica intentos ni envia notificaciones.
 
+## Integracion con notificaciones — RF-26/27, CU-32/33
+
+La documentacion no define una llegada o generacion asincrona de reportes.
+CU-30 es una consulta; RF-27 exige avisar al publicar la nota y cuando el docente
+agrega retroalimentacion. Por ello no se crea un evento de reporte consultado.
+
+`POST /api/reportes/participaciones/{idIntento}/valoraciones` permite registrar
+una valoracion desde seguimiento. Recibe `{"mensaje":"Valoracion formativa"}`
+y devuelve 201 con la valoracion guardada. Requiere docente responsable, intento
+finalizado o vencido y CSRF; aplica el mismo limite de 4000 caracteres de evaluation.
+Un estudiante o docente ajeno recibe 403; un intento activo, 409; mensaje invalido, 400.
+
+La fachada delega en `GestionValoraciones`, contrato publico implementado por
+`ServicioValoraciones`. `evaluation` guarda y publica `RetroalimentacionAgregada`
+una sola vez; `notifications` registra el aviso interno del estudiante en la misma
+transaccion, con la entrega durable existente. Reportes no publica otro evento.
+Si se revierte la operacion, no queda valoracion ni solicitud de aviso.
+
+El estudiante recibe un aviso `VALORACION` asociado al intento en
+`GET /api/notificaciones` y consulta su contenido en
+`GET /api/evaluaciones/{idIntento}/valoraciones`. La nota mantiene su aviso
+`RESULTADO` al finalizar o vencer el intento. Las lecturas repetidas del reporte
+no generan avisos ni duplican calificaciones. No se incorporan envios al docente
+por consultar un reporte ni generacion/exportacion asincrona ajena al alcance.
+
 ## Diseno y limites
 
 `ControladorReportes` delega en `FachadaConsultaParticipaciones`, conforme a
 [Facade en el diseno](../diseño/patrones-diseno.md#32-facade--coordinación-de-consultas-y-administración).
-La fachada depende unicamente de `ConsultaParticipaciones` y `ConsultaResultados`,
+La fachada depende de `ConsultaParticipaciones`, `ConsultaResultados` y `GestionValoraciones`,
 contratos publicos de aplicacion con DTO inmutables. No accede a repositorios
 ajenos ni requiere tablas o dependencias nuevas.
 
@@ -86,3 +115,14 @@ La prueba utiliza un esquema temporal aislado y lo elimina al terminar.
 Las credenciales se proporcionaron solo mediante variables del proceso.
 Este recorrido cubre casos, convocatorias y estados; no constituye una prueba
 del endpoint de reportes de extremo a extremo en MySQL.
+
+## Pruebas de la integracion con notificaciones
+
+CP-NO-009 (RF-15/26/27; CU-30/32/33): registro HTTP desde reportes, consulta del
+historial, entrega de un solo aviso al estudiante, lecturas repetidas sin efectos,
+rollback atomico y controles de rol, propiedad, CSRF y finalizacion del intento.
+Se verifica en `PruebaFlujosNotificaciones` (H2) y se hereda en su variante MySQL
+optativa. La fachada tiene pruebas de uso del contrato publico y aislamiento
+entre consulta y escritura. La API anterior de evaluation conserva su JSON.
+
+Verificacion de integracion (08-11-2026): `mvnw.cmd -q verify`, salida 0 y JAR generado. 231 pruebas pasaron, 0 fallos y 0 errores; 17 recorridos MySQL omitidos por no disponer de las variables de pruebas. CP-NO-009 cubierto con Spring, JDBC, seguridad y outbox reales sobre H2. No se enviaron correos externos.

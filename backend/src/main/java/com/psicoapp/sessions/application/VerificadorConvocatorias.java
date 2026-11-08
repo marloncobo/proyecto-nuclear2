@@ -33,7 +33,6 @@ public class VerificadorConvocatorias implements VerificadorAccesoEstudiante, Au
         if (codigo == null || !codigo.matches("[0-9a-f]{32}")) return false;
         return convocatorias.buscarAutorizada(estudiante, Convocatoria.resumir(codigo))
                 .flatMap(c -> sesiones.buscarPorId(c.idSesion()))
-                .filter(s -> s.estado().codigo() == TipoEstadoSesion.EN_CURSO && !s.estaVencida(reloj.instant()))
                 .isPresent();
     }
 

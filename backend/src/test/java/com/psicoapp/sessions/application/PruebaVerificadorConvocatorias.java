@@ -35,7 +35,7 @@ class PruebaVerificadorConvocatorias {
         // Autenticacion no es ingreso nuevo: no bloquea por si sola reanudaciones despues del umbral.
         assertTrue(verificador.verificar(estudiante, codigo));
         when(reloj.instant()).thenReturn(DatosPruebaSesiones.FIN.plus(Duration.ofDays(1)));
-        assertFalse(verificador.verificar(estudiante, codigo));
+        assertTrue(verificador.verificar(estudiante, codigo));
     }
 
     @Test

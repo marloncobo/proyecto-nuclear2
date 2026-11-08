@@ -34,6 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @Import({ConfiguracionIdentidad.class, ProveedorAutenticacionIdentidad.class, ServicioGestionSesiones.class})
 class PruebaControladorSesiones {
+    @MockitoBean com.psicoapp.shared.events.NotificacionSujeto notificaciones;
     @Autowired MockMvc mvc;
     @MockitoBean RepositorioSesiones sesiones;
     @MockitoBean RepositorioConvocatorias convocatorias;
@@ -72,7 +73,7 @@ class PruebaControladorSesiones {
     @Test
     @DisplayName("RF-18: programa SIN_INICIAR con docente autenticado, fechas UTC y campos en espanol")
     void programaDesdeIdentidadAutenticada() throws Exception {
-        when(casos.exigirPublicado(docente, sesion.idCaso())).thenReturn(new CatalogoCasos.CasoProgramable(sesion.idCaso(), 40));
+        when(casos.exigirPublicado(docente, sesion.idCaso())).thenReturn(new CatalogoCasos.CasoProgramable(sesion.idCaso(), 40, "Caso formativo"));
         mvc.perform(post("/api/sesiones").with(csrf()).with(user(docente.toString()).roles("DOCENTE"))
                         .contentType(MediaType.APPLICATION_JSON).content("""
                                 {"idCaso":"%s","idEspacio":"%s","inicioPrevisto":"2026-11-01T09:00:00-05:00",
@@ -129,7 +130,7 @@ class PruebaControladorSesiones {
     void rechazaDatosInvalidos() throws Exception {
         mvc.perform(post("/api/sesiones").with(csrf()).with(user(docente.toString()).roles("DOCENTE"))
                         .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isBadRequest());
-        when(casos.exigirPublicado(docente, sesion.idCaso())).thenReturn(new CatalogoCasos.CasoProgramable(sesion.idCaso(), 40));
+        when(casos.exigirPublicado(docente, sesion.idCaso())).thenReturn(new CatalogoCasos.CasoProgramable(sesion.idCaso(), 40, "Caso formativo"));
         mvc.perform(post("/api/sesiones").with(csrf()).with(user(docente.toString()).roles("DOCENTE"))
                         .contentType(MediaType.APPLICATION_JSON).content("""
                                 {"idCaso":"%s","idEspacio":"%s","inicioPrevisto":"2026-11-01T16:00:00Z",

@@ -1,5 +1,8 @@
 # Plan de pruebas — Psicoapp: identidad y organización académica
 
+> Actualizacion de notificaciones (08-11-2026): Se agrega el plan CP-NO-001 a CP-NO-009 para notificaciones e integraciones, incluido seguimiento docente; las cantidades de las fichas originales de identidad/academico se conservan.
+> Ver [alcance vigente y pruebas de notificaciones](notificaciones.md). Los limites y resultados anteriores se conservan como historial.
+
 **Versión del documento:** 0.1.0
 **Fecha de elaboración:** 30-10-2026
 **Estado:** propuesta para revisión; ejecución funcional pendiente.

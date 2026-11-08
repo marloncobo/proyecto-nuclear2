@@ -1,5 +1,6 @@
 package com.psicoapp.participation.application;
 
+import com.psicoapp.shared.events.*;
 import com.psicoapp.sessions.application.AutorizacionConvocatorias;
 import com.psicoapp.sessions.application.ConsultaSesiones;
 import com.psicoapp.participation.domain.Intento;
@@ -19,13 +20,15 @@ public class ServicioGestionParticipacion {
     public record DatosIntento(UUID id, UUID idSesion, UUID idEstudiante, Instant inicio, Instant limite,
             String estado, List<UUID> preguntas, UUID preguntaActual, java.util.Map<UUID, UUID> respuestas) { }
 
+    private final NotificacionSujeto eventos;
     private final RepositorioIntentos intentos;
     private final AutorizacionConvocatorias autorizacion;
     private final ConsultaSesiones sesiones;
     private final Clock reloj;
 
     public ServicioGestionParticipacion(RepositorioIntentos intentos, AutorizacionConvocatorias autorizacion,
-            ConsultaSesiones sesiones, Clock reloj) {
+            ConsultaSesiones sesiones, Clock reloj, NotificacionSujeto eventos) {
+        this.eventos = eventos;
         this.intentos = intentos;
         this.autorizacion = autorizacion;
         this.sesiones = sesiones;
@@ -80,6 +83,7 @@ public class ServicioGestionParticipacion {
         Intento intento = bloquearPropietario(idEstudiante, idIntento);
         Intento actualizado = intento.finalizar(reloj.instant());
         intentos.actualizar(actualizado);
+        publicarFinalizacion(actualizado);
         return representar(actualizado);
     }
 
@@ -91,11 +95,18 @@ public class ServicioGestionParticipacion {
                     () -> new NoEncontrado("Intento no encontrado"));
             if (intento.estaVencido(ahora) && intento.estado()
                     == com.psicoapp.participation.domain.EstadoIntento.EN_PROGRESO) {
-                intentos.actualizar(intento.vencer(ahora));
+                Intento vencido = intento.vencer(ahora);
+                intentos.actualizar(vencido);
+                publicarFinalizacion(vencido);
                 finalizados++;
             }
         }
         return finalizados;
+    }
+
+    private void publicarFinalizacion(Intento intento) {
+        eventos.publicar(new IntentoFinalizado(UUID.nameUUIDFromBytes(("finalizacion:" + intento.id())
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8)), reloj.instant(), intento.idEstudiante(), intento.id()));
     }
 
     private Intento bloquearPropietario(UUID idEstudiante, UUID idIntento) {

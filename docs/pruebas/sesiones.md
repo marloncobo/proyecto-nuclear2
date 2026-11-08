@@ -1,5 +1,8 @@
 # Sesiones — tercera entrega (State)
 
+> Actualizacion de notificaciones (08-11-2026): Se implementaron correos de convocatoria y altas/retiros mediante Observer.
+> Ver [alcance vigente y pruebas de notificaciones](notificaciones.md). Los limites y resultados anteriores se conservan como historial.
+
 > Alcance historico: las [correcciones posteriores](correcciones-revision.md) actualizan las reglas y funciones descritas en esta entrega.
 
 ## Alcance

@@ -6,6 +6,7 @@ import java.util.UUID;
 public interface DirectorioIdentidad {
     record DatosUsuario(UUID id, String correo, String nombre, String rol, boolean puedeCrearCasos) { }
 
+    DatosUsuario consultarIdentidad(UUID idUsuario);
     DatosUsuario exigirDocente(UUID idUsuario);
     void exigirCreacionCasos(UUID idUsuario);
     void exigirEstudiante(UUID idUsuario);

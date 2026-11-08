@@ -24,6 +24,13 @@ public class RepositorioConvocatoriasJdbc implements RepositorioConvocatorias {
     }
 
     @Override
+    public void actualizar(Convocatoria convocatoria) {
+        jdbc.sql("UPDATE convocatoria SET codigo_acceso=?,estado=? WHERE id_convocatoria=?")
+                .params(convocatoria.resumenCodigo(), convocatoria.autorizada() ? "AUTORIZADA" : "RETIRADA",
+                        convocatoria.id().toString()).update();
+    }
+
+    @Override
     public List<Convocatoria> listarPorSesion(UUID idSesion) {
         return jdbc.sql("SELECT * FROM convocatoria WHERE id_sesion=? ORDER BY id_estudiante")
                 .param(idSesion.toString()).query(this::mapear).list();

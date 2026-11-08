@@ -20,6 +20,14 @@ public class ServicioConsultaCasos implements CatalogoCasos, ConsultaCasosDocent
     }
 
     @Override
+    public String consultarNombre(UUID idDocente, UUID idCaso) {
+        identidades.exigirDocente(idDocente);
+        var caso = casos.buscarPorId(idCaso).orElseThrow(() -> new NoEncontrado("Caso no encontrado"));
+        if (!caso.idDocente().equals(idDocente)) throw new AccesoDenegado("Solo el docente responsable puede consultar el caso");
+        return caso.nombre();
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public void exigirResponsable(UUID idDocente, UUID idCaso) {
         identidades.exigirDocente(idDocente);
@@ -39,6 +47,6 @@ public class ServicioConsultaCasos implements CatalogoCasos, ConsultaCasosDocent
         if (!"PUBLICADO".equals(caso.estado()) || caso.tiempoEstimadoMin() == null) {
             throw new Conflicto("Solo se pueden programar casos publicados con tiempo estimado");
         }
-        return new CasoProgramable(caso.id(), caso.tiempoEstimadoMin());
+        return new CasoProgramable(caso.id(), caso.tiempoEstimadoMin(), caso.nombre());
     }
 }

@@ -5,6 +5,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest(properties = {
         "spring.sql.init.mode=never",
+        "psicoapp.notificaciones.despacho-habilitado=false",
         "psicoapp.sesiones.cierre-automatico-habilitado=false",
         "psicoapp.identidad.correo-administrador=",
         "psicoapp.identidad.clave-administrador="

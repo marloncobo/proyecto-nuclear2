@@ -195,6 +195,15 @@ explicación, pero los identificadores se escriben en español: por ejemplo,
 
 ### 3.6 Observer — avisos a partir de eventos
 
+**Implementacion del 08-11-2026:** esta seccion ya tiene desarrollo en backend.
+Los observadores preparan solicitudes de canal que se guardan en `notificacion`
+como outbox dentro de la transaccion productora. El receptor sincrono solo
+encola; el planificador entrega filas confirmadas en transacciones independientes.
+No se envia correo desde el productor ni se depende de eventos volatiles para
+recuperar pendientes. Se conserva el puerto publicador compartido y el dominio
+sin Spring. Ver [diseno, configuracion, limites y pruebas](../pruebas/notificaciones.md).
+
+
 **Necesidad:** una programación de sesión o publicación de resultados puede generar notificaciones sin acoplar el caso de uso a cada canal.
 
 **Qué hacer:**

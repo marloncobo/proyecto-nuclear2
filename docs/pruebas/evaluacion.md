@@ -1,5 +1,8 @@
 # Evaluacion — alcance y plan de implementacion
 
+> Actualizacion de notificaciones (08-11-2026): La finalizacion voluntaria y por vencimiento ahora evalua y registra el aviso automaticamente; el POST separado permanece idempotente.
+> Ver [alcance vigente y pruebas de notificaciones](notificaciones.md). Los limites y resultados anteriores se conservan como historial.
+
 Este documento registra el alcance inicial de la rama `feat/evaluation`.
 La funcionalidad se implementara en Java dentro de
 `backend/src/main/java/com/psicoapp/evaluation`, respetando las capas
