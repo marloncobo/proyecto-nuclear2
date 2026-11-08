@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface RepositorioConvocatorias {
+    void actualizar(Convocatoria convocatoria);
     void guardar(Convocatoria convocatoria);
     List<Convocatoria> listarPorSesion(UUID idSesion);
     Optional<Convocatoria> buscarAutorizada(UUID idEstudiante, String resumenCodigo);

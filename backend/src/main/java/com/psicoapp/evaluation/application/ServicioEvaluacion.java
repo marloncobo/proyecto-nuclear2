@@ -1,5 +1,6 @@
 package com.psicoapp.evaluation.application;
 
+import com.psicoapp.shared.events.*;
 import com.psicoapp.evaluation.domain.EstrategiaCalificacion;
 import com.psicoapp.evaluation.domain.ResultadoEvaluacion;
 import com.psicoapp.participation.application.RepositorioIntentos;
@@ -20,6 +21,7 @@ public class ServicioEvaluacion {
     public record DatosEvaluacion(UUID idIntento, String estadoIntento, Instant fecha,
             ResultadoEvaluacion resultado) { }
 
+    private final NotificacionSujeto eventos;
     private final RepositorioIntentos intentos;
     private final ProveedorCasosEvaluables casos;
     private final RepositorioEvaluaciones evaluaciones;
@@ -27,7 +29,8 @@ public class ServicioEvaluacion {
     private final Clock reloj;
 
     public ServicioEvaluacion(RepositorioIntentos intentos, ProveedorCasosEvaluables casos,
-            RepositorioEvaluaciones evaluaciones, EstrategiaCalificacion estrategia, Clock reloj) {
+            RepositorioEvaluaciones evaluaciones, EstrategiaCalificacion estrategia, Clock reloj, NotificacionSujeto eventos) {
+        this.eventos = eventos;
         this.intentos = intentos;
         this.casos = casos;
         this.evaluaciones = evaluaciones;
@@ -36,7 +39,7 @@ public class ServicioEvaluacion {
     }
 
     public DatosEvaluacion evaluar(UUID idEstudiante, UUID idIntento) {
-        Intento intento = intentos.buscarPorId(idIntento).orElseThrow(
+        Intento intento = intentos.bloquearPorId(idIntento).orElseThrow(
                 () -> new NoEncontrado("Intento no encontrado"));
         exigirPropietario(idEstudiante, intento);
         if (intento.estado() == EstadoIntento.EN_PROGRESO) {
@@ -48,6 +51,9 @@ public class ServicioEvaluacion {
             RepositorioEvaluaciones.EvaluacionPersistida guardada =
                     new RepositorioEvaluaciones.EvaluacionPersistida(idIntento, resultado, reloj.instant());
             evaluaciones.guardar(guardada);
+            eventos.publicar(new ResultadosPublicados(UUID.nameUUIDFromBytes(("resultado:" + idIntento)
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8)), reloj.instant(), idEstudiante,
+                    intento.idSesion(), idIntento, resultado.calificacion()));
             return representar(guardada);
         });
     }
@@ -60,6 +66,15 @@ public class ServicioEvaluacion {
                 () -> new NoEncontrado("Intento no encontrado"));
         exigirPropietario(idEstudiante, intento);
         return representar(evaluacion);
+    }
+
+    public record ReferenciaIntento(UUID id, UUID idSesion, UUID idEstudiante) { }
+
+    @Transactional(readOnly = true)
+    public ReferenciaIntento exigirFinalizado(UUID idIntento) {
+        Intento intento = intentos.buscarPorId(idIntento).orElseThrow(() -> new NoEncontrado("Intento no encontrado"));
+        if (intento.estado() == EstadoIntento.EN_PROGRESO) throw new Conflicto("El intento no ha finalizado");
+        return new ReferenciaIntento(intento.id(), intento.idSesion(), intento.idEstudiante());
     }
 
     private void exigirPropietario(UUID idEstudiante, Intento intento) {

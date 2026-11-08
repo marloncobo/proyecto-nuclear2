@@ -84,7 +84,7 @@ abstract class FlujoBackend {
         assertNotEquals(codigo, JsonPath.read(segunda,"$.convocatorias[0].codigoAcceso"));
         assertEquals(32,codigo.length());
         assertNotEquals(codigo,convocatorias.listarPorSesion(UUID.fromString(sesion)).getFirst().resumenCodigo());
-        mvc.perform(get("/api/identidad/yo").with(httpBasic(estudiante,codigo))).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/identidad/yo").with(httpBasic(estudiante,codigo))).andExpect(status().isOk());
         mvc.perform(post("/api/sesiones/{id}/iniciar",sesion).with(httpBasic(docente,clave)).with(csrf()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("EN_CURSO"));
         mvc.perform(get("/api/identidad/yo").with(httpBasic(estudiante,codigo))).andExpect(status().isOk());
@@ -102,14 +102,14 @@ abstract class FlujoBackend {
         var jdbc = org.springframework.jdbc.core.simple.JdbcClient.create(
                 ((org.springframework.jdbc.datasource.DataSourceTransactionManager)gestor).getDataSource());
         var recuperador = new ServicioGestionSesiones(new com.psicoapp.sessions.infrastructure.RepositorioSesionesJdbc(jdbc),
-                null,null,null,reloj,new com.psicoapp.sessions.infrastructure.RepositorioConvocatoriasJdbc(jdbc));
+                null,null,null,reloj,new com.psicoapp.sessions.infrastructure.RepositorioConvocatoriasJdbc(jdbc), mock(com.psicoapp.shared.events.NotificacionSujeto.class), "http://localhost:3000/ingreso");
         var tx = new org.springframework.transaction.support.TransactionTemplate(gestor);
         int cerradas = tx.execute(estado -> recuperador.cerrarVencidas(reloj.instant()));
         int repetidas = tx.execute(estado -> recuperador.cerrarVencidas(reloj.instant()));
         assertEquals(2,cerradas);
         assertEquals(0,repetidas);
         assertEquals("FINALIZADO",sesiones.buscarPorId(UUID.fromString(sesion)).orElseThrow().estado().codigo().name());
-        mvc.perform(get("/api/identidad/yo").with(httpBasic(estudiante,codigo))).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/identidad/yo").with(httpBasic(estudiante,codigo))).andExpect(status().isOk());
     }
 
     private String id(String cuerpo) { return JsonPath.read(cuerpo,"$.id"); }

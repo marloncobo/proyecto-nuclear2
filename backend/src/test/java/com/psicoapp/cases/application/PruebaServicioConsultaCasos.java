@@ -27,7 +27,7 @@ class PruebaServicioConsultaCasos {
     @DisplayName("RN-03 / RF-18: contrato de programacion expone solo id y tiempo de caso publicado propio")
     void permiteCasoPublicadoDelDocente() {
         when(casos.bloquearPorId(base.id())).thenReturn(Optional.of(conEstado(EstadoCaso.PUBLICADO)));
-        assertEquals(new CatalogoCasos.CasoProgramable(base.id(), 40), servicio.exigirPublicado(docente, base.id()));
+        assertEquals(new CatalogoCasos.CasoProgramable(base.id(), 40, base.nombre()), servicio.exigirPublicado(docente, base.id()));
     }
 
     @Test

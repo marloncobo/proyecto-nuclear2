@@ -11,6 +11,8 @@ import org.springframework.test.context.DynamicPropertySource;
 
 @EnabledIfEnvironmentVariable(named="PSICOAPP_PRUEBAS_MYSQL_URL", matches="jdbc:mysql://.+")
 @SpringBootTest(properties = {
+        "psicoapp.notificaciones.clave-cifrado=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+        "psicoapp.notificaciones.despacho-habilitado=false",
         "psicoapp.identidad.dominios-institucionales=example.test",
         "psicoapp.identidad.correo-administrador=", "psicoapp.identidad.clave-administrador=",
         "psicoapp.sesiones.cierre-automatico-habilitado=false"

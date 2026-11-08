@@ -47,7 +47,7 @@ class PruebaServicioGestionSesiones {
 
     @BeforeEach
     void preparar() {
-        servicio = new ServicioGestionSesiones(sesiones, identidades, casos, academico, Clock.fixed(INICIO, ZoneOffset.UTC), convocatorias);
+        servicio = new ServicioGestionSesiones(sesiones, identidades, casos, academico, Clock.fixed(INICIO, ZoneOffset.UTC), convocatorias, mock(com.psicoapp.shared.events.NotificacionSujeto.class), "http://localhost:3000/ingreso");
     }
 
     private ServicioGestionSesiones.DatosProgramacion datos(int duracion) {
@@ -58,7 +58,7 @@ class PruebaServicioGestionSesiones {
     @Test
     @DisplayName("RF-04/18 / RN-03/13: programa tras validar identidad, caso publicado y espacio")
     void programaMedianteContratosPublicos() {
-        doReturn(new CatalogoCasos.CasoProgramable(sesion.idCaso(), 40)).when(casos).exigirPublicado(docente, sesion.idCaso());
+        doReturn(new CatalogoCasos.CasoProgramable(sesion.idCaso(), 40, "Caso formativo")).when(casos).exigirPublicado(docente, sesion.idCaso());
         var resultado = servicio.programar(docente, datos(30));
         assertEquals("SIN_INICIAR", resultado.estado());
         assertEquals(docente, resultado.idDocente());
@@ -86,7 +86,7 @@ class PruebaServicioGestionSesiones {
         when(casos.exigirPublicado(docente, sesion.idCaso())).thenThrow(new Conflicto("No publicado"));
         assertThrows(Conflicto.class, () -> servicio.programar(docente, datos(30)));
         verifyNoInteractions(academico, sesiones);
-        doReturn(new CatalogoCasos.CasoProgramable(sesion.idCaso(), 40)).when(casos).exigirPublicado(docente, sesion.idCaso());
+        doReturn(new CatalogoCasos.CasoProgramable(sesion.idCaso(), 40, "Caso formativo")).when(casos).exigirPublicado(docente, sesion.idCaso());
         when(academico.consultarEspacio(docente, sesion.idEspacio())).thenThrow(new NoEncontrado("Espacio"));
         assertThrows(NoEncontrado.class, () -> servicio.programar(docente, datos(30)));
         doReturn(null).when(academico).consultarEspacio(docente, sesion.idEspacio());

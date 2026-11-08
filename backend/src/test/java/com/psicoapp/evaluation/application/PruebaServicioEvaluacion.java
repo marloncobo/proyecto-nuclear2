@@ -60,7 +60,7 @@ class PruebaServicioEvaluacion {
             }
         };
         servicio = new ServicioEvaluacion(intentos, id -> caso, evaluaciones, new CalificacionPorPonderacion(),
-                Clock.fixed(AHORA, ZoneOffset.UTC));
+                Clock.fixed(AHORA, ZoneOffset.UTC), org.mockito.Mockito.mock(com.psicoapp.shared.events.NotificacionSujeto.class));
     }
 
     @Test

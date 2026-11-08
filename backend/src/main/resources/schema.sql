@@ -206,3 +206,41 @@ CREATE TABLE IF NOT EXISTS detalle_evaluacion (
     FOREIGN KEY (id_opcion) REFERENCES opcion_respuesta(id_opcion),
     CHECK (puntos >= 0)
 );
+
+-- La misma tabla funciona como outbox durable de entregas y almacen de avisos internos.
+CREATE TABLE IF NOT EXISTS notificacion (
+    id_notificacion CHAR(36) PRIMARY KEY,
+    id_evento CHAR(36) NOT NULL,
+    id_usuario CHAR(36) NOT NULL,
+    id_sesion CHAR(36) NULL,
+    id_intento CHAR(36) NULL,
+    canal VARCHAR(12) NOT NULL,
+    tipo VARCHAR(40) NOT NULL,
+    asunto VARCHAR(180) NOT NULL,
+    mensaje MEDIUMTEXT NOT NULL,
+    estado_envio VARCHAR(20) NOT NULL,
+    fecha_creacion TIMESTAMP NOT NULL,
+    fecha_envio TIMESTAMP NULL,
+    proximo_intento TIMESTAMP NOT NULL,
+    intentos INT NOT NULL,
+    ultimo_error VARCHAR(40) NULL,
+    leida BOOLEAN NOT NULL,
+    UNIQUE (id_evento,id_usuario,canal),
+    FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario),
+    FOREIGN KEY (id_sesion) REFERENCES sesion(id_sesion),
+    FOREIGN KEY (id_intento) REFERENCES intento(id_intento),
+    CHECK (canal IN ('CORREO','INTERNO')),
+    CHECK (estado_envio IN ('PENDIENTE','ENVIADA','CANCELADA')),
+    CHECK (intentos >= 0),
+    INDEX indice_notificacion_pendiente (estado_envio,proximo_intento),
+    INDEX indice_aviso_usuario (id_usuario,canal,fecha_creacion)
+);
+CREATE TABLE IF NOT EXISTS valoracion_docente (
+    id_valoracion CHAR(36) PRIMARY KEY,
+    id_intento CHAR(36) NOT NULL,
+    id_docente CHAR(36) NOT NULL,
+    mensaje TEXT NOT NULL,
+    fecha_creacion TIMESTAMP NOT NULL,
+    FOREIGN KEY (id_intento) REFERENCES intento(id_intento),
+    FOREIGN KEY (id_docente) REFERENCES usuario(id_usuario)
+);

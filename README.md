@@ -10,8 +10,10 @@ monolito modular con paquete base `com.psicoapp`.
 El frontend está pendiente de implementación.
 
 El backend tambien incluye construccion/publicacion de casos y programacion
-base de sesiones con State y convocatorias iniciales. Notificaciones, participacion y evaluacion siguen
-pendientes; consulta los limites en el [README del backend](backend/README.md).
+sesiones con State, participacion, evaluacion y notificaciones con Observer.
+Las convocatorias se entregan por SMTP y los resultados/valoraciones mediante
+avisos internos persistentes. Consulta la [configuracion de notificaciones](docs/pruebas/notificaciones.md)
+antes de programar sesiones y los limites en el [README del backend](backend/README.md).
 
 ## Ejecutar el backend
 

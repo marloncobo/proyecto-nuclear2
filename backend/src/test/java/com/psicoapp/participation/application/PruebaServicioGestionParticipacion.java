@@ -38,7 +38,7 @@ class PruebaServicioGestionParticipacion {
         ConsultaSesiones sesiones = idSesion -> new ConsultaSesiones.SesionEnCurso(sesion, UUID.randomUUID(),
                 AHORA.minusSeconds(60), AHORA.plusSeconds(3600), 30, ModoNavegacion.FLEXIBLE.name());
         servicio = new ServicioGestionParticipacion(repositorio, autorizacion, sesiones,
-                Clock.fixed(AHORA, ZoneOffset.UTC));
+                Clock.fixed(AHORA, ZoneOffset.UTC), org.mockito.Mockito.mock(com.psicoapp.shared.events.NotificacionSujeto.class));
     }
 
     @Test

@@ -1,5 +1,8 @@
 # Correcciones de la revision tecnica — 01-11-2026
 
+> Actualizacion de notificaciones (08-11-2026): Notificaciones, cambios de convocados y valoraciones docentes cuentan ahora con implementacion de backend.
+> Ver [alcance vigente y pruebas de notificaciones](notificaciones.md). Los limites y resultados anteriores se conservan como historial.
+
 Esta pagina reemplaza las limitaciones historicas de las tres primeras entregas
 cuando contradigan el comportamiento descrito aqui. Las ramas originales son
 acumulativas; las correcciones se registran como commits adicionales en

@@ -39,9 +39,10 @@ Rutas docentes: `POST /api/sesiones`, `GET /api/sesiones/{id}`,
 `POST /api/sesiones/{id}/iniciar` y `POST /api/sesiones/{id}/finalizar`.
 Usan HTTP Basic y CSRF en POST. Programar exige una lista no vacia de UUID
 `estudiantes` institucionales existentes y devuelve codigos iniciales de convocatoria.
-Notificaciones y consolidacion de ausencias siguen pendientes; la gestion de
-intentos se implementa en `participation` y la calificacion en `evaluation`.
-Por ello CU-12/CU-16 aun no se declaran completos con todas sus integraciones.
+La programacion registra correos pendientes en su misma transaccion.
+`PUT /api/sesiones/{id}/convocados` recibe listas `agregar` y `retirar`,
+actualiza autorizaciones y registra avisos por correo. Reincorporar rota el codigo.
+Sigue pendiente consolidar ausencias al cerrar sesion (CU-16/CU-35).
 Consulta [reglas, tiempo, integraciones y pruebas](../docs/pruebas/sesiones.md).
 
 ## Participacion — intentos
@@ -53,7 +54,8 @@ Las rutas son `POST /api/participaciones`, `GET /api/participaciones/{id}`,
 `/avanzar`, `/retroceder`, `/reanudar` y `/finalizar`. La autorizacion de la
 convocatoria y la ventana de ingreso se delegan a `sessions`. Un planificador
 marca automaticamente como vencidos los intentos cuyo limite individual se
-agota.
+agota. La finalizacion voluntaria y por vencimiento solicita evaluacion y
+registro del aviso de resultado en la misma transaccion mediante eventos.
 
 ## Evaluacion — calificacion
 
@@ -61,7 +63,32 @@ agota.
 ponderacion, asigna cero a preguntas sin respuesta y conserva la
 retroalimentacion por pregunta. Las rutas son `POST /api/evaluaciones/{idIntento}`
 y `GET /api/evaluaciones/{idIntento}`. El estudiante autenticado solo puede
-consultar su propio intento.
+consultar su propio intento. El POST permanece idempotente; la finalizacion de
+participacion ahora evalua automaticamente. `POST /api/evaluaciones/{idIntento}/valoraciones`
+permite al docente responsable registrar una valoracion de hasta 4000 caracteres,
+y `GET` consulta el historial para ese docente o el estudiante propietario.
+
+## Notificaciones — Observer
+
+`notifications` observa convocatoria inicial, altas/retiros, resultados y
+valoraciones docentes. Persiste las solicitudes antes del commit y las entrega
+por separado, con deduplicacion, bloqueo por entrega y reintentos exponenciales.
+Los correos se guardan cifrados con AES-256-GCM; el contenido se borra al entregarlo
+o cancelarlo. Los avisos de resultado/valoracion se conservan para su destinatario.
+Un error del canal no revierte la operacion academica.
+
+Rutas estudiantiles: `GET /api/notificaciones?limite=20&desplazamiento=0`
+y `PUT /api/notificaciones/{id}/leida` (requiere CSRF). No se acepta un destinatario
+ajeno en el cuerpo. La autenticacion valida codigo no retirado aun despues del
+cierre de la sesion para permitir consultas; iniciar participacion conserva sus
+controles independientes de convocatoria, estado y ventana temporal.
+
+Se agregan las tablas `notificacion` y `valoracion_docente` al esquema.
+La dependencia nueva `spring-boot-starter-mail` implementa el puerto SMTP.
+**Antes de convocar:** configurar clave AES persistente, URL de acceso y SMTP
+segun la [guia de notificaciones](../docs/pruebas/notificaciones.md).
+El frontend sigue pendiente; esta entrega expone APIs y envio de correo.
+
 Un único proyecto Maven y una aplicación Spring Boot, organizados por módulos
 funcionales. `PsicoappApplication` está en el paquete raíz para que Spring
 descubra los componentes de todos los módulos.
