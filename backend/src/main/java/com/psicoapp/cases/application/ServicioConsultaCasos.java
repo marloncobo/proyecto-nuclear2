@@ -10,13 +10,23 @@ import java.util.UUID;
 
 @Service
 @Transactional
-public class ServicioConsultaCasos implements CatalogoCasos {
+public class ServicioConsultaCasos implements CatalogoCasos, ConsultaCasosDocente {
     private final RepositorioCasos casos;
     private final DirectorioIdentidad identidades;
 
     public ServicioConsultaCasos(RepositorioCasos casos, DirectorioIdentidad identidades) {
         this.casos = casos;
         this.identidades = identidades;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void exigirResponsable(UUID idDocente, UUID idCaso) {
+        identidades.exigirDocente(idDocente);
+        var caso = casos.buscarPorId(idCaso).orElseThrow(() -> new NoEncontrado("Caso no encontrado"));
+        if (!caso.idDocente().equals(idDocente)) {
+            throw new AccesoDenegado("Solo el docente responsable puede consultar el caso");
+        }
     }
 
     @Override
