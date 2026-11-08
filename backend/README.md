@@ -62,6 +62,18 @@ ponderacion, asigna cero a preguntas sin respuesta y conserva la
 retroalimentacion por pregunta. Las rutas son `POST /api/evaluaciones/{idIntento}`
 y `GET /api/evaluaciones/{idIntento}`. El estudiante autenticado solo puede
 consultar su propio intento.
+## Reportes — seguimiento docente
+
+`reports` implementa la consulta minima de RF-15 / CU-30 mediante Facade:
+`GET /api/reportes/casos/{idCaso}/estudiantes/{idEstudiante}`. Requiere HTTP
+Basic y rol DOCENTE; solo el responsable del caso puede consultar el historial.
+Devuelve cada intento finalizado o vencido con sus respuestas y la evaluacion
+almacenada, si existe (`resultado: null` indica evaluacion pendiente).
+Consume contratos publicos de `participation` y `evaluation`, sin consultar
+repositorios ajenos ni calcular notas. Exportacion RF-16, valoracion general
+RF-26 y consolidacion de ausencias siguen pendientes.
+Consulta el [contrato, diseno y pruebas de reportes](../docs/pruebas/reportes.md).
+
 Un único proyecto Maven y una aplicación Spring Boot, organizados por módulos
 funcionales. `PsicoappApplication` está en el paquete raíz para que Spring
 descubra los componentes de todos los módulos.
@@ -114,7 +126,8 @@ versionar los paquetes incluso antes de añadir sus primeras clases.
 `cases` implementa la construccion de borradores y su validacion/publicacion,
 descritas al inicio de esta guia.
 `sessions` implementa programacion base y ciclo de vida descritos arriba.
-Los demas modulos conservan unicamente su estructura inicial.
+`participation`, `evaluation` y `reports` implementan los flujos descritos arriba;
+`notifications` conserva su estructura inicial.
 
 ## Capas y dependencias
 

@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
-public class ServicioGestionSesiones implements ConsultaSesiones {
+public class ServicioGestionSesiones implements ConsultaSesiones, ConsultaSesionesDocente {
     public record DatosProgramacion(UUID idCaso, UUID idEspacio, Instant inicioPrevisto, Instant finPrevisto,
             int duracionMaximaMin, ModoNavegacion modoNavegacion, String lugar, String mensaje,
             List<UUID> estudiantes) { }
@@ -74,6 +74,14 @@ public class ServicioGestionSesiones implements ConsultaSesiones {
             credenciales.add(new DatosConvocatoria(convocatoria.id(), estudiante, codigo));
         }
         return representar(sesion, List.copyOf(credenciales));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void exigirResponsable(UUID idDocente, UUID idSesion) {
+        identidades.exigirDocente(idDocente);
+        Sesion sesion = sesiones.buscarPorId(idSesion).orElseThrow(() -> new NoEncontrado("Sesion no encontrada"));
+        exigirResponsable(idDocente, sesion);
     }
 
     @Transactional(readOnly = true)
