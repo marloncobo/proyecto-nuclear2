@@ -39,8 +39,11 @@ Rutas docentes: `POST /api/sesiones`, `GET /api/sesiones/{id}`,
 `POST /api/sesiones/{id}/iniciar` y `POST /api/sesiones/{id}/finalizar`.
 Usan HTTP Basic y CSRF en POST. Programar exige una lista no vacia de UUID
 `estudiantes` institucionales existentes y devuelve codigos iniciales de convocatoria.
-Notificaciones y consolidacion de ausencias siguen pendientes; la gestion de
-intentos se implementa en `participation` y la calificacion en `evaluation`.
+`notifications` registra convocatorias, resultados y retroalimentacion con
+estado de entrega y un puerto desacoplado para el canal de salida. La
+consolidacion de ausencias y la exportacion de reportes se implementan en
+`reports`; la gestion de intentos se implementa en `participation` y la
+calificacion en `evaluation`.
 Por ello CU-12/CU-16 aun no se declaran completos con todas sus integraciones.
 Consulta [reglas, tiempo, integraciones y pruebas](../docs/pruebas/sesiones.md).
 
@@ -62,6 +65,16 @@ ponderacion, asigna cero a preguntas sin respuesta y conserva la
 retroalimentacion por pregunta. Las rutas son `POST /api/evaluaciones/{idIntento}`
 y `GET /api/evaluaciones/{idIntento}`. El estudiante autenticado solo puede
 consultar su propio intento.
+
+## Notificaciones
+
+`notifications` persiste avisos de convocatoria, resultado y
+retroalimentacion. La ruta docente `POST /api/notificaciones/convocatorias`
+registra un aviso y la ruta estudiantil
+`GET /api/notificaciones/estudiantes/{idEstudiante}` lista los avisos propios.
+El envio esta aislado detras de `CanalNotificaciones`; los fallos se conservan
+como `FALLIDA` y se propagan al cliente.
+
 Un único proyecto Maven y una aplicación Spring Boot, organizados por módulos
 funcionales. `PsicoappApplication` está en el paquete raíz para que Spring
 descubra los componentes de todos los módulos.

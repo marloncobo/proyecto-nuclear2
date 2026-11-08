@@ -192,6 +192,23 @@ CREATE TABLE IF NOT EXISTS evaluacion (
     CHECK (calificacion >= 0)
 );
 
+CREATE TABLE IF NOT EXISTS notificacion (
+    id_notificacion CHAR(36) PRIMARY KEY,
+    id_destinatario CHAR(36) NOT NULL,
+    correo_destinatario VARCHAR(180) NOT NULL,
+    tipo VARCHAR(30) NOT NULL,
+    asunto VARCHAR(180) NOT NULL,
+    mensaje TEXT NOT NULL,
+    url VARCHAR(500) NULL,
+    codigo_acceso VARCHAR(80) NULL,
+    fecha_creacion DATETIME NOT NULL,
+    estado VARCHAR(20) NOT NULL,
+    FOREIGN KEY (id_destinatario) REFERENCES usuario(id_usuario),
+    CHECK (tipo IN ('CONVOCATORIA','RESULTADO','RETROALIMENTACION')),
+    CHECK (estado IN ('PENDIENTE','ENVIADA','FALLIDA')),
+    INDEX indice_notificacion_destinatario (id_destinatario, fecha_creacion)
+);
+
 CREATE TABLE IF NOT EXISTS detalle_evaluacion (
     id_intento CHAR(36) NOT NULL,
     id_pregunta CHAR(36) NOT NULL,

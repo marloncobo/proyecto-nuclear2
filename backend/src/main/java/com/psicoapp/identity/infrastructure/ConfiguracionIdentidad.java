@@ -38,6 +38,8 @@ public class ConfiguracionIdentidad {
                         .requestMatchers("/api/academico/**").hasRole("DOCENTE")
                         .requestMatchers("/api/casos", "/api/casos/**").hasRole("DOCENTE")
                         .requestMatchers("/api/sesiones", "/api/sesiones/**").hasRole("DOCENTE")
+                        .requestMatchers(HttpMethod.POST, "/api/notificaciones/convocatorias").hasRole("DOCENTE")
+                        .requestMatchers(HttpMethod.GET, "/api/notificaciones/estudiantes/**").hasRole("ESTUDIANTE")
                         .anyRequest().denyAll())
                 .build();
     }
