@@ -1,0 +1,14 @@
+package com.psicoapp.identity.application;
+
+import java.util.UUID;
+
+/** Contrato publico entre modulos; no expone credenciales ni entidades internas. */
+public interface DirectorioIdentidad {
+    record DatosUsuario(UUID id, String correo, String nombre, String rol, boolean puedeCrearCasos) { }
+
+    DatosUsuario consultarIdentidad(UUID idUsuario);
+    DatosUsuario exigirDocente(UUID idUsuario);
+    void exigirCreacionCasos(UUID idUsuario);
+    void exigirEstudiante(UUID idUsuario);
+    DatosUsuario registrarEstudiante(UUID idDocente, String correo, String nombre);
+}
