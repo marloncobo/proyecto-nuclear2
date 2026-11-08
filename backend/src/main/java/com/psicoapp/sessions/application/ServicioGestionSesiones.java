@@ -23,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
-public class ServicioGestionSesiones implements ConsultaSesiones, AutorizacionDocenteSesiones {
+public class ServicioGestionSesiones implements ConsultaSesiones, AutorizacionDocenteSesiones, ConsultaSesionesDocente {
     public record DatosProgramacion(UUID idCaso, UUID idEspacio, Instant inicioPrevisto, Instant finPrevisto,
             int duracionMaximaMin, ModoNavegacion modoNavegacion, String lugar, String mensaje,
             List<UUID> estudiantes) { }

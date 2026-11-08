@@ -50,6 +50,18 @@ class PruebaServicioGestionSesiones {
         servicio = new ServicioGestionSesiones(sesiones, identidades, casos, academico, Clock.fixed(INICIO, ZoneOffset.UTC), convocatorias, mock(com.psicoapp.shared.events.NotificacionSujeto.class), "http://localhost:3000/ingreso");
     }
 
+    @Test
+    @DisplayName("RF-15: seguimiento exige rol y sesion propia sin exponer convocatorias")
+    void autorizaSeguimientoDeSesionPropia() {
+        when(sesiones.buscarPorId(sesion.id())).thenReturn(Optional.of(sesion));
+        assertDoesNotThrow(() -> servicio.exigirResponsable(docente, sesion.id()));
+        assertThrows(AccesoDenegado.class, () -> servicio.exigirResponsable(UUID.randomUUID(), sesion.id()));
+        assertThrows(NoEncontrado.class, () -> servicio.exigirResponsable(docente, UUID.randomUUID()));
+        doThrow(new AccesoDenegado("No docente")).when(identidades).exigirDocente(docente);
+        assertThrows(AccesoDenegado.class, () -> servicio.exigirResponsable(docente, sesion.id()));
+        verifyNoInteractions(convocatorias);
+    }
+
     private ServicioGestionSesiones.DatosProgramacion datos(int duracion) {
         return new ServicioGestionSesiones.DatosProgramacion(sesion.idCaso(), sesion.idEspacio(), INICIO, FIN,
                 duracion, ModoNavegacion.FLEXIBLE, null, null, List.of(UUID.randomUUID()));

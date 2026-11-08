@@ -26,6 +26,7 @@ class PruebaRepositorioIntentosJdbc {
     private UUID sesion;
     private UUID pregunta;
     private UUID opcion;
+    private UUID caso;
 
     @BeforeEach
     void preparar() {
@@ -40,7 +41,7 @@ class PruebaRepositorioIntentosJdbc {
 
         UUID docente = UUID.randomUUID();
         UUID espacio = UUID.randomUUID();
-        UUID caso = UUID.randomUUID();
+        caso = UUID.randomUUID();
         UUID escenario = UUID.randomUUID();
         pregunta = UUID.randomUUID();
         opcion = UUID.randomUUID();
@@ -75,6 +76,29 @@ class PruebaRepositorioIntentosJdbc {
     @AfterEach
     void cerrar() {
         fuente.close();
+    }
+
+    @Test
+    @org.junit.jupiter.api.DisplayName("RF-15 / RN-06: filtra estudiante, caso y estado conservando el historial")
+    void consultaSoloIntentosTerminadosDelEstudianteYCaso() {
+        Intento base = Intento.iniciar(UUID.randomUUID(), sesion, estudiante, INICIO, 30,
+                ModoNavegacion.FLEXIBLE, List.of(pregunta)).responder(pregunta, opcion, INICIO.plusSeconds(1));
+        Intento finalizado = base.finalizar(INICIO.plusSeconds(2));
+        Intento vencido = Intento.iniciar(UUID.randomUUID(), sesion, estudiante, INICIO.plusSeconds(10), 30,
+                ModoNavegacion.FLEXIBLE, List.of(pregunta)).vencer(INICIO.plusSeconds(1810));
+        Intento activo = Intento.iniciar(UUID.randomUUID(), sesion, estudiante, INICIO.plusSeconds(20), 30,
+                ModoNavegacion.FLEXIBLE, List.of(pregunta));
+        transaccion.executeWithoutResult(estado -> {
+            repositorio.guardar(finalizado);
+            repositorio.guardar(vencido);
+            repositorio.guardar(activo);
+        });
+        var historial = repositorio.buscarTerminadosPorEstudianteYCaso(estudiante, caso);
+        assertEquals(List.of(finalizado.id(), vencido.id()), historial.stream().map(Intento::id).toList());
+        assertEquals(opcion, historial.getFirst().respuestas().get(pregunta));
+        assertTrue(historial.get(1).respuestas().isEmpty());
+        assertTrue(repositorio.buscarTerminadosPorEstudianteYCaso(UUID.randomUUID(), caso).isEmpty());
+        assertTrue(repositorio.buscarTerminadosPorEstudianteYCaso(estudiante, UUID.randomUUID()).isEmpty());
     }
 
     @Test

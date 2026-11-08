@@ -24,6 +24,17 @@ class PruebaServicioConsultaCasos {
     }
 
     @Test
+    @DisplayName("RF-15: seguimiento admite casos propios archivados y exige rol, propiedad y existencia")
+    void autorizaSeguimientoSinExigirPublicacion() {
+        when(casos.buscarPorId(base.id())).thenReturn(Optional.of(conEstado(EstadoCaso.ARCHIVADO)));
+        assertDoesNotThrow(() -> servicio.exigirResponsable(docente, base.id()));
+        assertThrows(AccesoDenegado.class, () -> servicio.exigirResponsable(UUID.randomUUID(), base.id()));
+        assertThrows(NoEncontrado.class, () -> servicio.exigirResponsable(docente, UUID.randomUUID()));
+        doThrow(new AccesoDenegado("No docente")).when(identidades).exigirDocente(docente);
+        assertThrows(AccesoDenegado.class, () -> servicio.exigirResponsable(docente, base.id()));
+    }
+
+    @Test
     @DisplayName("RN-03 / RF-18: contrato de programacion expone solo id y tiempo de caso publicado propio")
     void permiteCasoPublicadoDelDocente() {
         when(casos.bloquearPorId(base.id())).thenReturn(Optional.of(conEstado(EstadoCaso.PUBLICADO)));

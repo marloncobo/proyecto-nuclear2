@@ -89,6 +89,19 @@ La dependencia nueva `spring-boot-starter-mail` implementa el puerto SMTP.
 segun la [guia de notificaciones](../docs/pruebas/notificaciones.md).
 El frontend sigue pendiente; esta entrega expone APIs y envio de correo.
 
+## Reportes — seguimiento docente
+
+`reports` implementa la consulta minima de RF-15 / CU-30 mediante Facade:
+`GET /api/reportes/casos/{idCaso}/estudiantes/{idEstudiante}`. Requiere HTTP
+Basic y rol DOCENTE; solo el responsable del caso puede consultar el historial.
+Devuelve cada intento finalizado o vencido con sus respuestas y la evaluacion
+almacenada, si existe (`resultado: null` indica evaluacion pendiente).
+Consume contratos publicos de `participation` y `evaluation`, sin consultar
+repositorios ajenos ni calcular notas. Exportacion RF-16 y consolidacion de ausencias siguen pendientes.
+La valoracion general RF-26 esta disponible por la API de valoraciones de
+`evaluation`; esta consulta de reportes no la incluye en su respuesta.
+Consulta el [contrato, diseno y pruebas de reportes](../docs/pruebas/reportes.md).
+
 Un único proyecto Maven y una aplicación Spring Boot, organizados por módulos
 funcionales. `PsicoappApplication` está en el paquete raíz para que Spring
 descubra los componentes de todos los módulos.

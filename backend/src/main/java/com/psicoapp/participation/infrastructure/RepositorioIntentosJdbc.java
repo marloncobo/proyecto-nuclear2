@@ -1,6 +1,7 @@
 package com.psicoapp.participation.infrastructure;
 
 import com.psicoapp.participation.application.RepositorioIntentos;
+import com.psicoapp.participation.application.RepositorioConsultaIntentos;
 import com.psicoapp.participation.domain.EstadoIntento;
 import com.psicoapp.participation.domain.Intento;
 import com.psicoapp.sessions.domain.ModoNavegacion;
@@ -18,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 @Transactional
-public class RepositorioIntentosJdbc implements RepositorioIntentos {
+public class RepositorioIntentosJdbc implements RepositorioIntentos, RepositorioConsultaIntentos {
     private final JdbcClient jdbc;
 
     public RepositorioIntentosJdbc(JdbcClient jdbc) {
@@ -84,6 +85,17 @@ public class RepositorioIntentosJdbc implements RepositorioIntentos {
                 WHERE estado='EN_PROGRESO' AND fecha_limite <= ?
                 ORDER BY fecha_limite, id_intento
                 """).param(Timestamp.from(ahora)).query(this::mapear).list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Intento> buscarTerminadosPorEstudianteYCaso(UUID idEstudiante, UUID idCaso) {
+        return jdbc.sql("""
+                SELECT i.* FROM intento i JOIN sesion s ON s.id_sesion = i.id_sesion
+                WHERE i.id_estudiante = ? AND s.id_caso = ?
+                    AND i.estado IN ('FINALIZADO', 'VENCIDO')
+                ORDER BY i.fecha_inicio, i.id_intento
+                """).params(idEstudiante.toString(), idCaso.toString()).query(this::mapear).list();
     }
 
     private Optional<Intento> buscar(String consulta, String id) {
