@@ -55,6 +55,7 @@ class PruebaFlujosNotificaciones {
     @Autowired ServicioGestionParticipacion participacion;
     @Autowired ServicioEvaluacion evaluaciones;
     @Autowired ServicioValoraciones valoraciones;
+    @Autowired com.psicoapp.reports.application.FachadaConsultaParticipaciones reportes;
     @Autowired NotificacionSujeto eventos;
     @Autowired ServicioEntregaNotificaciones entrega;
     @Autowired RepositorioEntregas pendientes;
@@ -302,6 +303,80 @@ class PruebaFlujosNotificaciones {
         mvc.perform(post("/api/evaluaciones/{id}/valoraciones", intento.id()).with(csrf())
                 .with(user(docente.toString()).roles("DOCENTE"))
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(mensaje)).andExpect(status().isCreated());
+    }
+
+    // CP-NO-009: CU-30/32/33. El flujo de reportes solicita un aviso por nueva valoracion.
+    @Test
+    void valoracionDesdeReporteApareceEnHistorialYNotificaUnaSolaVez() throws Exception {
+        sesiones.iniciar(docente, sesion);
+        var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
+        participacion.finalizar(estudiante, intento.id());
+        int antes = cantidad(sesion);
+        mvc.perform(post("/api/reportes/participaciones/{id}/valoraciones", intento.id()).with(csrf())
+                .with(user(docente.toString()).roles("DOCENTE"))
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("{\"mensaje\":\"Revisa las perspectivas del grupo\"}"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.idIntento").value(intento.id().toString()))
+                .andExpect(jsonPath("$.idDocente").value(docente.toString()));
+        assertEquals(antes + 1, cantidad(sesion));
+        for (int vez = 0; vez < 2; vez++) {
+            mvc.perform(get("/api/reportes/casos/{caso}/estudiantes/{estudiante}", caso, estudiante)
+                    .with(user(docente.toString()).roles("DOCENTE")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].valoracionesGenerales[0].mensaje").value("Revisa las perspectivas del grupo"));
+        }
+        assertEquals(antes + 1, cantidad(sesion));
+        despachar(); despachar();
+        var recibidos = avisos.listar(estudiante, 20, 0);
+        assertEquals(1, recibidos.stream().filter(a -> "VALORACION".equals(a.tipo())).count());
+        assertEquals(1, recibidos.stream().filter(a -> "RESULTADO".equals(a.tipo())).count());
+        mvc.perform(get("/api/evaluaciones/{id}/valoraciones", intento.id()).with(httpBasic(correoEstudiante, codigo)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].mensaje").value("Revisa las perspectivas del grupo"));
+    }
+
+    @Test
+    void rollbackDesdeReportesRevierteValoracionYSolicitudDeAviso() {
+        sesiones.iniciar(docente, sesion);
+        var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
+        participacion.finalizar(estudiante, intento.id());
+        int antes = cantidad(sesion);
+        new TransactionTemplate(gestor).executeWithoutResult(estadoTransaccion -> {
+            reportes.registrarValoracion(docente, intento.id(), "Valoracion descartada");
+            assertEquals(antes + 1, cantidad(sesion));
+            estadoTransaccion.setRollbackOnly();
+        });
+        assertEquals(antes, cantidad(sesion));
+        assertTrue(reportes.consultarPorEstudiante(docente, estudiante, caso).getFirst().valoracionesGenerales().isEmpty());
+    }
+
+    @Test
+    void reporteSoloPermiteValorarAlDocenteResponsableConCsrfEIntentoFinalizado() throws Exception {
+        sesiones.iniciar(docente, sesion);
+        var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
+        String ruta = "/api/reportes/participaciones/" + intento.id() + "/valoraciones";
+        String contenido = "{\"mensaje\":\"Valoracion formativa\"}";
+        mvc.perform(post(ruta).with(csrf()).contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(contenido))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post(ruta).with(csrf()).with(user(estudiante.toString()).roles("ESTUDIANTE"))
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(contenido)).andExpect(status().isForbidden());
+        mvc.perform(post(ruta).with(user(docente.toString()).roles("DOCENTE"))
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(contenido)).andExpect(status().isForbidden());
+        mvc.perform(post(ruta).with(csrf()).with(user(docente.toString()).roles("DOCENTE"))
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(contenido)).andExpect(status().isConflict());
+        participacion.finalizar(estudiante, intento.id());
+        String correoAdmin = "admin-control-" + UUID.randomUUID() + "@universidad.example";
+        identidades.inicializarAdministrador(correoAdmin, "clave-ficticia");
+        UUID administrador = usuarios.buscarPorCorreo(correoAdmin).orElseThrow().id();
+        UUID otroDocente = identidades.registrarDocente(administrador, "otro-" + UUID.randomUUID() + "@universidad.example",
+                "Otro docente", "clave-ficticia").id();
+        int antes = cantidad(sesion);
+        mvc.perform(post(ruta).with(csrf()).with(user(otroDocente.toString()).roles("DOCENTE"))
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(contenido)).andExpect(status().isForbidden());
+        mvc.perform(post(ruta).with(csrf()).with(user(docente.toString()).roles("DOCENTE"))
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{\"mensaje\":\" \"}"))
+                .andExpect(status().isBadRequest());
+        assertEquals(antes, cantidad(sesion));
+        assertTrue(valoraciones.consultar(docente, intento.id()).isEmpty());
     }
 
     private void despachar() { for (UUID id : ids()) entrega.entregar(id); }

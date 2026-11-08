@@ -98,8 +98,11 @@ Devuelve cada intento finalizado o vencido con sus respuestas y la evaluacion
 almacenada, si existe (`resultado: null` indica evaluacion pendiente).
 Consume contratos publicos de `participation` y `evaluation`, sin consultar
 repositorios ajenos ni calcular notas. Exportacion RF-16 y consolidacion de ausencias siguen pendientes.
-La valoracion general RF-26 esta disponible por la API de valoraciones de
-`evaluation`; esta consulta de reportes no la incluye en su respuesta.
+La respuesta incluye `valoracionesGenerales` por intento. El docente responsable
+puede agregar una con `POST /api/reportes/participaciones/{idIntento}/valoraciones`,
+JSON `mensaje` y CSRF. Se reutiliza `GestionValoraciones` de evaluation: guarda
+la valoracion y solicita el aviso interno al estudiante una sola vez (RF-27,
+CU-32/33). Consultar el reporte no genera notificaciones.
 Consulta el [contrato, diseno y pruebas de reportes](../docs/pruebas/reportes.md).
 
 Un único proyecto Maven y una aplicación Spring Boot, organizados por módulos

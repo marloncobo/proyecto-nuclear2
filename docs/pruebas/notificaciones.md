@@ -1,6 +1,6 @@
 # Notificaciones: requisitos y desarrollo
 
-Revision local: 08-11-2026. Base: d2c27c6. Rama: codex/notificaciones.
+Revision local: 08-11-2026. Base: d2c27c6. Rama: notificaciones.
 
 ## Fuentes revisadas
 
@@ -181,3 +181,15 @@ consolidacion de ausencias sin intento (CU-35). Los eventos aqui corresponden
 a intentos efectivamente evaluados. No se modifica el catalogo oficial RF/RN/CU
 ni se inventa un catalogo RNF. La entrega atiende RF-21/RF-27 en backend, con
 integraciones de CU-34 y CU-32 necesarias para dispararlos.
+
+## Integracion de seguimiento docente — CP-NO-009
+
+RF-27 y CU-32/33 requieren aviso por nueva valoracion; CU-30 es una consulta y
+no dispara avisos. `reports` ahora incluye `valoracionesGenerales` por intento y
+permite registrarlas con `POST /api/reportes/participaciones/{idIntento}/valoraciones`.
+Usa `GestionValoraciones` de evaluation; la publicacion del evento y la outbox
+permanecen en el flujo existente, evitando avisos duplicados. La nota mantiene
+su aviso al finalizar o vencer el intento, no al leer el reporte.
+Ver [contrato y pruebas de reportes](reportes.md#integracion-con-notificaciones--rf-2627-cu-3233).
+
+Verificacion de integracion (08-11-2026): `mvnw.cmd -q verify`, salida 0 y JAR generado. 231 pruebas pasaron, 0 fallos y 0 errores; 17 recorridos MySQL omitidos por no disponer de las variables de pruebas. CP-NO-009 cubierto con Spring, JDBC, seguridad y outbox reales sobre H2. No se enviaron correos externos.

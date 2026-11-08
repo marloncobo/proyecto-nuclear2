@@ -38,6 +38,7 @@ class PruebaControladorReportes {
     @MockitoBean ServicioUsuarios servicioUsuarios;
     @MockitoBean ConsultaParticipaciones participaciones;
     @MockitoBean ConsultaResultados resultados;
+    @MockitoBean com.psicoapp.evaluation.application.GestionValoraciones valoraciones;
     private final UUID docente = UUID.randomUUID();
     private final UUID estudiante = UUID.randomUUID();
     private final UUID caso = UUID.randomUUID();

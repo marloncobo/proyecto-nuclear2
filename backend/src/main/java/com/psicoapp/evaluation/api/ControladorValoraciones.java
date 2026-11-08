@@ -10,16 +10,16 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/evaluaciones/{idIntento}/valoraciones")
 public class ControladorValoraciones {
     public record DatosValoracion(String mensaje) { }
-    private final ServicioValoraciones valoraciones;
-    public ControladorValoraciones(ServicioValoraciones valoraciones) { this.valoraciones = valoraciones; }
+    private final GestionValoraciones valoraciones;
+    public ControladorValoraciones(GestionValoraciones valoraciones) { this.valoraciones = valoraciones; }
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public RepositorioValoraciones.Valoracion registrar(Principal principal, @PathVariable UUID idIntento,
+    public GestionValoraciones.ValoracionPublicada registrar(Principal principal, @PathVariable UUID idIntento,
             @RequestBody DatosValoracion datos) {
         return valoraciones.registrar(UUID.fromString(principal.getName()), idIntento, datos.mensaje());
     }
     @GetMapping
-    public List<RepositorioValoraciones.Valoracion> consultar(Principal principal, @PathVariable UUID idIntento) {
+    public List<GestionValoraciones.ValoracionPublicada> consultar(Principal principal, @PathVariable UUID idIntento) {
         return valoraciones.consultar(UUID.fromString(principal.getName()), idIntento);
     }
 }

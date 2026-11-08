@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
-public class ServicioValoraciones {
+public class ServicioValoraciones implements GestionValoraciones {
     private final ServicioEvaluacion evaluaciones;
     private final AutorizacionDocenteSesiones sesiones;
     private final DirectorioIdentidad identidades;
@@ -23,7 +23,8 @@ public class ServicioValoraciones {
         this.evaluaciones = evaluaciones; this.sesiones = sesiones; this.identidades = identidades;
         this.valoraciones = valoraciones; this.eventos = eventos; this.reloj = reloj;
     }
-    public RepositorioValoraciones.Valoracion registrar(UUID docente, UUID intento, String mensaje) {
+    @Override
+    public ValoracionPublicada registrar(UUID docente, UUID intento, String mensaje) {
         identidades.exigirDocente(docente);
         var referencia = evaluaciones.exigirFinalizado(intento);
         sesiones.exigirResponsable(docente, referencia.idSesion());
@@ -33,15 +34,20 @@ public class ServicioValoraciones {
         valoraciones.guardar(valoracion);
         eventos.publicar(new RetroalimentacionAgregada(UUID.randomUUID(), reloj.instant(), referencia.idEstudiante(),
                 referencia.idSesion(), intento, valoracion.id()));
-        return valoracion;
+        return representar(valoracion);
     }
+    @Override
     @Transactional(readOnly = true)
-    public List<RepositorioValoraciones.Valoracion> consultar(UUID actor, UUID intento) {
+    public List<ValoracionPublicada> consultar(UUID actor, UUID intento) {
         var referencia = evaluaciones.exigirFinalizado(intento);
         var identidad = identidades.consultarIdentidad(actor);
         if ("DOCENTE".equals(identidad.rol())) sesiones.exigirResponsable(actor, referencia.idSesion());
         else if (!"ESTUDIANTE".equals(identidad.rol()) || !actor.equals(referencia.idEstudiante()))
             throw new AccesoDenegado("No puede consultar las valoraciones de este intento");
-        return valoraciones.listar(intento);
+        return valoraciones.listar(intento).stream().map(this::representar).toList();
+    }
+    private ValoracionPublicada representar(RepositorioValoraciones.Valoracion valoracion) {
+        return new ValoracionPublicada(valoracion.id(), valoracion.idIntento(), valoracion.idDocente(),
+                valoracion.mensaje(), valoracion.fecha());
     }
 }
