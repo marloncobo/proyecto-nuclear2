@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "psicoapp-api-collection",
     "name": "Psicoapp API",
-    "description": "Flujo automatizado de 45 peticiones: identidad, académico, casos, sesiones, participación, evaluación y reportes. Incluye historial docente, valoraciones y controles de rol, propiedad, CSRF, validación, intento activo y caso archivado. Ejecutar completa con el entorno adjunto; configurar adminEmail, adminPassword e institutionalDomain. Crea datos ficticios y habilita CREAR_CASOS para el rol docente. No comprueba SMTP.",
+    "description": "Flujo automatizado de 70 peticiones: identidad, académico, casos, sesiones, participación, evaluación, reportes y notificaciones internas. Incluye avisos RESULTADO/VALORACION, deduplicación, paginación, lectura idempotente, aislamiento entre estudiantes, roles, CSRF y acceso tras cierre. Ejecutar completa con el entorno adjunto. Crea datos ficticios y habilita CREAR_CASOS para docentes. No valida entrega SMTP.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -758,6 +758,41 @@
           }
         },
         {
+          "name": "Notificaciones - sin avisos antes de finalizar",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/notificaciones",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "pm.test('Bandeja inicial vacía',()=>pm.expect(pm.response.json()).to.eql([]));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Finalizar participación",
           "request": {
             "method": "POST",
@@ -834,6 +869,41 @@
             },
             "url": "{{baseUrl}}/api/evaluaciones/{{attemptId}}"
           }
+        },
+        {
+          "name": "Notificaciones - resultado automático sin duplicados",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/notificaciones",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "const avisos=pm.response.json();\npm.test('Una sola notificación tras finalizar y reevaluar',()=>{\n  pm.expect(avisos).to.be.an('array').with.lengthOf(1);\n  pm.expect(avisos[0].tipo).to.eql('RESULTADO');\n  pm.expect(avisos[0].idSesion).to.eql(pm.environment.get('sessionId'));\n  pm.expect(avisos[0].idIntento).to.eql(pm.environment.get('attemptId'));\n  pm.expect(avisos[0].leida).to.eql(false);\n  pm.expect(avisos[0].mensaje).to.include('5');\n});\npm.environment.set('resultNotificationId',avisos[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -1295,6 +1365,620 @@
       ]
     },
     {
+      "name": "Notificaciones",
+      "item": [
+        {
+          "name": "Notificaciones - resultado y valoración tras reportes",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/notificaciones",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "const avisos=pm.response.json();\npm.test('Solo un resultado y una valoración del intento',()=>{\n  pm.expect(avisos).to.be.an('array').with.lengthOf(2);\n  pm.expect(avisos.filter(a=>a.tipo==='RESULTADO')).to.have.lengthOf(1);\n  pm.expect(avisos.filter(a=>a.tipo==='VALORACION')).to.have.lengthOf(1);\n  for(const aviso of avisos) {\n    pm.expect(aviso.id).to.match(/^[0-9a-f-]{36}$/i);\n    pm.expect(aviso.idSesion).to.eql(pm.environment.get('sessionId'));\n    pm.expect(aviso.idIntento).to.eql(pm.environment.get('attemptId'));\n    pm.expect(aviso.mensaje).to.be.a('string').and.not.empty;\n    pm.expect(Number.isNaN(Date.parse(aviso.fechaCreacion))).to.eql(false);\n  }\n});\npm.test('Ambos avisos inicialmente sin leer',()=>pm.expect(avisos.every(a=>a.leida===false)).to.eql(true));\npm.environment.set('valuationNotificationId',avisos.find(a=>a.tipo==='VALORACION').id);\npm.environment.set('notificationOrder',JSON.stringify(avisos.map(a=>a.id)));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Notificaciones - primera página",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/notificaciones?limite=1&desplazamiento=0",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "pm.test('Primer aviso según orden del listado',()=>{const datos=pm.response.json();pm.expect(datos).to.have.lengthOf(1);pm.expect(datos[0].id).to.eql(JSON.parse(pm.environment.get('notificationOrder'))[0]);});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Notificaciones - segunda página",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/notificaciones?limite=1&desplazamiento=1",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "pm.test('Segundo aviso sin repetir el primero',()=>{const datos=pm.response.json();pm.expect(datos).to.have.lengthOf(1);pm.expect(datos[0].id).to.eql(JSON.parse(pm.environment.get('notificationOrder'))[1]);});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Notificaciones - página fuera del historial",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/notificaciones?limite=1&desplazamiento=2",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "pm.test('Página vacía',()=>pm.expect(pm.response.json()).to.eql([]));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Notificaciones - rechazar límite cero",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/notificaciones?limite=0",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Notificaciones - rechazar límite mayor a 100",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/notificaciones?limite=101",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Notificaciones - rechazar desplazamiento negativo",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/notificaciones?desplazamiento=-1",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Notificaciones - marcar resultado leído",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/notificaciones/{{resultNotificationId}}/leida",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Notificaciones - repetir marcado leído",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/notificaciones/{{resultNotificationId}}/leida",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Notificaciones - consultar lectura persistida",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/notificaciones",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "const avisos=pm.response.json();\npm.test('Solo un resultado y una valoración del intento',()=>{\n  pm.expect(avisos).to.be.an('array').with.lengthOf(2);\n  pm.expect(avisos.filter(a=>a.tipo==='RESULTADO')).to.have.lengthOf(1);\n  pm.expect(avisos.filter(a=>a.tipo==='VALORACION')).to.have.lengthOf(1);\n  for(const aviso of avisos) {\n    pm.expect(aviso.id).to.match(/^[0-9a-f-]{36}$/i);\n    pm.expect(aviso.idSesion).to.eql(pm.environment.get('sessionId'));\n    pm.expect(aviso.idIntento).to.eql(pm.environment.get('attemptId'));\n    pm.expect(aviso.mensaje).to.be.a('string').and.not.empty;\n    pm.expect(Number.isNaN(Date.parse(aviso.fechaCreacion))).to.eql(false);\n  }\n});\npm.test('Lectura persistida sin alterar el otro aviso',()=>{\n  const resultado=avisos.find(a=>a.id===pm.environment.get('resultNotificationId'));\n  const valoracion=avisos.find(a=>a.id===pm.environment.get('valuationNotificationId'));\n  pm.expect(resultado.leida).to.eql(true);\n  pm.expect(valoracion.leida).to.eql(false);\n});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Notificaciones - rechazar marcado sin CSRF",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/notificaciones/{{valuationNotificationId}}/leida",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Notificaciones - denegar consulta sin autenticación",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/notificaciones",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Notificaciones - denegar consulta a docente",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/notificaciones",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Notificaciones - denegar consulta a administrador",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/notificaciones",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{adminEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{adminPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Notificaciones - denegar marcado a docente",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/notificaciones/{{valuationNotificationId}}/leida",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Notificaciones - aviso inexistente",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/notificaciones/00000000-0000-0000-0000-000000000000/leida",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Notificaciones - UUID inválido",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/notificaciones/no-es-uuid/leida",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Notificaciones - crear otro estudiante",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/identidad/estudiantes",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{otherStudentEmail}}\",\n  \"nombre\": \"Estudiante ajeno de pruebas\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "const datos=pm.response.json();pm.test('Estudiante ajeno creado',()=>pm.expect(datos.id).to.match(/^[0-9a-f-]{36}$/i));pm.environment.set('otherStudentId',datos.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Notificaciones - convocar otro estudiante",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/sesiones/{{sessionId}}/convocados",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"agregar\": [\n    \"{{otherStudentId}}\"\n  ],\n  \"retirar\": []\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "const convocatoria=pm.response.json().convocatorias.find(c=>c.idEstudiante===pm.environment.get('otherStudentId'));pm.test('Código propio para otro estudiante',()=>pm.expect(convocatoria.codigoAcceso).to.be.a('string').and.not.empty);pm.environment.set('otherStudentPassword',convocatoria.codigoAcceso);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Notificaciones - bandeja aislada de otro estudiante",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/notificaciones",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{otherStudentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{otherStudentPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "pm.test('No expone avisos del primer estudiante',()=>pm.expect(pm.response.json()).to.eql([]));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Notificaciones - impedir lectura de aviso ajeno",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/notificaciones/{{valuationNotificationId}}/leida",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{otherStudentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{otherStudentPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Notificaciones - rechazos no alteran avisos",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/notificaciones",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "const avisos=pm.response.json();\npm.test('Solo un resultado y una valoración del intento',()=>{\n  pm.expect(avisos).to.be.an('array').with.lengthOf(2);\n  pm.expect(avisos.filter(a=>a.tipo==='RESULTADO')).to.have.lengthOf(1);\n  pm.expect(avisos.filter(a=>a.tipo==='VALORACION')).to.have.lengthOf(1);\n  for(const aviso of avisos) {\n    pm.expect(aviso.id).to.match(/^[0-9a-f-]{36}$/i);\n    pm.expect(aviso.idSesion).to.eql(pm.environment.get('sessionId'));\n    pm.expect(aviso.idIntento).to.eql(pm.environment.get('attemptId'));\n    pm.expect(aviso.mensaje).to.be.a('string').and.not.empty;\n    pm.expect(Number.isNaN(Date.parse(aviso.fechaCreacion))).to.eql(false);\n  }\n});\npm.test('Lectura persistida sin alterar el otro aviso',()=>{\n  const resultado=avisos.find(a=>a.id===pm.environment.get('resultNotificationId'));\n  const valoracion=avisos.find(a=>a.id===pm.environment.get('valuationNotificationId'));\n  pm.expect(resultado.leida).to.eql(true);\n  pm.expect(valoracion.leida).to.eql(false);\n});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Cierre del flujo",
       "item": [
         {
@@ -1387,6 +2071,41 @@
               }
             }
           ]
+        },
+        {
+          "name": "Notificaciones - conservar acceso tras cierre",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/notificaciones",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "const avisos=pm.response.json();\npm.test('Solo un resultado y una valoración del intento',()=>{\n  pm.expect(avisos).to.be.an('array').with.lengthOf(2);\n  pm.expect(avisos.filter(a=>a.tipo==='RESULTADO')).to.have.lengthOf(1);\n  pm.expect(avisos.filter(a=>a.tipo==='VALORACION')).to.have.lengthOf(1);\n  for(const aviso of avisos) {\n    pm.expect(aviso.id).to.match(/^[0-9a-f-]{36}$/i);\n    pm.expect(aviso.idSesion).to.eql(pm.environment.get('sessionId'));\n    pm.expect(aviso.idIntento).to.eql(pm.environment.get('attemptId'));\n    pm.expect(aviso.mensaje).to.be.a('string').and.not.empty;\n    pm.expect(Number.isNaN(Date.parse(aviso.fechaCreacion))).to.eql(false);\n  }\n});\npm.test('Lectura persistida sin alterar el otro aviso',()=>{\n  const resultado=avisos.find(a=>a.id===pm.environment.get('resultNotificationId'));\n  const valoracion=avisos.find(a=>a.id===pm.environment.get('valuationNotificationId'));\n  pm.expect(resultado.leida).to.eql(true);\n  pm.expect(valoracion.leida).to.eql(false);\n});",
+                  "}"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
@@ -1403,6 +2122,8 @@
           "  const dominio = pm.environment.get('institutionalDomain');",
           "  pm.environment.set('teacherEmail', 'docente.postman.' + sufijo + '@' + dominio);",
           "  pm.environment.set('studentEmail', 'estudiante.postman.' + sufijo + '@' + dominio);",
+          "  pm.environment.set('otherStudentEmail', 'estudiante.ajeno.postman.' + sufijo + '@' + dominio);",
+          "  for (const clave of ['otherStudentId','otherStudentPassword','resultNotificationId','valuationNotificationId','notificationOrder']) pm.environment.unset(clave);",
           "  pm.environment.set('otherTeacherEmail', 'docente.ajeno.postman.' + sufijo + '@' + dominio);",
           "  pm.environment.unset('valuationId');",
           "  pm.environment.set('teacherPassword', pm.variables.replaceIn('Docente-{{$guid}}'));",
@@ -1413,7 +2134,7 @@
           "  pm.environment.set('sessionStart', new Date(Date.now() - 60000).toISOString().split('.')[0] + 'Z');",
           "  pm.environment.set('sessionEnd', new Date(Date.now() + 3600000).toISOString().split('.')[0] + 'Z');",
           "}",
-          "if (pm.info.requestName === 'Reportes - rechazar valoración sin CSRF') { pm.request.headers.remove('{{csrfHeader}}'); pm.request.headers.remove('X-XSRF-TOKEN'); }\nelse if (!['GET','HEAD','OPTIONS'].includes(pm.request.method)) {",
+          "if (['Reportes - rechazar valoración sin CSRF','Notificaciones - rechazar marcado sin CSRF'].includes(pm.info.requestName)) { pm.request.headers.remove('{{csrfHeader}}'); pm.request.headers.remove('X-XSRF-TOKEN'); }\nelse if (!['GET','HEAD','OPTIONS'].includes(pm.request.method)) {",
           "  const usuario = pm.variables.replaceIn(pm.request.auth.basic.get('username'));",
           "  const clave = pm.variables.replaceIn(pm.request.auth.basic.get('password'));",
           "  if (!usuario || !clave) throw new Error('Faltan credenciales para ' + pm.info.requestName);",
@@ -1426,6 +2147,26 @@
           "      pm.request.headers.remove('{{csrfHeader}}');",
           "      pm.request.headers.upsert({key:datos.nombreCabecera,value:datos.token});",
           "    });",
+          "}",
+          "const cantidadesAvisos = {'Notificaciones - resultado automático sin duplicados':1,'Notificaciones - resultado y valoración tras reportes':2};",
+          "if (cantidadesAvisos[pm.info.requestName]) {",
+          "  const inicioEspera = Date.now();",
+          "  const maximoEspera = Number(pm.environment.get('notificationWaitMs') || 10000);",
+          "  const cantidadEsperada = cantidadesAvisos[pm.info.requestName];",
+          "  const consultarAvisos = () => pm.sendRequest({url:pm.environment.get('baseUrl')+'/api/notificaciones',method:'GET',auth:{type:'basic',basic:[{key:'username',value:pm.environment.get('studentEmail'),type:'string'},{key:'password',value:pm.environment.get('studentPassword'),type:'string'}]}}, (error,respuesta) => {",
+          "    if (error || respuesta.code !== 200) {",
+          "      pm.test('Consulta durante espera de notificaciones',()=>{throw new Error('No se pudo consultar la bandeja');});",
+          "      return;",
+          "    }",
+          "    const avisos = respuesta.json();",
+          "    if (avisos.length >= cantidadEsperada) return;",
+          "    if (Date.now()-inicioEspera >= maximoEspera) {",
+          "      pm.test('Entrega de avisos dentro del tiempo configurado',()=>pm.expect(avisos.length).to.be.at.least(cantidadEsperada));",
+          "      return;",
+          "    }",
+          "    setTimeout(consultarAvisos, 250);",
+          "  });",
+          "  consultarAvisos();",
           "}"
         ]
       }
@@ -1437,7 +2178,7 @@
         "exec": [
           "const nombre = pm.info.requestName;",
           "const creadas = ['Crear docente','Crear estudiante','Crear espacio académico','Crear caso borrador','Programar sesión','Iniciar participación','Evaluar intento'];",
-          "const estadosReportes = {\"Reportes - excluir intento activo\":200,\"Reportes - rechazar valoración de intento activo\":409,\"Reportes - consultar historial\":200,\"Reportes - registrar valoración\":201,\"Reportes - consultar valoración persistida\":200,\"Reportes - rechazar mensaje vacío\":400,\"Reportes - rechazar mensaje mayor a 4000 caracteres\":400,\"Reportes - rechazar valoración sin CSRF\":403,\"Reportes - denegar consulta a estudiante\":403,\"Reportes - denegar valoración a estudiante\":403,\"Reportes - denegar consulta a administrador\":403,\"Reportes - crear docente ajeno\":201,\"Reportes - denegar consulta a docente ajeno\":403,\"Reportes - denegar valoración a docente ajeno\":403,\"Reportes - caso inexistente\":404,\"Reportes - UUID inválido\":400,\"Reportes - rechazos no modifican el historial\":200,\"Reportes - historial de caso archivado\":200};\nconst esperado = estadosReportes[nombre] ?? (nombre === 'Habilitar creación de casos para docentes' ? 204 : creadas.includes(nombre) ? 201 : 200);",
+          "const estadosNotificaciones={\"Notificaciones - sin avisos antes de finalizar\":200,\"Notificaciones - resultado automático sin duplicados\":200,\"Notificaciones - resultado y valoración tras reportes\":200,\"Notificaciones - primera página\":200,\"Notificaciones - segunda página\":200,\"Notificaciones - página fuera del historial\":200,\"Notificaciones - rechazar límite cero\":400,\"Notificaciones - rechazar límite mayor a 100\":400,\"Notificaciones - rechazar desplazamiento negativo\":400,\"Notificaciones - marcar resultado leído\":204,\"Notificaciones - repetir marcado leído\":204,\"Notificaciones - consultar lectura persistida\":200,\"Notificaciones - rechazar marcado sin CSRF\":403,\"Notificaciones - denegar consulta sin autenticación\":401,\"Notificaciones - denegar consulta a docente\":403,\"Notificaciones - denegar consulta a administrador\":403,\"Notificaciones - denegar marcado a docente\":403,\"Notificaciones - aviso inexistente\":404,\"Notificaciones - UUID inválido\":400,\"Notificaciones - crear otro estudiante\":201,\"Notificaciones - convocar otro estudiante\":200,\"Notificaciones - bandeja aislada de otro estudiante\":200,\"Notificaciones - impedir lectura de aviso ajeno\":404,\"Notificaciones - rechazos no alteran avisos\":200,\"Notificaciones - conservar acceso tras cierre\":200};\nconst estadosReportes = {\"Reportes - excluir intento activo\":200,\"Reportes - rechazar valoración de intento activo\":409,\"Reportes - consultar historial\":200,\"Reportes - registrar valoración\":201,\"Reportes - consultar valoración persistida\":200,\"Reportes - rechazar mensaje vacío\":400,\"Reportes - rechazar mensaje mayor a 4000 caracteres\":400,\"Reportes - rechazar valoración sin CSRF\":403,\"Reportes - denegar consulta a estudiante\":403,\"Reportes - denegar valoración a estudiante\":403,\"Reportes - denegar consulta a administrador\":403,\"Reportes - crear docente ajeno\":201,\"Reportes - denegar consulta a docente ajeno\":403,\"Reportes - denegar valoración a docente ajeno\":403,\"Reportes - caso inexistente\":404,\"Reportes - UUID inválido\":400,\"Reportes - rechazos no modifican el historial\":200,\"Reportes - historial de caso archivado\":200};\nconst esperado = estadosNotificaciones[nombre] ?? estadosReportes[nombre] ?? (nombre === 'Habilitar creación de casos para docentes' ? 204 : creadas.includes(nombre) ? 201 : 200);",
           "pm.test('HTTP ' + esperado, () => pm.response.to.have.status(esperado));",
           "if (pm.response.code !== esperado) { pm.execution.setNextRequest(null); }",
           "else if (esperado < 400 && esperado !== 204) {",

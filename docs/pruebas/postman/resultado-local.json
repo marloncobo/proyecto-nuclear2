@@ -1,9 +1,9 @@
 {
-  "fecha": "2026-11-09T05:17:37.011Z",
+  "fecha": "2026-11-09T16:33:30.258Z",
   "motor": "Newman 6.2.3",
   "baseUrl": "http://localhost:8081",
   "baseDatos": "psicoapp_postman_20261108",
-  "alcance": "Colección corregida con reportes, MySQL real aislado, despacho SMTP desactivado.",
+  "alcance": "Colección con reportes y notificaciones internas; MySQL real aislado; despachador habilitado cada 250 ms; SMTP 127.0.0.1:1 sin servicio, no se valida entrega de correo.",
   "estadisticas": {
     "iterations": {
       "total": 1,
@@ -11,42 +11,42 @@
       "failed": 0
     },
     "items": {
-      "total": 45,
+      "total": 70,
       "pending": 0,
       "failed": 0
     },
     "scripts": {
-      "total": 96,
+      "total": 158,
       "pending": 0,
       "failed": 0
     },
     "prerequests": {
-      "total": 45,
+      "total": 70,
       "pending": 0,
       "failed": 0
     },
     "requests": {
-      "total": 71,
+      "total": 106,
       "pending": 0,
       "failed": 0
     },
     "tests": {
-      "total": 45,
+      "total": 70,
       "pending": 0,
       "failed": 0
     },
     "assertions": {
-      "total": 114,
+      "total": 167,
       "pending": 0,
       "failed": 0
     },
     "testScripts": {
-      "total": 51,
+      "total": 88,
       "pending": 0,
       "failed": 0
     },
     "prerequestScripts": {
-      "total": 45,
+      "total": 70,
       "pending": 0,
       "failed": 0
     }
@@ -445,6 +445,24 @@
       ]
     },
     {
+      "nombre": "Notificaciones - sin avisos antes de finalizar",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Bandeja inicial vacía",
+          "correcta": true
+        }
+      ]
+    },
+    {
       "nombre": "Finalizar participación",
       "estado": 200,
       "pruebas": [
@@ -502,6 +520,24 @@
         },
         {
           "nombre": "Calificación máxima 5",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - resultado automático sin duplicados",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Una sola notificación tras finalizar y reevaluar",
           "correcta": true
         }
       ]
@@ -717,6 +753,310 @@
       ]
     },
     {
+      "nombre": "Notificaciones - resultado y valoración tras reportes",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Solo un resultado y una valoración del intento",
+          "correcta": true
+        },
+        {
+          "nombre": "Ambos avisos inicialmente sin leer",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - primera página",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Primer aviso según orden del listado",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - segunda página",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Segundo aviso sin repetir el primero",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - página fuera del historial",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Página vacía",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - rechazar límite cero",
+      "estado": 400,
+      "pruebas": [
+        {
+          "nombre": "HTTP 400",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - rechazar límite mayor a 100",
+      "estado": 400,
+      "pruebas": [
+        {
+          "nombre": "HTTP 400",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - rechazar desplazamiento negativo",
+      "estado": 400,
+      "pruebas": [
+        {
+          "nombre": "HTTP 400",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - marcar resultado leído",
+      "estado": 204,
+      "pruebas": [
+        {
+          "nombre": "HTTP 204",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - repetir marcado leído",
+      "estado": 204,
+      "pruebas": [
+        {
+          "nombre": "HTTP 204",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - consultar lectura persistida",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Solo un resultado y una valoración del intento",
+          "correcta": true
+        },
+        {
+          "nombre": "Lectura persistida sin alterar el otro aviso",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - rechazar marcado sin CSRF",
+      "estado": 403,
+      "pruebas": [
+        {
+          "nombre": "HTTP 403",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - denegar consulta sin autenticación",
+      "estado": 401,
+      "pruebas": [
+        {
+          "nombre": "HTTP 401",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - denegar consulta a docente",
+      "estado": 403,
+      "pruebas": [
+        {
+          "nombre": "HTTP 403",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - denegar consulta a administrador",
+      "estado": 403,
+      "pruebas": [
+        {
+          "nombre": "HTTP 403",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - denegar marcado a docente",
+      "estado": 403,
+      "pruebas": [
+        {
+          "nombre": "HTTP 403",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - aviso inexistente",
+      "estado": 404,
+      "pruebas": [
+        {
+          "nombre": "HTTP 404",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - UUID inválido",
+      "estado": 400,
+      "pruebas": [
+        {
+          "nombre": "HTTP 400",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - crear otro estudiante",
+      "estado": 201,
+      "pruebas": [
+        {
+          "nombre": "HTTP 201",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Estudiante ajeno creado",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - convocar otro estudiante",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Código propio para otro estudiante",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - bandeja aislada de otro estudiante",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "No expone avisos del primer estudiante",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - impedir lectura de aviso ajeno",
+      "estado": 404,
+      "pruebas": [
+        {
+          "nombre": "HTTP 404",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - rechazos no alteran avisos",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Solo un resultado y una valoración del intento",
+          "correcta": true
+        },
+        {
+          "nombre": "Lectura persistida sin alterar el otro aviso",
+          "correcta": true
+        }
+      ]
+    },
+    {
       "nombre": "Finalizar sesión",
       "estado": 200,
       "pruebas": [
@@ -774,6 +1114,28 @@
         },
         {
           "nombre": "Valoración persistida una sola vez",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Notificaciones - conservar acceso tras cierre",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Solo un resultado y una valoración del intento",
+          "correcta": true
+        },
+        {
+          "nombre": "Lectura persistida sin alterar el otro aviso",
           "correcta": true
         }
       ]
