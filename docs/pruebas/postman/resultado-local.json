@@ -1,0 +1,783 @@
+{
+  "fecha": "2026-11-09T05:17:37.011Z",
+  "motor": "Newman 6.2.3",
+  "baseUrl": "http://localhost:8081",
+  "baseDatos": "psicoapp_postman_20261108",
+  "alcance": "Colección corregida con reportes, MySQL real aislado, despacho SMTP desactivado.",
+  "estadisticas": {
+    "iterations": {
+      "total": 1,
+      "pending": 0,
+      "failed": 0
+    },
+    "items": {
+      "total": 45,
+      "pending": 0,
+      "failed": 0
+    },
+    "scripts": {
+      "total": 96,
+      "pending": 0,
+      "failed": 0
+    },
+    "prerequests": {
+      "total": 45,
+      "pending": 0,
+      "failed": 0
+    },
+    "requests": {
+      "total": 71,
+      "pending": 0,
+      "failed": 0
+    },
+    "tests": {
+      "total": 45,
+      "pending": 0,
+      "failed": 0
+    },
+    "assertions": {
+      "total": 114,
+      "pending": 0,
+      "failed": 0
+    },
+    "testScripts": {
+      "total": 51,
+      "pending": 0,
+      "failed": 0
+    },
+    "prerequestScripts": {
+      "total": 45,
+      "pending": 0,
+      "failed": 0
+    }
+  },
+  "resultados": [
+    {
+      "nombre": "Obtener CSRF",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Token CSRF disponible",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Consultar mi identidad",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Crear docente",
+      "estado": 201,
+      "pruebas": [
+        {
+          "nombre": "HTTP 201",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "ID generado",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Crear estudiante",
+      "estado": 201,
+      "pruebas": [
+        {
+          "nombre": "HTTP 201",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "ID generado",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Habilitar creación de casos para docentes",
+      "estado": 204,
+      "pruebas": [
+        {
+          "nombre": "HTTP 204",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Cambiar rol de usuario",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Crear espacio académico",
+      "estado": 201,
+      "pruebas": [
+        {
+          "nombre": "HTTP 201",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "ID generado",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Listar espacios académicos",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Consultar espacio académico",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Crear caso borrador",
+      "estado": 201,
+      "pruebas": [
+        {
+          "nombre": "HTTP 201",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "ID generado",
+          "correcta": true
+        },
+        {
+          "nombre": "Estado esperado",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Consultar caso",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Actualizar caso borrador",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Estado esperado",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Publicar caso",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Estado esperado",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Programar sesión",
+      "estado": 201,
+      "pruebas": [
+        {
+          "nombre": "HTTP 201",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "ID generado",
+          "correcta": true
+        },
+        {
+          "nombre": "Código de convocatoria",
+          "correcta": true
+        },
+        {
+          "nombre": "Estado esperado",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Consultar sesión",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Iniciar sesión",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Estado esperado",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Iniciar participación",
+      "estado": 201,
+      "pruebas": [
+        {
+          "nombre": "HTTP 201",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "ID generado",
+          "correcta": true
+        },
+        {
+          "nombre": "Estado esperado",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Consultar participación",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Responder pregunta",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta guardada",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Avanzar participación",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Retroceder participación",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Reanudar participación",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Reportes - excluir intento activo",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Sin intentos terminados",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Reportes - rechazar valoración de intento activo",
+      "estado": 409,
+      "pruebas": [
+        {
+          "nombre": "HTTP 409",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Finalizar participación",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Estado esperado",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Evaluar intento",
+      "estado": 201,
+      "pruebas": [
+        {
+          "nombre": "HTTP 201",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Evaluación del intento correcto",
+          "correcta": true
+        },
+        {
+          "nombre": "Calificación máxima 5",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Consultar evaluación",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Evaluación del intento correcto",
+          "correcta": true
+        },
+        {
+          "nombre": "Calificación máxima 5",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Reportes - consultar historial",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Historial del intento finalizado",
+          "correcta": true
+        },
+        {
+          "nombre": "Reporte conserva calificación y retroalimentación",
+          "correcta": true
+        },
+        {
+          "nombre": "Sin valoraciones iniciales",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Reportes - registrar valoración",
+      "estado": 201,
+      "pruebas": [
+        {
+          "nombre": "HTTP 201",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Identidad y contenido de valoración",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Reportes - consultar valoración persistida",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Historial del intento finalizado",
+          "correcta": true
+        },
+        {
+          "nombre": "Reporte conserva calificación y retroalimentación",
+          "correcta": true
+        },
+        {
+          "nombre": "Valoración persistida una sola vez",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Reportes - rechazar mensaje vacío",
+      "estado": 400,
+      "pruebas": [
+        {
+          "nombre": "HTTP 400",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Reportes - rechazar mensaje mayor a 4000 caracteres",
+      "estado": 400,
+      "pruebas": [
+        {
+          "nombre": "HTTP 400",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Reportes - rechazar valoración sin CSRF",
+      "estado": 403,
+      "pruebas": [
+        {
+          "nombre": "HTTP 403",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Reportes - denegar consulta a estudiante",
+      "estado": 403,
+      "pruebas": [
+        {
+          "nombre": "HTTP 403",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Reportes - denegar valoración a estudiante",
+      "estado": 403,
+      "pruebas": [
+        {
+          "nombre": "HTTP 403",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Reportes - denegar consulta a administrador",
+      "estado": 403,
+      "pruebas": [
+        {
+          "nombre": "HTTP 403",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Reportes - crear docente ajeno",
+      "estado": 201,
+      "pruebas": [
+        {
+          "nombre": "HTTP 201",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Reportes - denegar consulta a docente ajeno",
+      "estado": 403,
+      "pruebas": [
+        {
+          "nombre": "HTTP 403",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Reportes - denegar valoración a docente ajeno",
+      "estado": 403,
+      "pruebas": [
+        {
+          "nombre": "HTTP 403",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Reportes - caso inexistente",
+      "estado": 404,
+      "pruebas": [
+        {
+          "nombre": "HTTP 404",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Reportes - UUID inválido",
+      "estado": 400,
+      "pruebas": [
+        {
+          "nombre": "HTTP 400",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Reportes - rechazos no modifican el historial",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Historial del intento finalizado",
+          "correcta": true
+        },
+        {
+          "nombre": "Reporte conserva calificación y retroalimentación",
+          "correcta": true
+        },
+        {
+          "nombre": "Valoración persistida una sola vez",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Finalizar sesión",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Estado esperado",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Archivar caso",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Estado esperado",
+          "correcta": true
+        }
+      ]
+    },
+    {
+      "nombre": "Reportes - historial de caso archivado",
+      "estado": 200,
+      "pruebas": [
+        {
+          "nombre": "HTTP 200",
+          "correcta": true
+        },
+        {
+          "nombre": "Respuesta JSON",
+          "correcta": true
+        },
+        {
+          "nombre": "Historial del intento finalizado",
+          "correcta": true
+        },
+        {
+          "nombre": "Reporte conserva calificación y retroalimentación",
+          "correcta": true
+        },
+        {
+          "nombre": "Valoración persistida una sola vez",
+          "correcta": true
+        }
+      ]
+    }
+  ],
+  "fallos": []
+}

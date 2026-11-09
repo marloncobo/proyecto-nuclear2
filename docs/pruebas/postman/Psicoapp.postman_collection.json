@@ -1,0 +1,1472 @@
+{
+  "info": {
+    "_postman_id": "psicoapp-api-collection",
+    "name": "Psicoapp API",
+    "description": "Flujo automatizado de 45 peticiones: identidad, académico, casos, sesiones, participación, evaluación y reportes. Incluye historial docente, valoraciones y controles de rol, propiedad, CSRF, validación, intento activo y caso archivado. Ejecutar completa con el entorno adjunto; configurar adminEmail, adminPassword e institutionalDomain. Crea datos ficticios y habilita CREAR_CASOS para el rol docente. No comprueba SMTP.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    }
+  ],
+  "item": [
+    {
+      "name": "Identidad",
+      "item": [
+        {
+          "name": "Obtener CSRF",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{adminEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{adminPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/identidad/csrf"
+          }
+        },
+        {
+          "name": "Consultar mi identidad",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{adminEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{adminPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/identidad/yo"
+          }
+        },
+        {
+          "name": "Crear docente",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{adminEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{adminPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "{{csrfHeader}}",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{teacherEmail}}\",\n  \"nombre\": \"Docente de pruebas\",\n  \"clave\": \"{{teacherPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/identidad/docentes"
+          }
+        },
+        {
+          "name": "Crear estudiante",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "{{csrfHeader}}",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{studentEmail}}\",\n  \"nombre\": \"Estudiante de pruebas\"\n}"
+            },
+            "url": "{{baseUrl}}/api/identidad/estudiantes"
+          }
+        },
+        {
+          "name": "Habilitar creación de casos para docentes",
+          "request": {
+            "method": "PUT",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{adminEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{adminPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "{{csrfHeader}}",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"habilitado\": true }"
+            },
+            "url": "{{baseUrl}}/api/identidad/roles/DOCENTE/creacion-casos"
+          }
+        },
+        {
+          "name": "Cambiar rol de usuario",
+          "request": {
+            "method": "PUT",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{adminEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{adminPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "{{csrfHeader}}",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"rol\": \"DOCENTE\" }"
+            },
+            "url": "{{baseUrl}}/api/identidad/usuarios/{{teacherId}}/rol"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Académico",
+      "item": [
+        {
+          "name": "Crear espacio académico",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "{{csrfHeader}}",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"nombre\": \"Psicología social\", \"periodo\": \"2026-2\" }"
+            },
+            "url": "{{baseUrl}}/api/academico/espacios"
+          }
+        },
+        {
+          "name": "Listar espacios académicos",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/academico/espacios"
+          }
+        },
+        {
+          "name": "Consultar espacio académico",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/academico/espacios/{{spaceId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Casos",
+      "item": [
+        {
+          "name": "Crear caso borrador",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "{{csrfHeader}}",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Caso de prueba\",\n  \"desarrolloSituacional\": \"Una situación académica para validar el flujo completo.\",\n  \"contexto\": \"Contexto de pruebas\",\n  \"tiempoEstimadoMin\": 30,\n  \"escenarios\": [{\n    \"id\": \"{{scenarioId}}\",\n    \"titulo\": \"Escenario inicial\",\n    \"contextoSituacional\": \"Contexto del escenario\",\n    \"orden\": 1,\n    \"preguntas\": [{\n      \"id\": \"{{questionId}}\",\n      \"enunciado\": \"¿Cuál es la respuesta correcta?\",\n      \"orden\": 1,\n      \"opciones\": [{\n        \"id\": \"{{optionId}}\",\n        \"texto\": \"Respuesta correcta\",\n        \"esCorrecta\": true,\n        \"justificacion\": \"Porque cumple el criterio.\"\n      }, {\n        \"id\": \"{{wrongOptionId}}\",\n        \"texto\": \"Respuesta incorrecta\",\n        \"esCorrecta\": false,\n        \"justificacion\": \"No cumple el criterio.\"\n      }]\n    }]\n  }],\n  \"rubrica\": {\n    \"id\": \"{{rubricId}}\",\n    \"nombre\": \"Rúbrica de prueba\",\n    \"escalaMaxima\": 5.0,\n    \"criterios\": [{\n      \"id\": \"{{criterionId}}\",\n      \"nombre\": \"Criterio único\",\n      \"ponderacion\": 1.0,\n      \"preguntas\": [\"{{questionId}}\"]\n    }]\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/casos"
+          }
+        },
+        {
+          "name": "Consultar caso",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/casos/{{caseId}}"
+          }
+        },
+        {
+          "name": "Actualizar caso borrador",
+          "request": {
+            "method": "PUT",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "{{csrfHeader}}",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Caso de prueba actualizado\",\n  \"desarrolloSituacional\": \"Una situación académica actualizada.\",\n  \"contexto\": \"Contexto actualizado\",\n  \"tiempoEstimadoMin\": 30,\n  \"escenarios\": [{\n    \"id\": \"{{scenarioId}}\",\n    \"titulo\": \"Escenario inicial\",\n    \"contextoSituacional\": \"Contexto actualizado\",\n    \"orden\": 1,\n    \"preguntas\": [{\n      \"id\": \"{{questionId}}\",\n      \"enunciado\": \"¿Cuál es la respuesta correcta?\",\n      \"orden\": 1,\n      \"opciones\": [{ \"id\": \"{{optionId}}\", \"texto\": \"Respuesta correcta\", \"esCorrecta\": true, \"justificacion\": \"Porque cumple el criterio.\" }, { \"id\": \"{{wrongOptionId}}\", \"texto\": \"Respuesta incorrecta\", \"esCorrecta\": false, \"justificacion\": \"No cumple el criterio.\" }]\n    }]\n  }],\n  \"rubrica\": { \"id\": \"{{rubricId}}\", \"nombre\": \"Rúbrica de prueba\", \"escalaMaxima\": 5.0, \"criterios\": [{ \"id\": \"{{criterionId}}\", \"nombre\": \"Criterio único\", \"ponderacion\": 1.0, \"preguntas\": [\"{{questionId}}\"] }] }\n}"
+            },
+            "url": "{{baseUrl}}/api/casos/{{caseId}}"
+          }
+        },
+        {
+          "name": "Publicar caso",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "{{csrfHeader}}",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/casos/{{caseId}}/publicar"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sesiones",
+      "item": [
+        {
+          "name": "Programar sesión",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "{{csrfHeader}}",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idCaso\": \"{{caseId}}\",\n  \"idEspacio\": \"{{spaceId}}\",\n  \"inicioPrevisto\": \"{{sessionStart}}\",\n  \"finPrevisto\": \"{{sessionEnd}}\",\n  \"duracionMaximaMin\": 30,\n  \"modoNavegacion\": \"FLEXIBLE\",\n  \"lugar\": \"Sala virtual\",\n  \"mensaje\": \"Sesión de prueba\",\n  \"estudiantes\": [\n    \"{{studentId}}\"\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/sesiones"
+          }
+        },
+        {
+          "name": "Consultar sesión",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/sesiones/{{sessionId}}"
+          }
+        },
+        {
+          "name": "Iniciar sesión",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "{{csrfHeader}}",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/sesiones/{{sessionId}}/iniciar"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Participación y evaluación",
+      "description": "Estos endpoints están incluidos para completar el contrato de la API. Su autorización todavía está restringida por la configuración actual del backend.",
+      "item": [
+        {
+          "name": "Iniciar participación",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "{{csrfHeader}}",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"idSesion\": \"{{sessionId}}\", \"codigoAcceso\": \"{{studentPassword}}\", \"preguntas\": [\"{{questionId}}\"] }"
+            },
+            "url": "{{baseUrl}}/api/participaciones"
+          }
+        },
+        {
+          "name": "Consultar participación",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/participaciones/{{attemptId}}"
+          }
+        },
+        {
+          "name": "Responder pregunta",
+          "request": {
+            "method": "PUT",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "{{csrfHeader}}",
+                "value": "{{csrfToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"idPregunta\": \"{{questionId}}\", \"idOpcion\": \"{{optionId}}\" }"
+            },
+            "url": "{{baseUrl}}/api/participaciones/{{attemptId}}/respuestas"
+          }
+        },
+        {
+          "name": "Avanzar participación",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "{{csrfHeader}}",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/participaciones/{{attemptId}}/avanzar"
+          }
+        },
+        {
+          "name": "Retroceder participación",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "{{csrfHeader}}",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/participaciones/{{attemptId}}/retroceder"
+          }
+        },
+        {
+          "name": "Reanudar participación",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "{{csrfHeader}}",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/participaciones/{{attemptId}}/reanudar"
+          }
+        },
+        {
+          "name": "Reportes - excluir intento activo",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/reportes/casos/{{caseId}}/estudiantes/{{studentId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "pm.test('Sin intentos terminados', () => pm.expect(pm.response.json()).to.eql([]));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reportes - rechazar valoración de intento activo",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/reportes/participaciones/{{attemptId}}/valoraciones",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensaje\": \"Buen análisis del caso y elección justificada de la respuesta.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Finalizar participación",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "{{csrfHeader}}",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/participaciones/{{attemptId}}/finalizar"
+          }
+        },
+        {
+          "name": "Evaluar intento",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "{{csrfHeader}}",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/evaluaciones/{{attemptId}}"
+          }
+        },
+        {
+          "name": "Consultar evaluación",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/evaluaciones/{{attemptId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reportes",
+      "item": [
+        {
+          "name": "Reportes - consultar historial",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/reportes/casos/{{caseId}}/estudiantes/{{studentId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "const datos = pm.response.json();\npm.test('Historial del intento finalizado', () => {\n  pm.expect(datos).to.be.an('array').with.lengthOf(1);\n  const entrada = datos[0];\n  pm.expect(entrada.participacion.idIntento).to.eql(pm.environment.get('attemptId'));\n  pm.expect(entrada.participacion.idSesion).to.eql(pm.environment.get('sessionId'));\n  pm.expect(entrada.participacion.idEstudiante).to.eql(pm.environment.get('studentId'));\n  pm.expect(entrada.participacion.estado).to.eql('FINALIZADO');\n  pm.expect(entrada.participacion.respuestas[pm.environment.get('questionId')]).to.eql(pm.environment.get('optionId'));\n});\npm.test('Reporte conserva calificación y retroalimentación', () => {\n  pm.expect(Number(datos[0].resultado.calificacion)).to.eql(5);\n  pm.expect(datos[0].resultado.detalles).to.have.lengthOf(1);\n  const detalle = datos[0].resultado.detalles[0];\n  pm.expect(detalle.idPregunta).to.eql(pm.environment.get('questionId'));\n  pm.expect(detalle.idOpcion).to.eql(pm.environment.get('optionId'));\n  pm.expect(detalle.correcta).to.eql(true);\n  pm.expect(detalle.contestada).to.eql(true);\n  pm.expect(detalle.retroalimentacion).to.be.a('string').and.not.empty;\n});\npm.test('Sin valoraciones iniciales', () => pm.expect(datos[0].valoracionesGenerales).to.eql([]));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reportes - registrar valoración",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/reportes/participaciones/{{attemptId}}/valoraciones",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensaje\": \"Buen análisis del caso y elección justificada de la respuesta.\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "const valoracion = pm.response.json();\npm.test('Identidad y contenido de valoración', () => {\n  pm.expect(valoracion.id).to.match(/^[0-9a-f-]{36}$/i);\n  pm.expect(valoracion.idIntento).to.eql(pm.environment.get('attemptId'));\n  pm.expect(valoracion.idDocente).to.eql(pm.environment.get('teacherId'));\n  pm.expect(valoracion.mensaje).to.eql(\"Buen análisis del caso y elección justificada de la respuesta.\");\n  pm.expect(Number.isNaN(Date.parse(valoracion.fecha))).to.eql(false);\n});\npm.environment.set('valuationId', valoracion.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reportes - consultar valoración persistida",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/reportes/casos/{{caseId}}/estudiantes/{{studentId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "const datos = pm.response.json();\npm.test('Historial del intento finalizado', () => {\n  pm.expect(datos).to.be.an('array').with.lengthOf(1);\n  const entrada = datos[0];\n  pm.expect(entrada.participacion.idIntento).to.eql(pm.environment.get('attemptId'));\n  pm.expect(entrada.participacion.idSesion).to.eql(pm.environment.get('sessionId'));\n  pm.expect(entrada.participacion.idEstudiante).to.eql(pm.environment.get('studentId'));\n  pm.expect(entrada.participacion.estado).to.eql('FINALIZADO');\n  pm.expect(entrada.participacion.respuestas[pm.environment.get('questionId')]).to.eql(pm.environment.get('optionId'));\n});\npm.test('Reporte conserva calificación y retroalimentación', () => {\n  pm.expect(Number(datos[0].resultado.calificacion)).to.eql(5);\n  pm.expect(datos[0].resultado.detalles).to.have.lengthOf(1);\n  const detalle = datos[0].resultado.detalles[0];\n  pm.expect(detalle.idPregunta).to.eql(pm.environment.get('questionId'));\n  pm.expect(detalle.idOpcion).to.eql(pm.environment.get('optionId'));\n  pm.expect(detalle.correcta).to.eql(true);\n  pm.expect(detalle.contestada).to.eql(true);\n  pm.expect(detalle.retroalimentacion).to.be.a('string').and.not.empty;\n});\npm.test('Valoración persistida una sola vez', () => {\n  const valoraciones = datos[0].valoracionesGenerales;\n  pm.expect(valoraciones).to.have.lengthOf(1);\n  pm.expect(valoraciones[0].id).to.eql(pm.environment.get('valuationId'));\n  pm.expect(valoraciones[0].idIntento).to.eql(pm.environment.get('attemptId'));\n  pm.expect(valoraciones[0].idDocente).to.eql(pm.environment.get('teacherId'));\n  pm.expect(valoraciones[0].mensaje).to.eql(\"Buen análisis del caso y elección justificada de la respuesta.\");\n});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reportes - rechazar mensaje vacío",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/reportes/participaciones/{{attemptId}}/valoraciones",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensaje\": \"   \"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reportes - rechazar mensaje mayor a 4000 caracteres",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/reportes/participaciones/{{attemptId}}/valoraciones",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensaje\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reportes - rechazar valoración sin CSRF",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/reportes/participaciones/{{attemptId}}/valoraciones",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensaje\": \"Buen análisis del caso y elección justificada de la respuesta.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reportes - denegar consulta a estudiante",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/reportes/casos/{{caseId}}/estudiantes/{{studentId}}"
+          }
+        },
+        {
+          "name": "Reportes - denegar valoración a estudiante",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{studentEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{studentPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/reportes/participaciones/{{attemptId}}/valoraciones",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensaje\": \"Buen análisis del caso y elección justificada de la respuesta.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reportes - denegar consulta a administrador",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{adminEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{adminPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/reportes/casos/{{caseId}}/estudiantes/{{studentId}}"
+          }
+        },
+        {
+          "name": "Reportes - crear docente ajeno",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{adminEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{adminPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/identidad/docentes",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{otherTeacherEmail}}\",\n  \"nombre\": \"Docente ajeno de pruebas\",\n  \"clave\": \"{{teacherPassword}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reportes - denegar consulta a docente ajeno",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{otherTeacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/reportes/casos/{{caseId}}/estudiantes/{{studentId}}"
+          }
+        },
+        {
+          "name": "Reportes - denegar valoración a docente ajeno",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{otherTeacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/reportes/participaciones/{{attemptId}}/valoraciones",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensaje\": \"Buen análisis del caso y elección justificada de la respuesta.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reportes - caso inexistente",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/reportes/casos/00000000-0000-0000-0000-000000000000/estudiantes/{{studentId}}"
+          }
+        },
+        {
+          "name": "Reportes - UUID inválido",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/reportes/casos/no-es-uuid/estudiantes/{{studentId}}"
+          }
+        },
+        {
+          "name": "Reportes - rechazos no modifican el historial",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/reportes/casos/{{caseId}}/estudiantes/{{studentId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "const datos = pm.response.json();\npm.test('Historial del intento finalizado', () => {\n  pm.expect(datos).to.be.an('array').with.lengthOf(1);\n  const entrada = datos[0];\n  pm.expect(entrada.participacion.idIntento).to.eql(pm.environment.get('attemptId'));\n  pm.expect(entrada.participacion.idSesion).to.eql(pm.environment.get('sessionId'));\n  pm.expect(entrada.participacion.idEstudiante).to.eql(pm.environment.get('studentId'));\n  pm.expect(entrada.participacion.estado).to.eql('FINALIZADO');\n  pm.expect(entrada.participacion.respuestas[pm.environment.get('questionId')]).to.eql(pm.environment.get('optionId'));\n});\npm.test('Reporte conserva calificación y retroalimentación', () => {\n  pm.expect(Number(datos[0].resultado.calificacion)).to.eql(5);\n  pm.expect(datos[0].resultado.detalles).to.have.lengthOf(1);\n  const detalle = datos[0].resultado.detalles[0];\n  pm.expect(detalle.idPregunta).to.eql(pm.environment.get('questionId'));\n  pm.expect(detalle.idOpcion).to.eql(pm.environment.get('optionId'));\n  pm.expect(detalle.correcta).to.eql(true);\n  pm.expect(detalle.contestada).to.eql(true);\n  pm.expect(detalle.retroalimentacion).to.be.a('string').and.not.empty;\n});\npm.test('Valoración persistida una sola vez', () => {\n  const valoraciones = datos[0].valoracionesGenerales;\n  pm.expect(valoraciones).to.have.lengthOf(1);\n  pm.expect(valoraciones[0].id).to.eql(pm.environment.get('valuationId'));\n  pm.expect(valoraciones[0].idIntento).to.eql(pm.environment.get('attemptId'));\n  pm.expect(valoraciones[0].idDocente).to.eql(pm.environment.get('teacherId'));\n  pm.expect(valoraciones[0].mensaje).to.eql(\"Buen análisis del caso y elección justificada de la respuesta.\");\n});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Cierre del flujo",
+      "item": [
+        {
+          "name": "Finalizar sesión",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "{{csrfHeader}}",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/sesiones/{{sessionId}}/finalizar"
+          }
+        },
+        {
+          "name": "Archivar caso",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "{{csrfHeader}}",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/casos/{{caseId}}/archivar"
+          }
+        },
+        {
+          "name": "Reportes - historial de caso archivado",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{teacherEmail}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{teacherPassword}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/reportes/casos/{{caseId}}/estudiantes/{{studentId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "const datos = pm.response.json();\npm.test('Historial del intento finalizado', () => {\n  pm.expect(datos).to.be.an('array').with.lengthOf(1);\n  const entrada = datos[0];\n  pm.expect(entrada.participacion.idIntento).to.eql(pm.environment.get('attemptId'));\n  pm.expect(entrada.participacion.idSesion).to.eql(pm.environment.get('sessionId'));\n  pm.expect(entrada.participacion.idEstudiante).to.eql(pm.environment.get('studentId'));\n  pm.expect(entrada.participacion.estado).to.eql('FINALIZADO');\n  pm.expect(entrada.participacion.respuestas[pm.environment.get('questionId')]).to.eql(pm.environment.get('optionId'));\n});\npm.test('Reporte conserva calificación y retroalimentación', () => {\n  pm.expect(Number(datos[0].resultado.calificacion)).to.eql(5);\n  pm.expect(datos[0].resultado.detalles).to.have.lengthOf(1);\n  const detalle = datos[0].resultado.detalles[0];\n  pm.expect(detalle.idPregunta).to.eql(pm.environment.get('questionId'));\n  pm.expect(detalle.idOpcion).to.eql(pm.environment.get('optionId'));\n  pm.expect(detalle.correcta).to.eql(true);\n  pm.expect(detalle.contestada).to.eql(true);\n  pm.expect(detalle.retroalimentacion).to.be.a('string').and.not.empty;\n});\npm.test('Valoración persistida una sola vez', () => {\n  const valoraciones = datos[0].valoracionesGenerales;\n  pm.expect(valoraciones).to.have.lengthOf(1);\n  pm.expect(valoraciones[0].id).to.eql(pm.environment.get('valuationId'));\n  pm.expect(valoraciones[0].idIntento).to.eql(pm.environment.get('attemptId'));\n  pm.expect(valoraciones[0].idDocente).to.eql(pm.environment.get('teacherId'));\n  pm.expect(valoraciones[0].mensaje).to.eql(\"Buen análisis del caso y elección justificada de la respuesta.\");\n});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (pm.info.requestName === 'Obtener CSRF') {",
+          "  if (!pm.environment.get('adminPassword')) throw new Error('Configura adminPassword');",
+          "  const sufijo = Date.now().toString(36);",
+          "  const dominio = pm.environment.get('institutionalDomain');",
+          "  pm.environment.set('teacherEmail', 'docente.postman.' + sufijo + '@' + dominio);",
+          "  pm.environment.set('studentEmail', 'estudiante.postman.' + sufijo + '@' + dominio);",
+          "  pm.environment.set('otherTeacherEmail', 'docente.ajeno.postman.' + sufijo + '@' + dominio);",
+          "  pm.environment.unset('valuationId');",
+          "  pm.environment.set('teacherPassword', pm.variables.replaceIn('Docente-{{$guid}}'));",
+          "  for (const clave of ['teacherId','studentId','caseId','spaceId','sessionId','attemptId','studentPassword','csrfToken']) pm.environment.unset(clave);",
+          "  for (const clave of ['questionId','optionId','scenarioId','rubricId','criterionId','wrongOptionId']) pm.environment.set(clave, pm.variables.replaceIn('{{$guid}}'));",
+          "}",
+          "if (pm.info.requestName === 'Programar sesión') {",
+          "  pm.environment.set('sessionStart', new Date(Date.now() - 60000).toISOString().split('.')[0] + 'Z');",
+          "  pm.environment.set('sessionEnd', new Date(Date.now() + 3600000).toISOString().split('.')[0] + 'Z');",
+          "}",
+          "if (pm.info.requestName === 'Reportes - rechazar valoración sin CSRF') { pm.request.headers.remove('{{csrfHeader}}'); pm.request.headers.remove('X-XSRF-TOKEN'); }\nelse if (!['GET','HEAD','OPTIONS'].includes(pm.request.method)) {",
+          "  const usuario = pm.variables.replaceIn(pm.request.auth.basic.get('username'));",
+          "  const clave = pm.variables.replaceIn(pm.request.auth.basic.get('password'));",
+          "  if (!usuario || !clave) throw new Error('Faltan credenciales para ' + pm.info.requestName);",
+          "  pm.sendRequest({url: pm.environment.get('baseUrl') + '/api/identidad/csrf', method:'GET',",
+          "    auth:{type:'basic',basic:[{key:'username',value:usuario,type:'string'},{key:'password',value:clave,type:'string'}]}}, (error, respuesta) => {",
+          "      if (error || respuesta.code !== 200) throw new Error('No se pudo obtener CSRF para ' + pm.info.requestName);",
+          "      const datos = respuesta.json();",
+          "      pm.environment.set('csrfHeader', datos.nombreCabecera);",
+          "      pm.environment.set('csrfToken', datos.token);",
+          "      pm.request.headers.remove('{{csrfHeader}}');",
+          "      pm.request.headers.upsert({key:datos.nombreCabecera,value:datos.token});",
+          "    });",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const nombre = pm.info.requestName;",
+          "const creadas = ['Crear docente','Crear estudiante','Crear espacio académico','Crear caso borrador','Programar sesión','Iniciar participación','Evaluar intento'];",
+          "const estadosReportes = {\"Reportes - excluir intento activo\":200,\"Reportes - rechazar valoración de intento activo\":409,\"Reportes - consultar historial\":200,\"Reportes - registrar valoración\":201,\"Reportes - consultar valoración persistida\":200,\"Reportes - rechazar mensaje vacío\":400,\"Reportes - rechazar mensaje mayor a 4000 caracteres\":400,\"Reportes - rechazar valoración sin CSRF\":403,\"Reportes - denegar consulta a estudiante\":403,\"Reportes - denegar valoración a estudiante\":403,\"Reportes - denegar consulta a administrador\":403,\"Reportes - crear docente ajeno\":201,\"Reportes - denegar consulta a docente ajeno\":403,\"Reportes - denegar valoración a docente ajeno\":403,\"Reportes - caso inexistente\":404,\"Reportes - UUID inválido\":400,\"Reportes - rechazos no modifican el historial\":200,\"Reportes - historial de caso archivado\":200};\nconst esperado = estadosReportes[nombre] ?? (nombre === 'Habilitar creación de casos para docentes' ? 204 : creadas.includes(nombre) ? 201 : 200);",
+          "pm.test('HTTP ' + esperado, () => pm.response.to.have.status(esperado));",
+          "if (pm.response.code !== esperado) { pm.execution.setNextRequest(null); }",
+          "else if (esperado < 400 && esperado !== 204) {",
+          "  pm.test('Respuesta JSON', () => pm.response.to.be.json);",
+          "  const datos = pm.response.json();",
+          "  const claves = {'Crear docente':'teacherId','Crear estudiante':'studentId','Crear espacio académico':'spaceId','Crear caso borrador':'caseId','Programar sesión':'sessionId','Iniciar participación':'attemptId'};",
+          "  if (claves[nombre]) {",
+          "    pm.test('ID generado', () => pm.expect(datos.id).to.match(/^[0-9a-f-]{36}$/i));",
+          "    pm.environment.set(claves[nombre], datos.id);",
+          "  }",
+          "  if (nombre === 'Obtener CSRF') {",
+          "    pm.test('Token CSRF disponible', () => {pm.expect(datos.token).to.be.a('string').and.not.empty; pm.expect(datos.nombreCabecera).to.be.a('string').and.not.empty;});",
+          "    pm.environment.set('csrfToken', datos.token); pm.environment.set('csrfHeader', datos.nombreCabecera);",
+          "  }",
+          "  if (nombre === 'Programar sesión') {",
+          "    const convocatoria = datos.convocatorias.find(c => c.idEstudiante === pm.environment.get('studentId'));",
+          "    pm.test('Código de convocatoria', () => pm.expect(convocatoria.codigoAcceso).to.be.a('string').and.not.empty);",
+          "    pm.environment.set('studentPassword', convocatoria.codigoAcceso);",
+          "  }",
+          "  const estados = {'Crear caso borrador':'BORRADOR','Actualizar caso borrador':'BORRADOR','Publicar caso':'PUBLICADO','Archivar caso':'ARCHIVADO','Programar sesión':'SIN_INICIAR','Iniciar sesión':'EN_CURSO','Finalizar sesión':'FINALIZADO','Iniciar participación':'EN_PROGRESO','Finalizar participación':'FINALIZADO'};",
+          "  if (estados[nombre]) pm.test('Estado esperado', () => pm.expect(datos.estado).to.eql(estados[nombre]));",
+          "  if (nombre === 'Responder pregunta') pm.test('Respuesta guardada', () => pm.expect(datos.respuestas[pm.environment.get('questionId')]).to.eql(pm.environment.get('optionId')));",
+          "  if (['Evaluar intento','Consultar evaluación'].includes(nombre)) {",
+          "    pm.test('Evaluación del intento correcto', () => pm.expect(datos.idIntento).to.eql(pm.environment.get('attemptId')));",
+          "    pm.test('Calificación máxima 5', () => pm.expect(Number(datos.resultado.calificacion)).to.eql(5));",
+          "  }",
+          "}"
+        ]
+      }
+    }
+  ]
+}
