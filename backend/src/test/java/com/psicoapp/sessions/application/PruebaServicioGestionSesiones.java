@@ -77,7 +77,7 @@ class PruebaServicioGestionSesiones {
         var orden = inOrder(identidades, casos, academico, sesiones);
         orden.verify(identidades).exigirDocente(docente);
         orden.verify(casos).exigirPublicado(docente, sesion.idCaso());
-        orden.verify(academico).consultarEspacio(docente, sesion.idEspacio());
+        orden.verify(academico).bloquearParaProgramacion(docente, sesion.idEspacio());
         orden.verify(sesiones).guardar(any());
     }
 
@@ -99,9 +99,9 @@ class PruebaServicioGestionSesiones {
         assertThrows(Conflicto.class, () -> servicio.programar(docente, datos(30)));
         verifyNoInteractions(academico, sesiones);
         doReturn(new CatalogoCasos.CasoProgramable(sesion.idCaso(), 40, "Caso formativo")).when(casos).exigirPublicado(docente, sesion.idCaso());
-        when(academico.consultarEspacio(docente, sesion.idEspacio())).thenThrow(new NoEncontrado("Espacio"));
+        when(academico.bloquearParaProgramacion(docente, sesion.idEspacio())).thenThrow(new NoEncontrado("Espacio"));
         assertThrows(NoEncontrado.class, () -> servicio.programar(docente, datos(30)));
-        doReturn(null).when(academico).consultarEspacio(docente, sesion.idEspacio());
+        doReturn(null).when(academico).bloquearParaProgramacion(docente, sesion.idEspacio());
         assertThrows(IllegalArgumentException.class, () -> servicio.programar(docente, datos(41)));
         verify(sesiones, never()).guardar(any());
     }

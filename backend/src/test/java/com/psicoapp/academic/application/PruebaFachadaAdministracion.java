@@ -22,12 +22,40 @@ import static org.mockito.Mockito.*;
 class PruebaFachadaAdministracion {
     @Mock RepositorioEspaciosAcademicos espacios;
     @Mock DirectorioIdentidad identidades;
+    @Mock ConsultaUsoEspacios usoEspacios;
     private FachadaAdministracion academico;
     private final UUID idDocente = UUID.randomUUID();
 
     @BeforeEach
     void preparar() {
-        academico = new FachadaAdministracion(espacios, identidades);
+        academico = new FachadaAdministracion(espacios, identidades, usoEspacios);
+    }
+
+    @Test
+    @DisplayName("RF-04: bloquea antes de consultar uso y editar el catalogo")
+    void editaEspacioBajoBloqueo() {
+        UUID id = UUID.randomUUID();
+        when(espacios.bloquearPorId(id)).thenReturn(Optional.of(new EspacioAcademico(id, "Anterior", "2026-2")));
+        assertEquals("Nuevo", academico.editarEspacio(idDocente, id, " Nuevo ", "2027-1").nombre());
+        var orden = inOrder(identidades, espacios, usoEspacios);
+        orden.verify(identidades).exigirDocente(idDocente);
+        orden.verify(espacios).bloquearPorId(id);
+        orden.verify(usoEspacios).tieneSesiones(id);
+        orden.verify(espacios).actualizar(new EspacioAcademico(id, "Nuevo", "2027-1"));
+    }
+
+    @Test
+    @DisplayName("RF-04: no modifica un espacio usado ni inexistente")
+    void rechazaEdicionDeEspacioUsadoOInexistente() {
+        UUID id = UUID.randomUUID();
+        when(espacios.bloquearPorId(id)).thenReturn(Optional.empty());
+        assertThrows(NoEncontrado.class, () -> academico.editarEspacio(idDocente, id, "Nuevo", "2027-1"));
+        verifyNoInteractions(usoEspacios);
+        when(espacios.bloquearPorId(id)).thenReturn(Optional.of(new EspacioAcademico(id, "Anterior", "2026-2")));
+        when(usoEspacios.tieneSesiones(id)).thenReturn(true);
+        assertThrows(com.psicoapp.shared.exceptions.Conflicto.class,
+                () -> academico.editarEspacio(idDocente, id, "Nuevo", "2027-1"));
+        verify(espacios, never()).actualizar(any());
     }
 
     @Test

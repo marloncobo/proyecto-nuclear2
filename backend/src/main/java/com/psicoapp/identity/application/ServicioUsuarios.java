@@ -7,6 +7,7 @@ import com.psicoapp.shared.exceptions.Conflicto;
 import com.psicoapp.shared.exceptions.NoEncontrado;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -18,6 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class ServicioUsuarios implements DirectorioIdentidad {
+    public record DatosUsuarioAdministrado(UUID id, String correo, String nombre, String rol,
+            boolean puedeCrearCasos, boolean activo) { }
+
     private final RepositorioUsuarios usuarios;
     private final PasswordEncoder claves;
     private final PermisosRol permisos;
@@ -33,6 +37,67 @@ public class ServicioUsuarios implements DirectorioIdentidad {
                 .collect(Collectors.toUnmodifiableSet());
     }
 
+    @Transactional(readOnly = true)
+    public List<DatosUsuarioAdministrado> listarUsuarios(UUID idActor, Rol rol, Boolean activo) {
+        exigirRol(idActor, Rol.ADMINISTRADOR);
+        return usuarios.listar(rol, activo).stream().map(this::representarAdministrado).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public DatosUsuarioAdministrado consultarUsuario(UUID idActor, UUID idUsuario) {
+        exigirRol(idActor, Rol.ADMINISTRADOR);
+        return representarAdministrado(buscarUsuario(idUsuario));
+    }
+
+    public DatosUsuarioAdministrado editarDocente(UUID idActor, UUID idUsuario, String correo, String nombre) {
+        exigirRol(idActor, Rol.ADMINISTRADOR);
+        Usuario anterior = buscarUsuario(idUsuario);
+        if (anterior.rol() != Rol.DOCENTE) throw new Conflicto("La cuenta no tiene rol docente");
+        String normalizado = Usuario.normalizarCorreo(correo);
+        if (usuarios.buscarPorCorreo(normalizado).filter(u -> !u.id().equals(idUsuario)).isPresent()) {
+            throw new Conflicto("El correo ya esta registrado");
+        }
+        Usuario actualizado = new Usuario(anterior.id(), normalizado, nombre, anterior.rol(), anterior.hashClave(),
+                anterior.activo(), anterior.fechaCreacion());
+        usuarios.actualizarDatosDocente(idUsuario, actualizado.correo(), actualizado.nombre());
+        return representarAdministrado(actualizado);
+    }
+
+    public DatosUsuarioAdministrado cambiarEstado(UUID idActor, UUID idUsuario, boolean activo) {
+        exigirRol(idActor, Rol.ADMINISTRADOR);
+        if (idActor.equals(idUsuario) && !activo) throw new Conflicto("No puede desactivar su propia cuenta");
+        Usuario anterior = buscarUsuario(idUsuario);
+        Usuario actualizado = new Usuario(anterior.id(), anterior.correo(), anterior.nombre(), anterior.rol(),
+                anterior.hashClave(), activo, anterior.fechaCreacion());
+        usuarios.actualizarEstado(idUsuario, activo);
+        return representarAdministrado(actualizado);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Rol> listarRoles(UUID idActor) {
+        exigirRol(idActor, Rol.ADMINISTRADOR);
+        return List.of(Rol.values());
+    }
+
+    @Transactional(readOnly = true)
+    public boolean consultarCreacionCasos(UUID idActor, Rol rol) {
+        exigirRol(idActor, Rol.ADMINISTRADOR);
+        return rol == Rol.DOCENTE && permisos.puedeCrearCasos(rol);
+    }
+
+    @Transactional(readOnly = true)
+    public DatosUsuario buscarEstudiante(UUID idActor, String correo) {
+        exigirRol(idActor, Rol.DOCENTE);
+        return usuarios.buscarPorCorreo(validarCorreoInstitucional(correo))
+                .filter(u -> u.activo() && u.rol() == Rol.ESTUDIANTE).map(this::representarUsuario)
+                .orElseThrow(() -> new NoEncontrado("Estudiante no encontrado"));
+    }
+
+    private DatosUsuarioAdministrado representarAdministrado(Usuario usuario) {
+        DatosUsuario datos = representarUsuario(usuario);
+        return new DatosUsuarioAdministrado(datos.id(), datos.correo(), datos.nombre(), datos.rol(),
+                datos.puedeCrearCasos(), usuario.activo());
+    }
     public DatosUsuario registrarDocente(UUID idActor, String correo, String nombre, String clave) {
         exigirRol(idActor, Rol.ADMINISTRADOR);
         return crearUsuario(correo, nombre, Rol.DOCENTE, clave);

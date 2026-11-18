@@ -7,6 +7,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Optional;
+import java.util.List;
+import com.psicoapp.shared.exceptions.Conflicto;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -18,6 +20,28 @@ public class RepositorioUsuariosJdbc implements RepositorioUsuarios {
 
     public RepositorioUsuariosJdbc(JdbcClient jdbc) {
         this.jdbc = jdbc;
+    }
+
+    @Override
+    public void actualizarDatosDocente(UUID id, String correo, String nombre) {
+        if (jdbc.sql("UPDATE usuario SET correo = ?, nombre = ? WHERE id_usuario = ? "
+                + "AND id_rol = (SELECT id_rol FROM rol WHERE nombre = 'DOCENTE')")
+                .params(correo, nombre, id.toString()).update() != 1) {
+            throw new Conflicto("La cuenta ya no tiene rol docente");
+        }
+    }
+
+    @Override
+    public void actualizarEstado(UUID id, boolean activo) {
+        jdbc.sql("UPDATE usuario SET activo = ? WHERE id_usuario = ?").params(activo, id.toString()).update();
+    }
+
+    @Override
+    public List<Usuario> listar(Rol rol, Boolean activo) {
+        return jdbc.sql(CONSULTA + "WHERE (:rol IS NULL OR r.nombre = :rol) "
+                + "AND (:activo IS NULL OR u.activo = :activo) ORDER BY u.nombre, u.correo, u.id_usuario")
+                .param("rol", rol == null ? null : rol.name(), java.sql.Types.VARCHAR)
+                .param("activo", activo, java.sql.Types.BOOLEAN).query(this::mapear).list();
     }
 
     @Override
