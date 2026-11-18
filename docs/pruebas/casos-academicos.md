@@ -1,5 +1,22 @@
 # Casos de prueba — organización académica
 
+> Actualizacion 18-11-2026: las fichas originales reflejan la primera entrega.
+> La asociacion con sesiones y convocatorias ya existe; consultar las
+> [correcciones vigentes](correcciones-revision.md). La edicion del catalogo
+> se verifica con `PruebaGestionIdentidadAcademica` sobre JDBC real y H2.
+
+## Verificacion de edicion de espacios (soporte de RF-04 / CU-12)
+
+| Escenario | Resultado esperado | Prueba automatizada |
+| --- | --- | --- |
+| Docente edita espacio sin sesiones | 200, conserva UUID y normaliza nombre/periodo; cambios persistidos | `editaEspaciosDisponibles` |
+| Datos invalidos, espacio ausente, rol incorrecto o falta CSRF | 400, 404 y 403 respectivamente; sin cambios | `editaEspaciosDisponibles` |
+| Programacion concurrente con edicion | La edicion espera al bloqueo de programacion y devuelve 409 tras confirmar la sesion | `serializaProgramacionYEdicion` |
+| Espacio asociado a sesion finalizada | 409 y conserva los datos originales | `serializaProgramacionYEdicion` |
+
+El catalogo sigue siendo compartido entre docentes. La restriccion de edicion
+es una decision de esta ampliacion, no una nueva RN del catalogo.
+
 **Proyecto:** Psicoapp · **Versión del documento:** 0.1.0 · **Fecha de elaboración:** 30-10-2026.
 **Estado:** planeado, pendiente de revisión y ejecución. No representa un acta de resultados.
 

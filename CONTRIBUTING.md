@@ -22,7 +22,7 @@ Tambien incluye construccion/publicacion de casos y programacion base/ciclo de
 vida de sesiones, participacion, evaluacion y notificaciones con entregas durables.
 Consulta [notificaciones](docs/pruebas/notificaciones.md) para configurar SMTP,
 URL de acceso y clave de cifrado antes de programar sesiones.
-El frontend está pendiente de implementación. Consulta el README del backend
+El frontend para docentes y administradores está implementado en Angular 21; consulta [su guía y límites](frontend/README.md). Consulta el README del backend
 para conocer el alcance implementado y las integraciones pendientes.
 
 ## Flujo de trabajo con Gitflow
@@ -264,3 +264,20 @@ archivos generados, como `target/`, ni configuraciones personales del editor.
 Si detectas una vulnerabilidad, comunícala en privado a los mantenedores por
 un canal disponible del repositorio; evita publicar credenciales o detalles
 explotables en un issue público.
+
+## Desarrollo del frontend
+
+La interfaz para docentes y administradores se encuentra en `frontend/` y usa Angular 21, TypeScript y CSS. Consulta [su guía](frontend/README.md) para las funciones y los límites de integración.
+
+Con Node.js compatible con Angular 21, desde `frontend/`:
+
+```powershell
+npm ci
+npm start
+npm run build
+npm test
+```
+
+El servidor de desarrollo usa el puerto 3000 y reenvía `/api` al backend en 8080 mediante `proxy.conf.json`. No cambies el backend para ejecutar o diseñar el frontend. Conserva los identificadores propios en español y los datos de demostración separados de los reales. Para cambios de interfaz, verifica escritorio, móvil y teclado; las pruebas Playwright usan Edge y una API simulada.
+
+No versiones `node_modules/`, `dist/`, `.angular/`, resultados de pruebas ni capturas generadas. Incluye capturas en la revisión cuando corresponda. No introduzcas credenciales en código ni almacenamiento del navegador.

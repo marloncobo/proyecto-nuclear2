@@ -254,6 +254,9 @@ modificar sus registros. El esquema no migra tablas preexistentes incompatibles.
 
 ### API mínima
 
+La ampliacion de gestion del 18-11-2026 agrega las consultas y ediciones de la
+tabla siguiente. No requiere migraciones: utiliza las tablas y columnas existentes.
+
 HTTP Basic utiliza el correo y la contraseña para administrador y docente.
 El identificador del actor siempre procede de la autenticación del backend.
 Para usarla fuera de localhost, servir la API mediante HTTPS.
@@ -269,6 +272,28 @@ Para usarla fuera de localhost, servir la API mediante HTTPS.
 | `POST /api/academico/espacios` | Docente: `{ "nombre": "Psicología social", "periodo": "2026-2" }` |
 | `GET /api/academico/espacios` | Docente: espacios disponibles |
 | `GET /api/academico/espacios/{id}` | Docente: espacio por UUID |
+| `GET /api/identidad/usuarios?rol=DOCENTE&activo=true` | Administrador: arreglo de usuarios; ambos filtros son opcionales; orden por nombre, correo y UUID |
+| `GET /api/identidad/usuarios/{idUsuario}` | Administrador: detalle, incluyendo `activo`, sin credenciales |
+| `PUT /api/identidad/docentes/{idUsuario}` | Administrador: `{ "correo": "docente@universidad.edu.co", "nombre": "Docente actualizado" }`; exige rol DOCENTE |
+| `PUT /api/identidad/usuarios/{idUsuario}/estado` | Administrador: `{ "activo": false }` desactiva; `true` reactiva |
+| `GET /api/identidad/roles` | Administrador: arreglo de los tres nombres de rol |
+| `GET /api/identidad/roles/{rol}/creacion-casos` | Administrador: `{ "habilitado": true }`; otros roles distintos de DOCENTE devuelven `false` |
+| `GET /api/identidad/estudiantes?correo=alumno@universidad.edu.co` | Docente: un estudiante activo por correo institucional exacto, normalizado; 404 si no existe |
+| `PUT /api/academico/espacios/{id}` | Docente: `{ "nombre": "Psicologia social", "periodo": "2027-1" }`; 409 si alguna sesion usa el espacio |
+
+Las consultas y ediciones nuevas responden 200. Las representaciones administrativas
+incluyen `id`, `correo`, `nombre`, `rol`, `puedeCrearCasos` y `activo`; el contrato
+de `/yo` permanece vigente. Editar docentes conserva UUID, rol, clave y fecha de
+creacion; correo duplicado o cuenta sin rol DOCENTE produce 409. No existe
+restablecimiento de claves ni eliminacion fisica. Desactivar conserva el historial
+y deniega la siguiente autenticacion; reactivar conserva sus credenciales.
+El administrador no puede desactivar su propia cuenta (409).
+
+Los espacios siguen siendo compartidos, sin propietario ni matriculas. Su edicion
+se bloquea incluso si la sesion asociada esta finalizada. Programacion y edicion
+bloquean la misma fila durante su transaccion; el adaptador de `sessions`
+implementa el puerto `ConsultaUsoEspacios` de `academic`, sin dependencia circular.
+La busqueda estudiantil no permite listar todo el directorio a los docentes.
 
 Antes de POST/PUT, consultar `/api/identidad/csrf`, conservar la cookie recibida
 y enviar el token devuelto en la cabecera indicada. Las peticiones incluyen
@@ -281,6 +306,10 @@ no basta. Una cuenta estudiante sin contraseña no puede promoverse a personal;
 el administrador crea las cuentas docentes con su contraseña.
 
 ### Límite de integración y trazabilidad
+
+Esta seccion describe la entrega inicial. Para el estado vigente de autenticacion
+por convocatoria y programacion, consultar las secciones de sesiones y las
+[correcciones posteriores](../docs/pruebas/correcciones-revision.md).
 
 - RF-02, RF-03, RN-10 y CU-02/CU-03: administración de docentes, roles y permisos.
 - RF-01: validación del correo institucional y autenticación estudiantil mediante
