@@ -1,0 +1,120 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap');
+:root {
+  font-family: 'DM Sans', sans-serif;
+  color: #203b4c;
+  background: #f8f9f7;
+  font-synthesis: none;
+  --azul: #143c59;
+  --muted: #76828a;
+  --borde: #e5e9e6;
+  --salvia: #e8eee7;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+button,
+a,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid #ba7858;
+  outline-offset: 4px;
+}
+input:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid #669098;
+  outline-offset: 1px;
+}
+a {
+  color: inherit;
+}
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+h1,
+h2,
+h3 {
+  font-family: 'Manrope', sans-serif;
+}
+button {
+  color: inherit;
+}
+::selection {
+  background: #d5e7df;
+}
+input,
+textarea,
+select {
+  width: 100%;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid #d6dfdc;
+  border-radius: 9px;
+  color: #203b4c;
+  min-width: 0;
+}
+textarea {
+  resize: vertical;
+  min-height: 88px;
+}
+label {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+form {
+  display: grid;
+  gap: 18px;
+}
+small {
+  line-height: 1.6;
+}
+em {
+  font-family: Georgia, serif;
+  font-weight: 400;
+}
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: #f3f6f4;
+  padding: 20px;
+  border-radius: 12px;
+  font-size: 12px;
+  max-height: 440px;
+  overflow: auto;
+}
+button {
+  border: 0;
+  background: none;
+}
+input::placeholder {
+  color: #8d989c;
+}
+body:has(.fondo-modal) {
+  overflow: hidden;
+}

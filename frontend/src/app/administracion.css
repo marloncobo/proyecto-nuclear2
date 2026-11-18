@@ -1,0 +1,97 @@
+:host {
+  display: block;
+}
+h1 {
+  font-size: clamp(28px, 4vw, 44px);
+  letter-spacing: -1.5px;
+}
+h2 {
+  font-size: 19px;
+}
+p {
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.sobretitulo {
+  font-size: 11px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  color: #647b73;
+}
+.panel {
+  padding: 24px;
+  margin: 20px 0;
+  border: 1px solid var(--borde);
+  border-radius: 18px;
+  background: white;
+  min-width: 0;
+}
+.filtros {
+  grid-template-columns: 1fr 1fr auto;
+  align-items: end;
+}
+.cuenta {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+}
+.cuenta > div {
+  min-width: 0;
+}
+.cuenta h2 {
+  margin-bottom: 6px;
+}
+.cuenta p {
+  margin-bottom: 6px;
+}
+.acciones {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.boton {
+  border-radius: 10px;
+  padding: 12px 18px;
+  background: var(--azul);
+  color: white;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.secundario {
+  background: var(--salvia);
+  color: var(--azul);
+}
+.error,
+.aviso {
+  border-radius: 10px;
+  padding: 16px;
+}
+.error {
+  color: #923f31;
+  background: #fff0ea;
+}
+.aviso,
+.confirmacion {
+  background: var(--salvia);
+}
+.confirmacion {
+  padding: 20px;
+  border-radius: 14px;
+  margin: 18px 0;
+}
+.identificador {
+  font-size: 12px;
+}
+@media (max-width: 800px) {
+  .filtros {
+    grid-template-columns: 1fr;
+  }
+  .cuenta {
+    align-items: start;
+    flex-direction: column;
+  }
+  .panel {
+    padding: 18px;
+  }
+}

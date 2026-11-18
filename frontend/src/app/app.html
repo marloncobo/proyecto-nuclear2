@@ -1,0 +1,843 @@
+<a class="saltar-contenido" href="#principal">Ir al contenido</a>
+<div class="aplicacion">
+  <aside class="barra-lateral" aria-label="Navegación principal">
+    <a class="marca" href="/?vista=inicio" aria-label="Psicoapp, inicio"
+      ><img src="logo-psicoapp.png" alt="Psicoapp"
+    /></a>
+    <div class="etiqueta-menu">CAMPUS VIRTUAL</div>
+    <nav>
+      @for (item of menu(); track item.id) {
+        <button
+          [class.activo]="vista() === item.id"
+          [attr.aria-current]="vista() === item.id ? 'page' : null"
+          (click)="navegar(item.id)"
+        >
+          <span class="icono-menu" aria-hidden="true">{{ item.icono }}</span>{{ item.nombre }}
+          @if (vista() === item.id) {
+            <span class="punto"></span>
+          }
+        </button>
+      }
+    </nav>
+    <div class="nota-lateral">
+      <div class="orbita-mini" aria-hidden="true">✳</div>
+      <strong>Aprender a comprender.</strong>
+      <p>Un espacio para explorar lo que nos hace humanos.</p>
+      <button (click)="abrir('acerca')">Conoce Psicoapp <span aria-hidden="true">↗</span></button>
+    </div>
+    <div class="perfil">
+      <span class="avatar">{{ api.usuario()?.nombre?.charAt(0) || 'D' }}</span>
+      <div>
+        <strong>{{ api.usuario()?.nombre || 'Espacio docente' }}</strong><small>{{
+          api.conectado() ? api.usuario()?.rol : 'Vista de demostración'
+        }}</small>
+      </div>
+      <button
+        class="boton-icono"
+        [attr.aria-label]="api.conectado() ? 'Cerrar sesión' : 'Conectar cuenta'"
+        [disabled]="ocupado()"
+        (click)="api.conectado() ? salir() : abrir('ingreso')"
+      >
+        {{ api.conectado() ? '↪' : '↗' }}
+      </button>
+    </div>
+  </aside>
+  <div class="contenido">
+    <header class="cabecera">
+      <span class="ruta"
+        >Tu campus <span>/</span>
+        <strong>{{
+          vista() === 'administracion'
+            ? 'Administración'
+            : vista() === 'inicio'
+              ? 'Mi espacio'
+              : vista() === 'casos'
+                ? 'Biblioteca de casos'
+                : vista() === 'espacios'
+                  ? 'Espacios académicos'
+                  : vista() === 'sesiones'
+                    ? 'Sesiones'
+                    : 'Resultados'
+        }}</strong></span
+      >
+      <div class="acciones-cabecera">
+        <span class="indicador-conexion" [class.conectado]="api.conectado()">{{
+          api.conectado() ? 'Conectado' : 'Demostración'
+        }}</span><button class="boton-texto" [disabled]="ocupado()" (click)="abrir('ingreso')">
+          {{ api.conectado() ? 'Mi cuenta' : 'Conectar cuenta' }} <span aria-hidden="true">↗</span>
+        </button>
+      </div>
+    </header>
+    <main id="principal" tabindex="-1">
+      @if (aviso()) {
+        <div class="aviso" role="status">
+          {{ aviso()
+          }}<button class="boton-icono" aria-label="Cerrar aviso" (click)="aviso.set('')">×</button>
+        </div>
+      }
+      @if (error() && !modal()) {
+        <div class="error" role="alert">{{ error() }}</div>
+      }
+      @if (api.usuario()?.rol === 'ADMINISTRADOR') {
+        @for (cuenta of [api.usuario()!]; track cuenta.id) {
+          <psico-administracion />
+        }
+      } @else {
+        @if (vista() === 'inicio') {
+          <section class="bienvenida">
+            <div>
+              <p class="sobretitulo">ENSEÑAR · EXPLORAR · CONECTAR</p>
+              <h1>El aprendizaje empieza<br />con otra <em>perspectiva.</em></h1>
+              <p class="subtitulo">
+                Diseña experiencias que inviten a pensar.<br />Acompaña a tus estudiantes a
+                comprender su mundo.
+              </p>
+              <button class="boton primario" (click)="abrir('crear')">
+                <span aria-hidden="true">＋</span> Crear un caso <span aria-hidden="true">↗</span>
+              </button>
+            </div>
+            <div class="arte" aria-hidden="true">
+              <div class="anillo anillo-uno"></div>
+              <div class="anillo anillo-dos"></div>
+              <div class="forma forma-uno"></div>
+              <div class="forma forma-dos"></div>
+              <div class="forma forma-tres"></div>
+              <div class="estrella">✳</div>
+              <div class="ficha-arte"><span>↔</span> Cada mirada cuenta.</div>
+              <span class="punto-arte"></span>
+            </div>
+          </section>
+          <section class="resumen" aria-label="Resumen de tu espacio">
+            <div>
+              <span class="icono-resumen azul">▤</span>
+              <div>
+                <strong>{{ casos().length.toString().padStart(2, '0') }}</strong><span
+                  >Casos en tu biblioteca</span
+                >
+              </div>
+              <button aria-label="Ver biblioteca" (click)="navegar('casos')">↗</button>
+            </div>
+            <div>
+              <span class="icono-resumen verde">◷</span>
+              <div>
+                <strong>{{ sesiones().length.toString().padStart(2, '0') }}</strong><span
+                  >Sesiones consultadas</span
+                >
+              </div>
+              <button aria-label="Ver sesiones" (click)="navegar('sesiones')">↗</button>
+            </div>
+            <div>
+              <span class="icono-resumen terracota">◇</span>
+              <div>
+                <strong>{{ espacios().length.toString().padStart(2, '0') }}</strong><span
+                  >Espacios académicos</span
+                >
+              </div>
+              <button aria-label="Ver espacios académicos" (click)="navegar('espacios')">↗</button>
+            </div>
+          </section>
+          <div class="paneles-inicio">
+            <section class="biblioteca-inicio">
+              <div class="titulo-seccion">
+                <div>
+                  <p class="sobretitulo">IDEAS QUE TOMAN FORMA</p>
+                  <h2>Tu biblioteca de casos</h2>
+                </div>
+                <button class="boton-texto" (click)="navegar('casos')">
+                  Ver todos <span>↗</span>
+                </button>
+              </div>
+              <div class="lista-casos">
+                @for (caso of casos().slice(0, 3); track caso.id; let indice = $index) {
+                  <button class="fila-caso" (click)="abrir('detalle', caso)">
+                    <span
+                      class="miniatura"
+                      [class.rosa]="indice === 1"
+                      [class.salvia]="indice === 2"
+                      ><span aria-hidden="true">{{
+                        indice === 0 ? '◉' : indice === 1 ? '✳' : '◌'
+                      }}</span></span
+                    ><span class="texto-caso"
+                      ><small>{{ caso.contexto }}</small
+                      ><strong>{{ caso.nombre }}</strong
+                      ><span
+                        >{{ caso.tiempoEstimadoMin }} min <i>·</i>
+                        {{ caso.escenarios.length || '—' }} escenarios</span
+                      ></span
+                    ><span class="estado" [class.borrador]="caso.estado === 'BORRADOR'">{{
+                      estadoLegible(caso.estado)
+                    }}</span
+                    ><span class="flecha">↗</span>
+                  </button>
+                } @empty {
+                  <p class="vacio">
+                    Tu próxima idea empieza aquí. Crea un caso o consulta uno existente.
+                  </p>
+                }
+              </div>
+            </section>
+            <section class="proxima">
+              <div class="titulo-seccion">
+                <p class="sobretitulo">EN EL HORIZONTE</p>
+                <span aria-hidden="true">◷</span>
+              </div>
+              <h2>El próximo encuentro</h2>
+              @if (sesiones()[0]; as sesion) {
+                <div class="fecha-sesion">
+                  <strong>{{ sesion.inicioPrevisto | date: 'dd' }}</strong><span
+                    >{{ sesion.inicioPrevisto | date: 'MMM' }}<br />{{
+                      sesion.inicioPrevisto | date: 'HH:mm'
+                    }}
+                    h</span
+                  ><span class="linea-fecha"></span
+                  ><span class="estado">{{ estadoLegible(sesion.estado) }}</span>
+                </div>
+                <h3>{{ nombreCaso(sesion.idCaso) }}</h3>
+                <p>{{ sesion.lugar }} <span>·</span> {{ sesion.duracionMaximaMin }} minutos</p>
+                <button class="boton secundario" (click)="navegar('sesiones')">
+                  Ver sesión <span>↗</span>
+                </button>
+              } @else {
+                <p class="vacio">Abre un nuevo espacio de conversación con tus estudiantes.</p>
+                <button class="boton secundario" (click)="abrir('programar')">
+                  Programar sesión ↗
+                </button>
+              }
+            </section>
+          </div>
+          <section class="frase">
+            <span aria-hidden="true">✦</span>
+            <p>Comprender a los demás también es una forma de <em>transformar el mundo.</em></p>
+            <small>PSICOLOGÍA EN ACCIÓN</small>
+          </section>
+        }
+        @if (vista() === 'casos') {
+          <div class="encabezado-pagina">
+            <div>
+              <p class="sobretitulo">EXPERIENCIAS CON PROPÓSITO</p>
+              <h1>Biblioteca de <em>casos.</em></h1>
+              <p class="subtitulo">Situaciones para cuestionar, dialogar y descubrir.</p>
+            </div>
+            <button class="boton primario" (click)="abrir('crear')">＋ Crear un caso</button>
+          </div>
+          <div class="herramientas">
+            <label class="buscador"
+              ><span aria-hidden="true">⌕</span
+              ><input
+                aria-label="Buscar casos por nombre"
+                placeholder="Encuentra una idea…"
+                [ngModel]="busqueda()"
+                (ngModelChange)="busqueda.set($event)"
+            /></label>
+            <div class="filtros" aria-label="Filtrar por estado">
+              @for (estado of ['TODOS', 'PUBLICADO', 'BORRADOR', 'ARCHIVADO']; track estado) {
+                <button [class.elegido]="filtro() === estado" (click)="filtro.set(estado)">
+                  {{ estado === 'TODOS' ? 'Todos' : estadoLegible(estado) }}
+                </button>
+              }
+            </div>
+          </div>
+          @if (api.conectado()) {
+            <form class="consulta-id" (ngSubmit)="consultarId('casos')">
+              <label for="id-caso">Consultar un caso existente</label
+              ><input
+                id="id-caso"
+                name="idCaso"
+                [(ngModel)]="identificador"
+                placeholder="Identificador del caso (UUID)"
+                required
+              /><button class="boton secundario" [disabled]="ocupado()">Consultar ↗</button>
+            </form>
+          }
+          <section class="rejilla-casos">
+            @for (caso of casosVisibles(); track caso.id; let indice = $index) {
+              <article class="tarjeta-caso">
+                <div
+                  class="portada-caso"
+                  [class.rosa]="indice % 3 === 1"
+                  [class.salvia]="indice % 3 === 2"
+                >
+                  <span class="numero-caso"
+                    >ESTUDIO DE CASO / {{ (indice + 1).toString().padStart(2, '0') }}</span
+                  ><span class="simbolo-portada" aria-hidden="true">{{
+                    indice % 3 === 0 ? '◉' : indice % 3 === 1 ? '✳' : '◌'
+                  }}</span
+                  ><span class="estado" [class.borrador]="caso.estado === 'BORRADOR'">{{
+                    estadoLegible(caso.estado)
+                  }}</span>
+                </div>
+                <div class="cuerpo-tarjeta">
+                  <p class="sobretitulo">{{ caso.contexto }}</p>
+                  <h2>{{ caso.nombre }}</h2>
+                  <p>{{ caso.desarrolloSituacional }}</p>
+                  <div class="pie-tarjeta">
+                    <span>◷ {{ caso.tiempoEstimadoMin }} min</span
+                    ><button class="boton-texto" (click)="abrir('detalle', caso)">
+                      Explorar caso ↗
+                    </button>
+                  </div>
+                </div>
+              </article>
+            } @empty {
+              <div class="vacio">
+                <h2>Hay espacio para una nueva idea.</h2>
+                <p>No hay casos con estos criterios. Puedes crear uno o cambiar el filtro.</p>
+              </div>
+            }
+          </section>
+        }
+        @if (vista() === 'sesiones') {
+          <div class="encabezado-pagina">
+            <div>
+              <p class="sobretitulo">APRENDER EN COMUNIDAD</p>
+              <h1>Encuentros que <em>conectan.</em></h1>
+              <p class="subtitulo">Organiza tus sesiones y acompaña cada experiencia.</p>
+            </div>
+            <button class="boton primario" (click)="abrir('programar')">＋ Programar sesión</button>
+          </div>
+          @if (api.conectado()) {
+            <form class="consulta-id" (ngSubmit)="consultarId('sesiones')">
+              <label for="id-sesion">Consultar una sesión existente</label
+              ><input
+                id="id-sesion"
+                name="idSesion"
+                [(ngModel)]="identificador"
+                placeholder="Identificador de la sesión (UUID)"
+                required
+              /><button class="boton secundario" [disabled]="ocupado()">Consultar ↗</button>
+            </form>
+          }
+          <section class="lista-sesiones">
+            @for (sesion of sesiones(); track sesion.id) {
+              <article class="tarjeta-sesion">
+                <div class="calendario">
+                  <strong>{{ sesion.inicioPrevisto | date: 'dd' }}</strong><span>{{
+                    sesion.inicioPrevisto | date: 'MMM'
+                  }}</span>
+                </div>
+                <div class="datos-sesion">
+                  <span class="estado">{{ estadoLegible(sesion.estado) }}</span>
+                  <h2>{{ nombreCaso(sesion.idCaso) }}</h2>
+                  <p>
+                    {{ sesion.inicioPrevisto | date: 'shortTime' }} ·
+                    {{ sesion.duracionMaximaMin }} min · {{ sesion.lugar }}
+                  </p>
+                  <small class="identificador">ID: {{ sesion.id }}</small>
+                </div>
+                @if (sesion.estado !== 'FINALIZADO') {
+                  <button
+                    class="boton secundario"
+                    [disabled]="ocupado()"
+                    (click)="
+                      abrir(
+                        sesion.estado === 'SIN_INICIAR' ? 'iniciar-sesion' : 'finalizar-sesion'
+                      );
+                      sesionPendiente.set(sesion)
+                    "
+                  >
+                    {{ sesion.estado === 'SIN_INICIAR' ? 'Iniciar sesión' : 'Finalizar sesión' }} ↗
+                  </button>
+                }
+              </article>
+            } @empty {
+              <div class="vacio">
+                <h2>El siguiente encuentro está por escribirse.</h2>
+                <p>Programa una sesión con un caso publicado o consulta su identificador.</p>
+              </div>
+            }
+          </section>
+        }
+        @if (vista() === 'espacios') {
+          <div class="encabezado-pagina">
+            <div>
+              <p class="sobretitulo">TU COMUNIDAD ACADÉMICA</p>
+              <h1>Espacios para <em>crecer.</em></h1>
+              <p class="subtitulo">Un lugar para cada grupo, un propósito compartido.</p>
+            </div>
+            <button class="boton primario" (click)="abrir('espacio')">＋ Nuevo espacio</button>
+          </div>
+          <section class="rejilla-casos">
+            @for (espacio of espacios(); track espacio.id) {
+              <article class="tarjeta-espacio">
+                <span class="icono-espacio" aria-hidden="true">◇</span>
+                <p class="sobretitulo">PERIODO {{ espacio.periodo }}</p>
+                <h2>{{ espacio.nombre }}</h2>
+                <p class="identificador">ID: {{ espacio.id }}</p>
+                <button
+                  class="boton-texto"
+                  (click)="programacion.idEspacio = espacio.id; abrir('programar')"
+                >
+                  Programar un encuentro ↗
+                </button>
+                <button class="boton-texto" (click)="editarEspacio(espacio)">
+                  Editar espacio {{ espacio.nombre }}
+                </button>
+              </article>
+            } @empty {
+              <p class="vacio">Crea tu primer espacio académico para organizar las sesiones.</p>
+            }
+          </section>
+        }
+        @if (vista() === 'resultados') {
+          <div class="encabezado-pagina">
+            <div>
+              <p class="sobretitulo">ACOMPAÑAR EL APRENDIZAJE</p>
+              <h1>Cada proceso, una <em>perspectiva.</em></h1>
+              <p class="subtitulo">Consulta respuestas, calificaciones y retroalimentación.</p>
+            </div>
+          </div>
+          <section class="panel-reporte">
+            <span class="icono-espacio" aria-hidden="true">↗</span>
+            <h2>Consulta un recorrido académico</h2>
+            <p>
+              El reporte reúne los intentos finalizados del estudiante en un caso del docente
+              responsable.
+            </p>
+            @if (!api.conectado()) {
+              <p class="nota">Conecta tu cuenta docente para consultar resultados reales.</p>
+              <button class="boton primario" (click)="abrir('ingreso')">Conectar cuenta ↗</button>
+            } @else {
+              <form (ngSubmit)="consultarReporte()">
+                <label
+                  >Identificador del caso<input
+                    name="casoReporte"
+                    [(ngModel)]="identificador"
+                    required /></label
+                ><label
+                  >Identificador del estudiante<input
+                    name="estudianteReporte"
+                    [(ngModel)]="idEstudiante"
+                    required /></label
+                ><button class="boton primario" [disabled]="ocupado()">
+                  Consultar resultados ↗
+                </button>
+              </form>
+            }
+            @if (resultado() !== null) {
+              <h3>Recorrido académico</h3>
+              @for (reporte of resultado(); track reporte.participacion.idIntento) {
+                <article class="intento-reporte">
+                  <div class="titulo-seccion">
+                    <strong>{{ reporte.participacion.inicio | date: 'mediumDate' }}</strong><span
+                      class="estado"
+                      >{{ reporte.participacion.estado }}</span
+                    >
+                  </div>
+                  @if (reporte.resultado; as evaluacion) {
+                    <p class="nota-calificacion">
+                      {{ evaluacion.calificacion }} <small>Calificación</small>
+                    </p>
+                    @for (
+                      detalle of evaluacion.detalles;
+                      track detalle.idPregunta;
+                      let indice = $index
+                    ) {
+                      <div class="detalle-respuesta">
+                        <strong
+                          >Pregunta {{ indice + 1 }} ·
+                          {{
+                            !detalle.contestada
+                              ? 'Sin responder'
+                              : detalle.correcta
+                                ? 'Correcta'
+                                : 'Por revisar'
+                          }}</strong
+                        >
+                        <p>{{ detalle.retroalimentacion }}</p>
+                        <small>{{ detalle.puntos }} puntos</small>
+                      </div>
+                    }
+                  } @else {
+                    <p class="nota">
+                      Evaluación pendiente. Aún no hay una calificación almacenada.
+                    </p>
+                  }
+                  @for (valoracion of reporte.valoracionesGenerales; track valoracion.id) {
+                    <blockquote>
+                      {{ valoracion.mensaje
+                      }}<small>{{ valoracion.fecha | date: 'mediumDate' }}</small>
+                    </blockquote>
+                  }
+                </article>
+              } @empty {
+                <p class="vacio">No hay intentos finalizados para este estudiante y caso.</p>
+              }
+            }
+          </section>
+        }
+        <footer>
+          <span>Psicoapp <i>·</i> Simulador académico de psicología social</span
+          ><span>Un espacio para aprender, no para diagnosticar.</span>
+        </footer>
+      }
+    </main>
+  </div>
+</div>
+@if (modal()) {
+  <div class="fondo-modal" (click)="cerrar()">
+    <section
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="titulo-modal"
+      (click)="$event.stopPropagation()"
+      (keydown.escape)="cerrar()"
+      (keydown.tab)="mantenerFoco($event)"
+      tabindex="-1"
+    >
+      <button class="cerrar-modal boton-icono" aria-label="Cerrar ventana" (click)="cerrar()">
+        ×
+      </button>
+      @if (error()) {
+        <p class="error" role="alert">{{ error() }}</p>
+      }
+      @switch (modal()) {
+        @case ('ingreso') {
+          <p class="sobretitulo">BIENVENIDO A PSICOAPP</p>
+          <h2 id="titulo-modal">Tu próxima <em>perspectiva.</em></h2>
+          @if (api.conectado()) {
+            <p>Conectado como {{ api.usuario()?.nombre }}.</p>
+            <button class="boton secundario" (click)="salir(); cerrar()">Cerrar sesión</button>
+          } @else {
+            <p>
+              Accede con tu correo y contraseña de personal. Este espacio está diseñado para
+              docentes y administradores.
+            </p>
+            <form (ngSubmit)="ingresar()">
+              <label
+                >Correo institucional<input
+                  name="correo"
+                  type="email"
+                  autocomplete="username"
+                  [(ngModel)]="correo"
+                  required /></label
+              ><label
+                >Contraseña<input
+                  name="clave"
+                  type="password"
+                  autocomplete="current-password"
+                  [(ngModel)]="clave"
+                  required /></label
+              ><button class="boton primario" [disabled]="ocupado()">
+                {{ ocupado() ? 'Conectando…' : 'Entrar a mi espacio ↗' }}</button
+              ><small
+                >Las credenciales permanecen en memoria hasta cerrar la sesión o recargar.</small
+              >
+            </form>
+          }
+        }
+        @case ('crear') {
+          <p class="sobretitulo">UNA IDEA, MUCHAS PERSPECTIVAS</p>
+          <h2 id="titulo-modal">Crea una experiencia.</h2>
+          <p>
+            Comienza con un escenario y una pregunta. Rúbrica inicial: análisis de la situación, 100
+            %, escala de 0 a 5.
+          </p>
+          <form (ngSubmit)="guardarCaso()">
+            <label
+              >Nombre del caso<input
+                name="nombre"
+                [(ngModel)]="formulario.nombre"
+                maxlength="180"
+                required
+            /></label>
+            <div class="dos-columnas">
+              <label
+                >Tema o contexto<input
+                  name="contexto"
+                  [(ngModel)]="formulario.contexto"
+                  required /></label
+              ><label
+                >Duración estimada (min)<input
+                  name="tiempo"
+                  type="number"
+                  [(ngModel)]="formulario.tiempoEstimadoMin"
+                  min="1"
+                  max="240"
+                  required
+              /></label>
+            </div>
+            <label
+              >Desarrollo de la situación<textarea
+                name="desarrollo"
+                [(ngModel)]="formulario.desarrolloSituacional"
+                required
+              ></textarea>
+            </label>
+            <h3>01 / El escenario</h3>
+            <label>Título<input name="titulo" [(ngModel)]="formulario.titulo" required /></label
+            ><label
+              >Contexto del escenario<textarea
+                name="situacion"
+                [(ngModel)]="formulario.contextoSituacional"
+                required
+              ></textarea></label
+            ><label
+              >Pregunta<input name="pregunta" [(ngModel)]="formulario.enunciado" required
+            /></label>
+            <div class="dos-columnas">
+              <label
+                >Opción correcta<input
+                  name="correcta"
+                  [(ngModel)]="formulario.correcta"
+                  required /></label
+              ><label
+                >Opción incorrecta<input
+                  name="incorrecta"
+                  [(ngModel)]="formulario.incorrecta"
+                  required /></label
+              ><label
+                >Justificación correcta<textarea
+                  name="justa"
+                  [(ngModel)]="formulario.justificacionCorrecta"
+                  required
+                ></textarea></label
+              ><label
+                >Justificación incorrecta<textarea
+                  name="justb"
+                  [(ngModel)]="formulario.justificacionIncorrecta"
+                  required
+                ></textarea>
+              </label>
+            </div>
+            <button class="boton primario" [disabled]="ocupado()">
+              {{ ocupado() ? 'Guardando…' : 'Guardar borrador ↗' }}
+            </button>
+          </form>
+        }
+        @case ('detalle') {
+          @if (seleccionado(); as caso) {
+            <p class="sobretitulo">{{ caso.contexto }}</p>
+            <h2 id="titulo-modal">{{ caso.nombre }}</h2>
+            <span class="estado">{{ estadoLegible(caso.estado) }}</span>
+            <p>{{ caso.desarrolloSituacional }}</p>
+            <p>◷ {{ caso.tiempoEstimadoMin }} minutos · {{ caso.escenarios.length }} escenarios</p>
+            <small class="identificador">ID: {{ caso.id }}</small>
+            @for (escenario of caso.escenarios; track escenario.id) {
+              <h3>{{ escenario.orden }} / {{ escenario.titulo }}</h3>
+              <p>{{ escenario.contextoSituacional }}</p>
+              @for (pregunta of escenario.preguntas; track pregunta.id) {
+                <strong>{{ pregunta.enunciado }}</strong>
+                <ul>
+                  @for (opcion of pregunta.opciones; track opcion.id) {
+                    <li>
+                      {{ opcion.texto }}
+                      <small
+                        >{{ opcion.esCorrecta ? '(Correcta)' : '' }} ·
+                        {{ opcion.justificacion }}</small
+                      >
+                    </li>
+                  }
+                </ul>
+              }
+            }
+            @if (caso.rubrica) {
+              <p>
+                Rúbrica: {{ caso.rubrica.nombre }} · Escala máxima {{ caso.rubrica.escalaMaxima }}
+              </p>
+            }
+            <div class="acciones-modal">
+              @if (caso.estado === 'BORRADOR') {
+                <button
+                  class="boton primario"
+                  [disabled]="ocupado()"
+                  (click)="cambiarEstado(caso, 'publicar')"
+                >
+                  Publicar caso ↗
+                </button>
+              }
+              @if (caso.estado === 'PUBLICADO') {
+                <button
+                  class="boton primario"
+                  (click)="programacion.idCaso = caso.id; abrir('programar')"
+                >
+                  Programar sesión ↗
+                </button>
+              }
+              @if (caso.estado !== 'ARCHIVADO') {
+                <button
+                  class="boton secundario"
+                  [disabled]="ocupado()"
+                  (click)="abrir('archivar', caso)"
+                >
+                  Archivar
+                </button>
+              }
+            </div>
+          }
+        }
+        @case ('archivar') {
+          <h2 id="titulo-modal">¿Archivar este caso?</h2>
+          <p>
+            Se conservará su contenido y sus sesiones existentes. No se podrán programar nuevos
+            encuentros con él.
+          </p>
+          <button
+            class="boton primario"
+            [disabled]="ocupado()"
+            (click)="cambiarEstado(seleccionado()!, 'archivar')"
+          >
+            Confirmar archivado
+          </button>
+        }
+        @case ('espacio') {
+          <p class="sobretitulo">APRENDER EN COMUNIDAD</p>
+          <h2 id="titulo-modal">
+            {{ espacioEditado() ? 'Editar espacio académico.' : 'Un nuevo espacio.' }}
+          </h2>
+          @if (espacioEditado()) {
+            <p>Solo se pueden editar espacios que no estén asociados a sesiones.</p>
+          }
+          <form
+            #espacioFormulario="ngForm"
+            (ngSubmit)="espacioFormulario.valid && guardarEspacio()"
+          >
+            <label
+              >Nombre<input
+                name="nombreEspacio"
+                [(ngModel)]="nombreEspacio"
+                maxlength="150"
+                required /></label
+            ><label
+              >Periodo<input name="periodo" [(ngModel)]="periodo" maxlength="30" required /></label
+            ><button class="boton primario" [disabled]="ocupado() || espacioFormulario.invalid">
+              {{ espacioEditado() ? 'Guardar espacio' : 'Crear espacio ↗' }}
+            </button>
+          </form>
+        }
+        @case ('programar') {
+          <p class="sobretitulo">EL SIGUIENTE ENCUENTRO</p>
+          <h2 id="titulo-modal">Dale fecha a una idea.</h2>
+          <form (ngSubmit)="programar()">
+            @if (api.conectado()) {
+              <fieldset [disabled]="ocupado()" class="busqueda-estudiante">
+                <legend>Buscar estudiantes</legend>
+                <label
+                  >Correo del estudiante<input
+                    name="correoBusqueda"
+                    type="email"
+                    [(ngModel)]="correoBusqueda"
+                    (ngModelChange)="estudianteEncontrado.set(null)"
+                    maxlength="180"
+                /></label>
+                <button
+                  type="button"
+                  class="boton secundario"
+                  [disabled]="ocupado() || !correoBusqueda.trim()"
+                  (click)="buscarEstudiante()"
+                >
+                  Buscar por correo
+                </button>
+                @if (estudianteEncontrado(); as estudiante) {
+                  <p role="status">{{ estudiante.nombre }} · {{ estudiante.correo }}</p>
+                  <button type="button" class="boton secundario" (click)="agregarEstudiante()">
+                    Agregar a {{ estudiante.nombre }}
+                  </button>
+                }
+                <small
+                  >Busca una cuenta activa por su correo institucional exacto y agrégala a la
+                  convocatoria.</small
+                >
+              </fieldset>
+            }
+
+            <label
+              >Caso publicado<select name="casoSesion" [(ngModel)]="programacion.idCaso" required>
+                <option value="">Selecciona un caso</option>
+                @for (caso of casos(); track caso.id) {
+                  @if (caso.estado === 'PUBLICADO') {
+                    <option [value]="caso.id">{{ caso.nombre }}</option>
+                  }
+                }
+              </select></label
+            ><label
+              >Espacio académico<select
+                name="espacioSesion"
+                [(ngModel)]="programacion.idEspacio"
+                required
+              >
+                <option value="">Selecciona un espacio</option>
+                @for (espacio of espacios(); track espacio.id) {
+                  <option [value]="espacio.id">{{ espacio.nombre }}</option>
+                }
+              </select></label
+            >
+            <div class="dos-columnas">
+              <label
+                >Inicio (hora local)<input
+                  name="inicio"
+                  type="datetime-local"
+                  [(ngModel)]="programacion.inicioPrevisto"
+                  required /></label
+              ><label
+                >Fin (hora local)<input
+                  name="fin"
+                  type="datetime-local"
+                  [(ngModel)]="programacion.finPrevisto"
+                  required /></label
+              ><label
+                >Duración individual (min)<input
+                  name="duracion"
+                  type="number"
+                  min="1"
+                  [(ngModel)]="programacion.duracionMaximaMin"
+                  required /></label
+              ><label
+                >Navegación<select name="modo" [(ngModel)]="programacion.modoNavegacion">
+                  <option value="FLEXIBLE">Flexible</option>
+                  <option value="RESTRINGIDA">Restringida</option>
+                </select></label
+              >
+            </div>
+            <label>Lugar<input name="lugar" [(ngModel)]="programacion.lugar" required /></label
+            ><label
+              >Estudiantes (identificadores separados por comas)<textarea
+                name="estudiantes"
+                [(ngModel)]="programacion.estudiantes"
+                required
+              ></textarea></label
+            ><label
+              >Mensaje de convocatoria<textarea
+                name="mensaje"
+                [(ngModel)]="programacion.mensaje"
+                required
+              ></textarea></label
+            ><button class="boton primario" [disabled]="ocupado()">
+              {{ ocupado() ? 'Programando…' : 'Programar sesión ↗' }}
+            </button>
+          </form>
+        }
+        @case ('iniciar-sesion') {
+          <h2 id="titulo-modal">Iniciar el encuentro.</h2>
+          <p>
+            El servidor verificará la hora programada y las condiciones de acceso antes de iniciar.
+          </p>
+          <button class="boton primario" [disabled]="ocupado()" (click)="confirmarTransicion()">
+            Confirmar inicio ↗
+          </button>
+        }
+        @case ('finalizar-sesion') {
+          <h2 id="titulo-modal">Cerrar el encuentro.</h2>
+          <p>Al finalizar, no se permitirá el ingreso de nuevos participantes a esta sesión.</p>
+          <button class="boton primario" [disabled]="ocupado()" (click)="confirmarTransicion()">
+            Confirmar finalización
+          </button>
+        }
+        @case ('acerca') {
+          <p class="sobretitulo">PSICOLOGÍA EN ACCIÓN</p>
+          <h2 id="titulo-modal">Aprender a comprender.</h2>
+          <p>
+            Psicoapp es un simulador académico para la enseñanza de psicología social. Los docentes
+            crean casos y sesiones; los estudiantes exploran escenarios, toman decisiones y reciben
+            retroalimentación.
+          </p>
+          <p>No es una herramienta de diagnóstico clínico.</p>
+          <p>
+            La demostración utiliza datos ficticios en memoria. Al recargar se restablecen. Conecta
+            una cuenta para trabajar con la API del proyecto.
+          </p>
+        }
+      }
+    </section>
+  </div>
+}
