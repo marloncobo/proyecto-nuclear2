@@ -1,5 +1,26 @@
 # Casos de prueba — identidad
 
+> Actualizacion 18-11-2026: las fichas originales conservan el contexto de la
+> primera entrega. La autenticacion por convocatoria ya tiene adaptador en
+> `sessions`; consultar [correcciones vigentes](correcciones-revision.md).
+> La gestion ampliada se verifica con `PruebaGestionIdentidadAcademica`, usando
+> autenticacion, servicios y persistencia JDBC reales sobre H2.
+
+## Verificacion de gestion ampliada (RF-02, RF-03, RF-04; RN-10)
+
+| Escenario | Resultado esperado | Prueba automatizada |
+| --- | --- | --- |
+| Listar usuarios con rol/estado opcionales y consultar detalle | 200, orden estable, sin claves ni hashes; 400 filtro invalido; 404 UUID ausente | `consultaUsuariosConFiltrosYDetalle` |
+| Editar nombre/correo docente | 200, normaliza correo, conserva UUID/rol/fecha/clave; 409 duplicado o cuenta no docente | `editaDocenteSinPerderCredenciales` |
+| Desactivar y reactivar | 200 idempotente; 401 al autenticar cuenta inactiva; conserva credenciales; 409 desactivacion propia | `desactivaYReactivaConProteccionPropia` |
+| Consultar roles y permiso | Tres roles; `habilitado` refleja permiso docente y es falso para otros roles | `consultaRolesYPermisos` |
+| Buscar estudiante por correo institucional exacto | 200 activo; 404 ausente, personal o inactivo; 400 externo o parametro ausente | `buscaEstudiantePorCorreo` |
+| Autorizacion y CSRF | 401 sin autenticar, 403 rol incorrecto o escritura sin CSRF; servicios tambien verifican actor | `restringeRolesYExigeCsrf` |
+
+Las respuestas y cuerpos de los endpoints se describen en la
+[tabla de API](../../backend/README.md#api-mínima). Las pruebas son evidencia
+automatizada y no constituyen un acta de ejecucion manual de las fichas historicas.
+
 **Proyecto:** Psicoapp · **Versión del documento:** 0.1.0 · **Fecha de elaboración:** 30-10-2026.
 **Estado:** planeado, pendiente de revisión y ejecución. No representa un acta de resultados.
 

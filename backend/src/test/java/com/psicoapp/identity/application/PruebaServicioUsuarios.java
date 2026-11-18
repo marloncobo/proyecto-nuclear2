@@ -30,6 +30,41 @@ class PruebaServicioUsuarios {
     private Usuario administrador;
     private Usuario docente;
 
+    @Test
+    @DisplayName("RF-03 / RN-10: edicion usa el puerto sin cambiar credenciales ni rol")
+    void editaSoloDatosDelDocente() {
+        when(usuarios.buscarPorId(administrador.id())).thenReturn(Optional.of(administrador));
+        when(usuarios.buscarPorId(docente.id())).thenReturn(Optional.of(docente));
+        var resultado = servicio.editarDocente(administrador.id(), docente.id(), " NUEVO@universidad.edu.co ", " Nuevo ");
+        assertEquals("nuevo@universidad.edu.co", resultado.correo());
+        assertEquals("Nuevo", resultado.nombre());
+        verify(usuarios).actualizarDatosDocente(docente.id(), "nuevo@universidad.edu.co", "Nuevo");
+        verify(usuarios, never()).guardar(any());
+    }
+
+    @Test
+    @DisplayName("RF-03 / RN-10: rechaza correo duplicado y desactivacion propia")
+    void protegeDuplicadosYAdministrador() {
+        when(usuarios.buscarPorId(administrador.id())).thenReturn(Optional.of(administrador));
+        when(usuarios.buscarPorId(docente.id())).thenReturn(Optional.of(docente));
+        when(usuarios.buscarPorCorreo(administrador.correo())).thenReturn(Optional.of(administrador));
+        assertThrows(Conflicto.class, () -> servicio.editarDocente(administrador.id(), docente.id(), administrador.correo(), "Duplicado"));
+        assertThrows(Conflicto.class, () -> servicio.cambiarEstado(administrador.id(), administrador.id(), false));
+        verify(usuarios, never()).actualizarDatosDocente(any(), any(), any());
+        verify(usuarios, never()).actualizarEstado(any(), anyBoolean());
+    }
+
+    @Test
+    @DisplayName("RF-02/03 / RN-10: consultas nuevas validan el rol tambien en aplicacion")
+    void deniegaConsultasAdministrativasAlDocente() {
+        when(usuarios.buscarPorId(docente.id())).thenReturn(Optional.of(docente));
+        assertThrows(AccesoDenegado.class, () -> servicio.listarUsuarios(docente.id(), null, null));
+        assertThrows(AccesoDenegado.class, () -> servicio.consultarUsuario(docente.id(), administrador.id()));
+        assertThrows(AccesoDenegado.class, () -> servicio.listarRoles(docente.id()));
+        assertThrows(AccesoDenegado.class, () -> servicio.consultarCreacionCasos(docente.id(), Rol.DOCENTE));
+        verifyNoInteractions(permisos);
+    }
+
     @BeforeEach
     void preparar() {
         servicio = new ServicioUsuarios(usuarios, claves, permisos, "universidad.edu.co, otra.edu.co");

@@ -73,7 +73,7 @@ public class ServicioGestionSesiones implements ConsultaSesiones, AutorizacionDo
         List<UUID> estudiantes = List.copyOf(datos.estudiantes());
         estudiantes.forEach(identidades::exigirEstudiante);
         var caso = casos.exigirPublicado(idDocente, datos.idCaso());
-        academico.consultarEspacio(idDocente, datos.idEspacio());
+        academico.bloquearParaProgramacion(idDocente, datos.idEspacio());
         Sesion sesion = Sesion.programar(UUID.randomUUID(), caso.id(), datos.idEspacio(), idDocente,
                 datos.inicioPrevisto(), datos.finPrevisto(), datos.duracionMaximaMin(), caso.tiempoEstimadoMin(),
                 datos.modoNavegacion(), datos.lugar(), datos.mensaje());

@@ -42,6 +42,20 @@ abstract class FlujoBackend {
         String idEspacio = id(mvc.perform(post("/api/academico/espacios").with(httpBasic(docente, clave)).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Psicologia\",\"periodo\":\"2026-2\"}"))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        // Estos contratos se ejecutan tambien en la variante MySQL optativa.
+        mvc.perform(get("/api/identidad/usuarios").param("rol", "DOCENTE").param("activo", "true").with(httpBasic(admin, clave)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(idDocente));
+        mvc.perform(put("/api/identidad/docentes/{id}", idDocente).with(httpBasic(admin, clave)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"correo\":\""+docente+"\",\"nombre\":\"Docente actualizado\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(put("/api/identidad/usuarios/{id}/estado", idDocente).with(httpBasic(admin, clave)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"activo\":false}")).andExpect(status().isOk());
+        mvc.perform(get("/api/identidad/yo").with(httpBasic(docente, clave))).andExpect(status().isUnauthorized());
+        mvc.perform(put("/api/identidad/usuarios/{id}/estado", idDocente).with(httpBasic(admin, clave)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"activo\":true}")).andExpect(status().isOk());
+        mvc.perform(put("/api/academico/espacios/{id}", idEspacio).with(httpBasic(docente, clave)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Espacio actualizado\",\"periodo\":\"2026-2\"}"))
+                .andExpect(status().isOk());
         String pregunta=UUID.randomUUID().toString();
         String contenido = """
                 {"nombre":"Caso","desarrolloSituacional":"Conflicto","contexto":"Educativo","tiempoEstimadoMin":40,
@@ -77,6 +91,9 @@ abstract class FlujoBackend {
                 .contentType(MediaType.APPLICATION_JSON).content(programacion)).andExpect(status().isCreated())
                 .andExpect(jsonPath("$.convocatorias.length()").value(1)).andReturn().getResponse().getContentAsString();
         String sesion=id(creada);
+        mvc.perform(put("/api/academico/espacios/{id}", idEspacio).with(httpBasic(docente, clave)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Cambio rechazado\",\"periodo\":\"2027-1\"}"))
+                .andExpect(status().isConflict());
         String codigo=JsonPath.read(creada,"$.convocatorias[0].codigoAcceso");
         String segunda=mvc.perform(post("/api/sesiones").with(httpBasic(docente,clave)).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON).content(programacion)).andExpect(status().isCreated())

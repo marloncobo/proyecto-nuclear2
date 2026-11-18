@@ -1,0 +1,165 @@
+<section aria-labelledby="titulo-administracion" [attr.aria-busy]="ocupado()">
+  <p class="sobretitulo">CUIDAR NUESTRA COMUNIDAD</p>
+  <h1 id="titulo-administracion">Administración de <em>usuarios.</em></h1>
+  <p>Consulta las cuentas de la institución y gestiona su acceso.</p>
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+  @if (aviso()) {
+    <p class="aviso" role="status">{{ aviso() }}</p>
+  }
+  @if (ocupado()) {
+    <p role="status">Procesando solicitud…</p>
+  }
+  <button class="boton" [disabled]="ocupado()" (click)="cargar()">Actualizar datos</button>
+  @if (cargado()) {
+    <form class="filtros panel" (ngSubmit)="filtrar()">
+      <label
+        >Filtrar por rol<select name="rol" [(ngModel)]="rol" [disabled]="ocupado()">
+          <option value="">Todos los roles</option>
+          @for (rol of roles(); track rol) {
+            <option [value]="rol">{{ rol }}</option>
+          }
+        </select></label
+      >
+      <label
+        >Filtrar por estado<select name="estado" [(ngModel)]="estado" [disabled]="ocupado()">
+          <option value="">Todos los estados</option>
+          <option value="true">Activos</option>
+          <option value="false">Inactivos</option>
+        </select></label
+      >
+      <button class="boton" [disabled]="ocupado()">Aplicar filtros</button>
+    </form>
+    <div class="usuarios" aria-label="Usuarios encontrados">
+      @for (usuario of usuarios(); track usuario.id) {
+        <article class="panel cuenta">
+          <div>
+            <h2>{{ usuario.nombre }}</h2>
+            <p>{{ usuario.correo }}</p>
+            <small>{{ usuario.rol }} · {{ usuario.activo ? 'Activo' : 'Inactivo' }}</small>
+          </div>
+          <div class="acciones">
+            <button class="boton" [disabled]="ocupado()" (click)="consultar(usuario)">
+              Ver detalle de {{ usuario.nombre }}
+            </button>
+            <button
+              class="boton secundario"
+              [disabled]="ocupado() || usuario.id === api.usuario()?.id"
+              (click)="confirmacion.set(usuario)"
+            >
+              {{ usuario.activo ? 'Desactivar' : 'Reactivar' }} {{ usuario.nombre }}
+            </button>
+          </div>
+        </article>
+      } @empty {
+        <p class="panel">No hay usuarios que coincidan con los filtros.</p>
+      }
+    </div>
+    @if (confirmacion(); as usuario) {
+      <section class="panel confirmacion" aria-label="Confirmar cambio de estado">
+        <h2>¿{{ usuario.activo ? 'Desactivar' : 'Reactivar' }} a {{ usuario.nombre }}?</h2>
+        <p>
+          {{
+            usuario.activo
+              ? 'La cuenta no podrá autenticarse. Se conservarán sus datos e historial.'
+              : 'La cuenta recuperará el acceso con sus credenciales existentes.'
+          }}
+        </p>
+        <div class="acciones">
+          <button class="boton" [disabled]="ocupado()" (click)="cambiarEstado()">
+            Confirmar {{ usuario.activo ? 'desactivación' : 'reactivación' }}
+          </button>
+          <button class="boton secundario" [disabled]="ocupado()" (click)="confirmacion.set(null)">
+            Cancelar cambio de estado
+          </button>
+        </div>
+      </section>
+    }
+    @if (seleccionado(); as usuario) {
+      <section class="panel" aria-labelledby="detalle-usuario">
+        <h2 id="detalle-usuario" tabindex="-1">Detalle de {{ usuario.nombre }}</h2>
+        <p>{{ usuario.correo }}</p>
+        <p class="identificador">Identificador: {{ usuario.id }}</p>
+        <p>
+          {{ usuario.rol }} · {{ usuario.activo ? 'Activo' : 'Inactivo' }} · Creación de casos:
+          {{ usuario.puedeCrearCasos ? 'Habilitada' : 'Sin permiso' }}
+        </p>
+        @if (editando) {
+          <form #edicion="ngForm" (ngSubmit)="edicion.valid && guardar()">
+            <label
+              >Nombre del docente<input
+                name="nombreDocente"
+                [(ngModel)]="nombre"
+                maxlength="120"
+                required
+                [disabled]="ocupado()"
+            /></label>
+            <label
+              >Correo del docente<input
+                name="correoDocente"
+                type="email"
+                [(ngModel)]="correo"
+                maxlength="180"
+                required
+                [disabled]="ocupado()"
+            /></label>
+            <div class="acciones">
+              <button class="boton" [disabled]="ocupado() || edicion.invalid">
+                Guardar docente
+              </button>
+              <button
+                type="button"
+                class="boton secundario"
+                [disabled]="ocupado()"
+                (click)="editando = false"
+              >
+                Cancelar edición
+              </button>
+            </div>
+          </form>
+        } @else if (usuario.rol === 'DOCENTE') {
+          <button
+            class="boton"
+            [disabled]="ocupado()"
+            (click)="editando = true; nombre = usuario.nombre; correo = usuario.correo"
+          >
+            Editar docente
+          </button>
+        }
+      </section>
+    }
+    <section class="panel" aria-labelledby="titulo-permisos">
+      <h2 id="titulo-permisos">Roles y permisos</h2>
+      <p>El permiso de creación de casos se aplica a todos los docentes.</p>
+      @for (permiso of permisos(); track permiso.rol) {
+        <p>
+          <strong>{{ permiso.rol }}</strong> · Creación de casos:
+          {{ permiso.habilitado ? 'Habilitada' : 'Sin permiso' }}
+        </p>
+        @if (permiso.rol === 'DOCENTE') {
+          <button class="boton" [disabled]="ocupado()" (click)="confirmarPermiso.set(true)">
+            {{ permiso.habilitado ? 'Retirar' : 'Conceder' }} permiso de creación
+          </button>
+        }
+      }
+      @if (confirmarPermiso()) {
+        <div class="confirmacion" role="region" aria-label="Confirmar permiso docente">
+          <p>Este cambio afectará a todos los docentes. ¿Deseas aplicarlo?</p>
+          <div class="acciones">
+            <button class="boton" [disabled]="ocupado()" (click)="cambiarPermiso()">
+              Confirmar permiso
+            </button>
+            <button
+              class="boton secundario"
+              [disabled]="ocupado()"
+              (click)="confirmarPermiso.set(false)"
+            >
+              Cancelar permiso
+            </button>
+          </div>
+        </div>
+      }
+    </section>
+  }
+</section>

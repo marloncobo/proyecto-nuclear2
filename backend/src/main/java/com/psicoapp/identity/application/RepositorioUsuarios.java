@@ -1,10 +1,15 @@
 package com.psicoapp.identity.application;
 
 import com.psicoapp.identity.domain.Usuario;
+import com.psicoapp.identity.domain.Rol;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface RepositorioUsuarios {
+    List<Usuario> listar(Rol rol, Boolean activo);
+    void actualizarDatosDocente(UUID id, String correo, String nombre);
+    void actualizarEstado(UUID id, boolean activo);
     Optional<Usuario> buscarPorId(UUID id);
     Optional<Usuario> buscarPorCorreo(String correo);
     void guardar(Usuario usuario);

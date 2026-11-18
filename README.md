@@ -7,7 +7,7 @@ Proyecto dividido en `backend/` y `frontend/`.
 
 El backend usa Java 21, Spring Boot 4.1.2 y Maven. Su estructura es un
 monolito modular con paquete base `com.psicoapp`.
-El frontend está pendiente de implementación.
+El frontend para docentes y administradores usa Angular 21. Incluye una demostración y conexión a la API existente. Consulta sus [comandos, funciones y límites](frontend/README.md).
 
 El backend tambien incluye construccion/publicacion de casos y programacion
 sesiones con State, participacion, evaluacion y notificaciones con Observer.

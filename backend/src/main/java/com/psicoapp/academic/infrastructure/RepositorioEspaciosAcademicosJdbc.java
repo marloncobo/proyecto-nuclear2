@@ -9,6 +9,8 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 @Repository
 public class RepositorioEspaciosAcademicosJdbc implements RepositorioEspaciosAcademicos {
@@ -16,6 +18,19 @@ public class RepositorioEspaciosAcademicosJdbc implements RepositorioEspaciosAca
 
     public RepositorioEspaciosAcademicosJdbc(JdbcClient jdbc) {
         this.jdbc = jdbc;
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Optional<EspacioAcademico> bloquearPorId(UUID id) {
+        return jdbc.sql("SELECT * FROM espacio_academico WHERE id_espacio = ? FOR UPDATE")
+                .param(id.toString()).query(this::mapear).optional();
+    }
+
+    @Override
+    public void actualizar(EspacioAcademico espacio) {
+        jdbc.sql("UPDATE espacio_academico SET nombre = ?, periodo = ? WHERE id_espacio = ?")
+                .params(espacio.nombre(), espacio.periodo(), espacio.id().toString()).update();
     }
 
     @Override

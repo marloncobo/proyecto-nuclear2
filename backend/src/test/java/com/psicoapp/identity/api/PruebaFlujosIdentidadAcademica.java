@@ -64,6 +64,7 @@ class PruebaFlujosIdentidadAcademica {
     @MockitoBean RepositorioUsuarios usuarios;
     @MockitoBean PermisosRol permisos;
     @MockitoBean RepositorioEspaciosAcademicos espacios;
+    @MockitoBean com.psicoapp.academic.application.ConsultaUsoEspacios usoEspacios;
     private final Map<UUID, Usuario> cuentas = new LinkedHashMap<>();
     private final Map<UUID, EspacioAcademico> catalogo = new LinkedHashMap<>();
     private final EnumSet<Rol> rolesConPermiso = EnumSet.noneOf(Rol.class);

@@ -16,6 +16,19 @@ pom.xml.next
 release.properties
 dependency-reduced-pom.xml
 
+# Angular y Node: dependencias, cache y resultados generados
+node_modules/
+dist/
+.angular/
+test-results/
+playwright-report/
+capturas/
+
+# Configuracion personal de Spring; mantener credenciales fuera del repositorio
+application-local.properties
+application-local.yml
+application-local.yaml
+
 # Gradle
 .gradle/
 build/
