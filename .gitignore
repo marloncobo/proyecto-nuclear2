@@ -23,6 +23,9 @@ dist/
 test-results/
 playwright-report/
 capturas/
+.playwright-cli/
+blob-report/
+**/playwright/.auth/
 
 # Configuracion personal de Spring; mantener credenciales fuera del repositorio
 application-local.properties

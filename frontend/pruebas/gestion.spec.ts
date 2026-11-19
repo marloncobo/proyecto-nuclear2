@@ -32,6 +32,8 @@ async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
     espacio: { id: 'espacio-real', nombre: 'Psicología social', periodo: '2026-2' },
     conflictoEspacio: false,
     conflictoDocente: false,
+    conflictoRegistro: false,
+    rechazarRol: false,
     solicitudes: [] as { ruta: string; metodo: string; datos: any; csrf: string | undefined }[],
   };
   await pagina.route('**/api/**', async (ruta) => {
@@ -67,15 +69,6 @@ async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
       });
     if (url.pathname === '/api/identidad/roles')
       return ruta.fulfill({ json: ['ADMINISTRADOR', 'DOCENTE', 'ESTUDIANTE'] });
-    if (url.pathname.endsWith('/creacion-casos')) {
-      if (metodo === 'PUT') estado.permiso = datos.habilitado;
-      return ruta.fulfill({
-        status: metodo === 'PUT' ? 204 : 200,
-        ...(metodo === 'PUT'
-          ? {}
-          : { json: { habilitado: url.pathname.includes('/DOCENTE/') && estado.permiso } }),
-      });
-    }
     if (url.pathname === '/api/identidad/estudiantes') {
       if (url.searchParams.get('correo')?.toLowerCase() !== estudiante.correo)
         return ruta.fulfill({ status: 404, json: { detail: 'Estudiante no encontrado' } });
@@ -84,8 +77,34 @@ async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
     if (url.pathname.startsWith('/api/identidad/usuarios/')) {
       const usuario = estado.usuarios.find((usuario) => usuario.id === url.pathname.split('/')[4]);
       if (!usuario) return ruta.fulfill({ status: 404, json: {} });
+      if (metodo === 'PUT' && url.pathname.endsWith('/rol')) {
+        if (estado.rechazarRol)
+          return ruta.fulfill({
+            status: 400,
+            json: { detail: 'El personal requiere una contraseña' },
+          });
+        usuario.rol = datos.rol;
+        usuario.puedeCrearCasos = datos.rol === 'DOCENTE' && estado.permiso;
+        const { activo, ...respuesta } = usuario;
+        return ruta.fulfill({ json: respuesta });
+      }
       if (metodo === 'PUT') usuario.activo = datos.activo;
       return ruta.fulfill({ json: usuario });
+    }
+    if (url.pathname === '/api/identidad/docentes' && metodo === 'POST') {
+      if (estado.conflictoRegistro)
+        return ruta.fulfill({ status: 409, json: { detail: 'El correo ya está registrado' } });
+      const nuevo = {
+        id: 'docente-nuevo',
+        nombre: datos.nombre,
+        correo: datos.correo,
+        rol: 'DOCENTE',
+        puedeCrearCasos: estado.permiso,
+        activo: true,
+      };
+      estado.usuarios.push(nuevo);
+      const { activo, ...respuesta } = nuevo;
+      return ruta.fulfill({ status: 201, json: respuesta });
     }
     if (url.pathname.startsWith('/api/identidad/docentes/')) {
       if (estado.conflictoDocente)
@@ -110,7 +129,6 @@ async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
 
 async function ingresar(pagina: Page, correo = 'admin@example.test') {
   await pagina.goto('/');
-  await pagina.getByRole('button', { name: 'Conectar cuenta', exact: true }).first().click();
   await pagina.getByLabel('Correo institucional').fill(correo);
   await pagina.getByLabel('Contraseña', { exact: true }).fill('clave-ficticia');
   await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
@@ -121,6 +139,8 @@ test('administración: roles, filtros, detalle, edición y errores sin perder el
 }) => {
   const estado = await simularApi(pagina);
   await ingresar(pagina);
+  await expect(pagina.getByRole('heading', { name: 'Roles y permisos' })).toHaveCount(0);
+  await expect(pagina.getByRole('button', { name: 'Permisos docentes' })).toHaveCount(0);
   await expect(pagina.getByRole('heading', { name: 'Administración de usuarios.' })).toBeVisible();
   await expect(
     pagina.getByRole('button', { name: 'Biblioteca de casos', exact: true }),
@@ -136,6 +156,7 @@ test('administración: roles, filtros, detalle, edición y errores sin perder el
     estado.solicitudes.some((solicitud) => solicitud.ruta.includes('rol=DOCENTE&activo=true')),
   ).toBeTruthy();
   await pagina.getByRole('button', { name: 'Ver detalle de Docente original' }).click();
+  await expect(pagina.getByRole('dialog', { name: 'Detalle de Docente original' })).toBeVisible();
   await expect(pagina.getByRole('heading', { name: 'Detalle de Docente original' })).toBeFocused();
   await pagina.getByRole('button', { name: 'Editar docente', exact: true }).click();
   await pagina.getByLabel('Nombre del docente').fill('Docente actualizado');
@@ -158,11 +179,51 @@ test('administración: roles, filtros, detalle, edición y errores sin perder el
   expect(
     estado.solicitudes.some((solicitud) => solicitud.ruta.includes('/academico/')),
   ).toBeFalsy();
+  expect(
+    estado.solicitudes.some((solicitud) => solicitud.ruta.includes('/creacion-casos')),
+  ).toBeFalsy();
+  await pagina.getByRole('button', { name: 'Volver al listado' }).click();
+  await expect(pagina.getByRole('dialog')).toHaveCount(0);
+  await expect(
+    pagina.getByRole('button', { name: 'Ver detalle de Docente actualizado' }),
+  ).toBeFocused();
 });
 
-test('administración: confirmación de estado, reactivación y permiso compartido', async ({
+test('detalle de usuario: ventana modal con teclado, cierre y borrador descartable', async ({
   page: pagina,
 }) => {
+  await simularApi(pagina);
+  await ingresar(pagina);
+  const abrir = pagina.getByRole('button', { name: 'Ver detalle de Docente original' });
+  await abrir.click();
+  const ventana = pagina.getByRole('dialog', { name: 'Detalle de Docente original' });
+  await expect(ventana).toBeVisible();
+  expect(
+    await ventana.evaluate((elemento) => (elemento as HTMLDialogElement).matches(':modal')),
+  ).toBe(true);
+  await pagina.getByRole('button', { name: 'Volver al listado' }).focus();
+  await pagina.keyboard.press('Tab');
+  await expect(pagina.getByRole('button', { name: 'Cerrar detalle de usuario' })).toBeFocused();
+  await pagina.keyboard.press('Shift+Tab');
+  await expect(pagina.getByRole('button', { name: 'Volver al listado' })).toBeFocused();
+  await pagina.getByRole('button', { name: 'Editar docente', exact: true }).click();
+  await pagina.getByLabel('Nombre del docente').fill('Cambio sin guardar');
+  await pagina.keyboard.press('Escape');
+  await expect(ventana).toHaveCount(0);
+  await expect(abrir).toBeFocused();
+  await abrir.click();
+  await pagina.getByRole('button', { name: 'Editar docente', exact: true }).click();
+  await expect(pagina.getByLabel('Nombre del docente')).toHaveValue('Docente original');
+  await pagina.getByRole('button', { name: 'Cerrar detalle de usuario' }).click();
+  await expect(pagina.getByRole('dialog')).toHaveCount(0);
+  await abrir.click();
+  await expect(ventana).toBeVisible();
+  await pagina.mouse.click(4, 4);
+  await expect(pagina.getByRole('dialog')).toHaveCount(0);
+  await expect(abrir).toBeFocused();
+});
+
+test('administración: confirmación de estado y reactivación', async ({ page: pagina }) => {
   const estado = await simularApi(pagina);
   await ingresar(pagina);
   await pagina.getByRole('button', { name: 'Desactivar Docente original', exact: true }).click();
@@ -178,10 +239,6 @@ test('administración: confirmación de estado, reactivación y permiso comparti
   await expect(
     pagina.getByRole('button', { name: 'Desactivar Docente original', exact: true }),
   ).toBeVisible();
-  await pagina.getByRole('button', { name: 'Retirar permiso de creación' }).click();
-  await pagina.getByRole('button', { name: 'Confirmar permiso', exact: true }).click();
-  await expect(pagina.getByRole('button', { name: 'Conceder permiso de creación' })).toBeVisible();
-  expect(estado.permiso).toBe(false);
   expect(
     estado.solicitudes
       .filter((solicitud) => solicitud.metodo === 'PUT')
@@ -263,6 +320,15 @@ test('administración móvil: filtros, teclado y contenido sin desbordamiento', 
     390,
   );
   await pagina.screenshot({ path: 'capturas/administracion-movil.png', fullPage: true });
+  await pagina.getByRole('button', { name: 'Ver detalle de Alumna de prueba' }).click();
+  const ventana = pagina.getByRole('dialog');
+  await expect(ventana).toBeVisible();
+  const limites = await ventana.boundingBox();
+  expect(limites!.x).toBeGreaterThanOrEqual(0);
+  expect(limites!.x + limites!.width).toBeLessThanOrEqual(390);
+  await pagina.screenshot({ path: 'capturas/detalle-usuario-movil.png' });
+  await pagina.setViewportSize({ width: 1440, height: 1000 });
+  await pagina.screenshot({ path: 'capturas/detalle-usuario-escritorio.png' });
 });
 
 test('el ingreso de estudiantes no abre funciones del personal', async ({ page: pagina }) => {
@@ -272,4 +338,109 @@ test('el ingreso de estudiantes no abre funciones del personal', async ({ page: 
     'Esta interfaz está disponible para docentes y administradores.',
   );
   await expect(pagina.getByRole('heading', { name: 'Administración de usuarios.' })).toHaveCount(0);
+});
+
+test('administración: registrar docente valida contraseña y conserva datos ante conflicto', async ({
+  page: pagina,
+}) => {
+  const estado = await simularApi(pagina);
+  await ingresar(pagina);
+  await pagina.getByRole('button', { name: 'Registrar docente' }).click();
+  await expect(pagina.getByRole('dialog', { name: 'Registrar docente' })).toBeVisible();
+  const guardar = pagina.getByRole('button', { name: 'Crear cuenta docente' });
+  await expect(guardar).toBeDisabled();
+  await pagina.getByLabel('Nombre del docente').fill('Docente nuevo');
+  await pagina.getByLabel('Correo del docente').fill('nuevo@example.test');
+  await pagina.getByLabel('Contraseña inicial', { exact: true }).fill('🔐'.repeat(20));
+  await guardar.click();
+  await expect(pagina.getByRole('alert')).toContainText('72 bytes');
+  expect(estado.solicitudes.filter((s) => s.metodo === 'POST')).toHaveLength(0);
+  await pagina.getByLabel('Contraseña inicial', { exact: true }).fill('clave-ficticia');
+  estado.conflictoRegistro = true;
+  await guardar.click();
+  await expect(pagina.getByRole('alert')).toHaveText('El correo ya está registrado');
+  await expect(pagina.getByLabel('Nombre del docente')).toHaveValue('Docente nuevo');
+  estado.conflictoRegistro = false;
+  await guardar.click();
+  await expect(pagina.getByRole('dialog')).toHaveCount(0);
+  await expect(pagina.getByRole('heading', { name: 'Docente nuevo', exact: true })).toBeVisible();
+  const solicitud = estado.solicitudes.filter((s) => s.metodo === 'POST').at(-1)!;
+  expect(solicitud.ruta).toBe('/api/identidad/docentes');
+  expect(solicitud.csrf).toBe('csrf-gestion');
+  expect(solicitud.datos).toEqual({
+    nombre: 'Docente nuevo',
+    correo: 'nuevo@example.test',
+    clave: 'clave-ficticia',
+  });
+  await pagina.getByRole('button', { name: 'Registrar docente' }).click();
+  await expect(pagina.getByLabel('Contraseña inicial', { exact: true })).toHaveValue('');
+  await pagina.keyboard.press('Escape');
+  await expect(pagina.getByRole('button', { name: 'Registrar docente' })).toBeFocused();
+});
+
+test('administración: confirma cambio de rol y respeta el filtro actual', async ({
+  page: pagina,
+}) => {
+  const estado = await simularApi(pagina);
+  await ingresar(pagina);
+  await pagina.getByLabel('Filtrar por rol').selectOption('DOCENTE');
+  await pagina.getByRole('button', { name: 'Aplicar filtros' }).click();
+  await pagina.getByRole('button', { name: 'Ver detalle de Docente original' }).click();
+  await pagina.getByRole('button', { name: 'Cambiar rol', exact: true }).click();
+  await expect(pagina.getByRole('button', { name: 'Revisar cambio' })).toBeDisabled();
+  await pagina.getByLabel('Nuevo rol').selectOption('ADMINISTRADOR');
+  await pagina.getByRole('button', { name: 'Revisar cambio' }).click();
+  expect(
+    estado.solicitudes.filter((s) => s.ruta.endsWith('/rol') && s.metodo === 'PUT'),
+  ).toHaveLength(0);
+  await pagina.getByRole('button', { name: 'Confirmar cambio de rol' }).click();
+  await expect(pagina.getByRole('dialog', { name: 'Detalle de Docente original' })).toBeVisible();
+  await expect(
+    pagina.getByRole('dialog').getByText('Administrador', { exact: true }),
+  ).toBeVisible();
+  await expect(pagina.getByRole('dialog').getByText('Activo', { exact: true })).toBeVisible();
+  await pagina.getByRole('button', { name: 'Volver al listado' }).click();
+  await expect(pagina.locator('.cuenta')).toHaveCount(0);
+  await expect(pagina.getByRole('button', { name: 'Actualizar datos' })).toBeFocused();
+  const solicitud = estado.solicitudes.find((s) => s.ruta.endsWith('/docente/rol'))!;
+  expect(solicitud.datos).toEqual({ rol: 'ADMINISTRADOR' });
+  expect(solicitud.csrf).toBe('csrf-gestion');
+});
+
+test('administración: rol rechazado conserva selección y el rol propio se protege', async ({
+  page: pagina,
+}) => {
+  const estado = await simularApi(pagina);
+  await ingresar(pagina);
+  await pagina.getByRole('button', { name: 'Ver detalle de Administradora' }).click();
+  await expect(pagina.getByRole('button', { name: 'Cambiar rol', exact: true })).toBeDisabled();
+  await pagina.keyboard.press('Escape');
+  await pagina.getByRole('button', { name: 'Ver detalle de Alumna de prueba' }).click();
+  await pagina.getByRole('button', { name: 'Cambiar rol', exact: true }).click();
+  await pagina.getByLabel('Nuevo rol').selectOption('DOCENTE');
+  await pagina.getByRole('button', { name: 'Revisar cambio' }).click();
+  estado.rechazarRol = true;
+  await pagina.getByRole('button', { name: 'Confirmar cambio de rol' }).click();
+  await expect(pagina.getByRole('alert')).toHaveText('El personal requiere una contraseña');
+  await expect(pagina.getByLabel('Nuevo rol')).toHaveValue('DOCENTE');
+  expect(estado.usuarios.find((u) => u.nombre === 'Alumna de prueba')!.rol).toBe('ESTUDIANTE');
+  await pagina.getByRole('button', { name: 'Revisar selección' }).click();
+  await pagina.getByRole('button', { name: 'Volver al detalle' }).click();
+  await expect(pagina.getByRole('dialog').getByText('Estudiante', { exact: true })).toBeVisible();
+});
+
+test('administración: registro de docentes en móvil', async ({ page: pagina }) => {
+  const estado = await simularApi(pagina);
+  await pagina.setViewportSize({ width: 390, height: 844 });
+  await ingresar(pagina);
+  await pagina.getByRole('button', { name: 'Registrar docente' }).click();
+  await expect(pagina.getByRole('dialog')).toBeVisible();
+  const limites = await pagina.getByRole('dialog').boundingBox();
+  expect(limites!.x + limites!.width).toBeLessThanOrEqual(390);
+  expect(await pagina.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+    390,
+  );
+  await pagina.screenshot({ path: 'capturas/registro-docente-movil.png' });
+  await pagina.setViewportSize({ width: 1440, height: 1000 });
+  await pagina.screenshot({ path: 'capturas/registro-docente-escritorio.png' });
 });

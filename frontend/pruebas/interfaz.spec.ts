@@ -4,6 +4,7 @@ test('biblioteca: búsqueda, filtros y navegación conservada al recargar', asyn
   page: pagina,
 }) => {
   await pagina.goto('/');
+  await pagina.getByRole('button', { name: 'Explorar la demostración' }).click();
   await expect(pagina.getByRole('heading', { name: /El aprendizaje empieza/ })).toBeVisible();
   await pagina.getByRole('button', { name: 'Biblioteca de casos', exact: true }).click();
   await pagina.getByRole('textbox', { name: 'Buscar casos por nombre' }).fill('pertenecer');
@@ -20,6 +21,7 @@ test('biblioteca: búsqueda, filtros y navegación conservada al recargar', asyn
 
 test('creación de borrador y transición a publicado en demostración', async ({ page: pagina }) => {
   await pagina.goto('/');
+  await pagina.getByRole('button', { name: 'Explorar la demostración' }).click();
   await pagina.getByRole('button', { name: 'Crear un caso' }).click();
   const campos = {
     'Nombre del caso': 'Decisiones compartidas',
@@ -69,7 +71,6 @@ test('API: autenticación, separación de datos ficticios y CSRF al crear un esp
     return ruta.fulfill({ json: [] });
   });
   await pagina.goto('/');
-  await pagina.getByRole('button', { name: 'Conectar cuenta', exact: true }).first().click();
   await pagina.getByLabel('Correo institucional').fill('docente@ejemplo.edu');
   await pagina.getByLabel('Contraseña', { exact: true }).fill('clave-ficticia');
   await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
@@ -85,21 +86,22 @@ test('API: autenticación, separación de datos ficticios y CSRF al crear un esp
   expect(await pagina.evaluate(() => localStorage.length)).toBe(0);
 });
 
-test('error de acceso visible y ventana navegable por teclado', async ({ page: pagina }) => {
+test('error de acceso visible sin abandonar el login', async ({ page: pagina }) => {
   await pagina.route('**/api/identidad/yo', (ruta) => ruta.fulfill({ status: 401, json: {} }));
   await pagina.goto('/');
-  await pagina.getByRole('button', { name: 'Conectar cuenta', exact: true }).first().click();
   await pagina.getByLabel('Correo institucional').fill('docente@ejemplo.edu');
   await pagina.getByLabel('Contraseña', { exact: true }).fill('incorrecta');
   await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
   await expect(pagina.getByRole('alert')).toHaveText('Correo o clave incorrectos.');
   await pagina.keyboard.press('Escape');
-  await expect(pagina.getByRole('dialog')).toHaveCount(0);
+  await expect(pagina).toHaveURL(/\/ingreso$/);
+  await expect(pagina.getByLabel('Contraseña', { exact: true })).toHaveValue('');
 });
 
 test('vista móvil sin desbordamiento horizontal', async ({ page: pagina }) => {
   await pagina.setViewportSize({ width: 390, height: 844 });
   await pagina.goto('/');
+  await pagina.getByRole('button', { name: 'Explorar la demostración' }).click();
   expect(await pagina.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
     390,
   );
@@ -144,7 +146,6 @@ test('reporte: evaluación pendiente y ausencia de intentos sin inventar notas',
     return ruta.fulfill({ json: [] });
   });
   await pagina.goto('/');
-  await pagina.getByRole('button', { name: 'Conectar cuenta', exact: true }).first().click();
   await pagina.getByLabel('Correo institucional').fill('docente@ejemplo.edu');
   await pagina.getByLabel('Contraseña', { exact: true }).fill('clave-ficticia');
   await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
