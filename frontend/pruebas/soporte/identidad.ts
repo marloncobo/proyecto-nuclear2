@@ -77,6 +77,20 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
     }
     if (url.pathname === '/api/identidad/roles')
       return ruta.fulfill({ json: ['ADMINISTRADOR', 'DOCENTE', 'ESTUDIANTE'] });
+    if (url.pathname === '/api/identidad/roles/DOCENTE/creacion-casos') {
+      if (metodo === 'PUT') {
+        estado.permiso = datos.habilitado;
+        for (const usuario of estado.usuarios) {
+          if (usuario.rol === 'DOCENTE') usuario.puedeCrearCasos = estado.permiso;
+        }
+        return ruta.fulfill({ status: 204 });
+      }
+      return ruta.fulfill({ json: { habilitado: estado.permiso } });
+    }
+    if (url.pathname === '/api/identidad/estudiantes/listado')
+      return ruta.fulfill({ json: [estudiante] });
+    if (metodo === 'GET' && ['/api/casos', '/api/sesiones'].includes(url.pathname))
+      return ruta.fulfill({ json: [] });
     if (url.pathname === '/api/identidad/estudiantes') {
       if (url.searchParams.get('correo')?.toLowerCase() !== estudiante.correo)
         return ruta.fulfill({ status: 404, json: { detail: 'Estudiante no encontrado' } });

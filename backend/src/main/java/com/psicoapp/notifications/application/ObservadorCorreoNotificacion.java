@@ -3,6 +3,7 @@ package com.psicoapp.notifications.application;
 import com.psicoapp.shared.events.*;
 import com.psicoapp.notifications.domain.SolicitudNotificacion;
 import java.util.List;
+import org.springframework.web.util.UriComponentsBuilder;
 import static com.psicoapp.notifications.domain.SolicitudNotificacion.Canal.CORREO;
 
 public class ObservadorCorreoNotificacion implements ObservadorNotificacion {
@@ -22,9 +23,13 @@ public class ObservadorCorreoNotificacion implements ObservadorNotificacion {
         return List.of();
     }
     private SolicitudNotificacion convocatoria(EventoNotificacion evento, SesionProgramada sesion) {
+        var enlace = UriComponentsBuilder.fromUri(sesion.url())
+                .replaceQueryParam("sesion", sesion.idSesion())
+                .build(true).toUri().toASCIIString();
         return new SolicitudNotificacion(evento.idEvento(), evento.idEstudiante(), sesion.idSesion(), null,
                 CORREO, "CONVOCATORIA", "Convocatoria academica", "Caso: " + sesion.nombreCaso()
-                + "\n" + sesion.mensaje() + "\nAcceso: " + sesion.url().toASCIIString()
+                + "\n" + sesion.mensaje() + "\nAcceso: " + enlace
+                + "\nSesión: " + sesion.idSesion()
                 + "\nCodigo: " + sesion.codigoAcceso(), evento.instante());
     }
 }

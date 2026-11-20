@@ -3,16 +3,19 @@ import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { NavigationEnd, Router } from '@angular/router';
 import { Ingreso } from './ingreso';
+import { EditorCaso } from './editor-caso';
+import { SelectorEstudiantes } from './selector-estudiantes';
 import { Administracion } from './administracion';
-import { ServicioApi, Caso, Sesion, Espacio, Reporte, Usuario } from './servicio-api';
+import { ServicioApi, Caso, Sesion, Espacio, Reporte, Usuario, FilaReporteSesion } from './servicio-api';
 import { nombreEtiqueta } from './etiqueta-usuario';
 @Component({
   selector: 'psico-raiz',
-  imports: [FormsModule, DatePipe, Administracion, Ingreso],
+  imports: [FormsModule, DatePipe, Administracion, Ingreso, EditorCaso, SelectorEstudiantes],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
 export class Aplicacion {
+  readonly sesionEstudiante = signal<string | null>(null);
   readonly api = inject(ServicioApi);
   private readonly enrutador = inject(Router);
   readonly demostracion = signal(false);
@@ -59,10 +62,17 @@ export class Aplicacion {
   identificadorCaso = '';
   identificadorSesion = '';
   identificadorReporte = '';
+  readonly estudiantes = signal<Usuario[]>([]);
+  readonly cargandoEstudiantes = signal(false);
+  readonly reporteSesion = signal<FilaReporteSesion[] | null>(null);
+  idSesionReporte = '';
+  valoraciones: Record<string, string> = {};
+  altaEstudiante = { nombre: '', correo: '' };
+  convocadosSeleccionados: string[] = [];
   idEstudiante = '';
   nombreEspacio = '';
   periodo = '2026-2';
-  formulario = this.formularioVacio();
+  borrador: Caso | null = null;
   programacion = {
     idCaso: '',
     idEspacio: '',
@@ -72,7 +82,7 @@ export class Aplicacion {
     modoNavegacion: 'FLEXIBLE',
     lugar: '',
     mensaje: '',
-    estudiantes: '',
+    estudiantes: [] as string[],
   };
   constructor() {
     let habiaCuenta = false;
@@ -90,6 +100,10 @@ export class Aplicacion {
     this.enrutador.events.subscribe((evento) => {
       if (!(evento instanceof NavigationEnd)) return;
       const direccion = this.enrutador.parseUrl(evento.urlAfterRedirects);
+      const sesion = direccion.queryParams['sesion'];
+      this.sesionEstudiante.set(direccion.root.children['primary']?.segments[0]?.path === 'ingreso'
+        && typeof sesion === 'string' ? sesion : null);
+      if (this.sesionEstudiante() !== null && (!this.api.conectado() || this.api.usuario()?.rol === 'ESTUDIANTE')) return;
       this.demostracion.set(!this.api.conectado() && direccion.queryParams['demostracion'] === '1');
       if (!this.api.conectado() && !this.demostracion()) {
         if (evento.urlAfterRedirects !== '/ingreso')
@@ -149,8 +163,11 @@ export class Aplicacion {
       this.nombreEspacio = '';
       this.periodo = '2026-2';
     }
+    if ((tipo === 'programar' || tipo === 'convocados') && this.api.conectado()) {
+      void this.cargarEstudiantes();
+    }
     if (tipo === 'programar') this.estudianteEncontrado.set(null);
-    if (tipo === 'crear') this.formulario = this.formularioVacio();
+    if (tipo === 'crear') this.borrador = caso ? structuredClone(caso) : EditorCaso.nuevo();
     setTimeout(() => document.querySelector<HTMLElement>('.modal')?.focus());
   }
   cerrar() {
@@ -189,21 +206,6 @@ export class Aplicacion {
       primero?.focus();
     }
   }
-  private formularioVacio() {
-    return {
-      nombre: '',
-      contexto: '',
-      desarrolloSituacional: '',
-      tiempoEstimadoMin: 40,
-      titulo: '',
-      contextoSituacional: '',
-      enunciado: '',
-      correcta: '',
-      incorrecta: '',
-      justificacionCorrecta: '',
-      justificacionIncorrecta: '',
-    };
-  }
   private sesionesEjemplo(): Sesion[] {
     return [
       {
@@ -240,7 +242,13 @@ export class Aplicacion {
     this.idEstudiante = '';
     this.nombreEspacio = '';
     this.periodo = '2026-2';
-    this.formulario = this.formularioVacio();
+    this.borrador = null;
+    this.estudiantes.set([]);
+    this.reporteSesion.set(null);
+    this.idSesionReporte = '';
+    this.valoraciones = {};
+    this.altaEstudiante = { nombre: '', correo: '' };
+    this.convocadosSeleccionados = [];
     this.programacion = {
       idCaso: '',
       idEspacio: '',
@@ -250,7 +258,7 @@ export class Aplicacion {
       modoNavegacion: 'FLEXIBLE',
       lugar: '',
       mensaje: '',
-      estudiantes: '',
+      estudiantes: [],
     };
   }
   async ejecutar(accion: () => Promise<void>) {
@@ -272,13 +280,22 @@ export class Aplicacion {
     await this.ejecutar(async () => {
       this.reiniciarDatosDeCuenta();
       this.modal.set('');
-      this.aviso.set('Conexión establecida. Consulta tus casos y sesiones por su identificador.');
+      this.aviso.set('Conexión establecida.');
       if (this.api.usuario()?.rol === 'ADMINISTRADOR') {
         this.aviso.set('');
         this.navegar('administracion');
       } else {
         this.navegar('inicio');
-        this.espacios.set(await this.api.consultar<Espacio[]>('/academico/espacios'));
+        const usuario = this.api.usuario();
+        const [espacios, casos, sesiones] = await Promise.all([
+          this.api.consultar<Espacio[]>('/academico/espacios'),
+          this.api.consultar<Caso[]>('/casos'),
+          this.api.consultar<Sesion[]>('/sesiones'),
+        ]);
+        if (this.api.usuario() !== usuario) return;
+        this.espacios.set(espacios);
+        this.casos.set(casos);
+        this.sesiones.set(sesiones);
       }
     });
   }
@@ -290,69 +307,20 @@ export class Aplicacion {
     this.error.set('');
     void this.enrutador.navigate(['/ingreso'], { replaceUrl: true });
   }
-  async guardarCaso() {
+  async guardarCaso(caso: Caso) {
     await this.ejecutar(async () => {
-      const datos = this.formulario;
-      const idPregunta = crypto.randomUUID();
-      const caso: Caso = {
-        id: crypto.randomUUID(),
-        nombre: datos.nombre,
-        contexto: datos.contexto,
-        desarrolloSituacional: datos.desarrolloSituacional,
-        tiempoEstimadoMin: datos.tiempoEstimadoMin,
-        estado: 'BORRADOR',
-        escenarios: [
-          {
-            id: crypto.randomUUID(),
-            titulo: datos.titulo,
-            contextoSituacional: datos.contextoSituacional,
-            orden: 1,
-            preguntas: [
-              {
-                id: idPregunta,
-                enunciado: datos.enunciado,
-                orden: 1,
-                opciones: [
-                  {
-                    id: crypto.randomUUID(),
-                    texto: datos.correcta,
-                    esCorrecta: true,
-                    justificacion: datos.justificacionCorrecta,
-                  },
-                  {
-                    id: crypto.randomUUID(),
-                    texto: datos.incorrecta,
-                    esCorrecta: false,
-                    justificacion: datos.justificacionIncorrecta,
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-        rubrica: {
-          id: crypto.randomUUID(),
-          nombre: 'Comprensión del escenario',
-          escalaMaxima: 5,
-          criterios: [
-            {
-              id: crypto.randomUUID(),
-              nombre: 'Análisis de la situación',
-              ponderacion: 1,
-              preguntas: [idPregunta],
-            },
-          ],
-        },
-      };
-      const creado = this.api.conectado() ? await this.api.enviar<Caso>('/casos', caso) : caso;
-      this.casos.update((casos) => [creado, ...casos]);
+      const anterior = this.seleccionado();
+      const guardado = this.api.conectado()
+        ? anterior
+          ? await this.api.enviar<Caso>(`/casos/${anterior.id}`, caso, 'PUT')
+          : await this.api.enviar<Caso>('/casos', caso)
+        : caso;
+      this.casos.update((casos) => anterior
+        ? casos.map((actual) => actual.id === anterior.id ? guardado : actual)
+        : [guardado, ...casos]);
       this.modal.set('');
       this.navegar('casos');
-      this.aviso.set(
-        this.api.conectado()
-          ? 'Borrador guardado en el servidor.'
-          : 'Borrador de demostración creado en memoria.',
-      );
+      this.aviso.set(anterior ? 'Borrador actualizado.' : 'Borrador guardado.');
     });
   }
   async cambiarEstado(caso: Caso, accion: 'publicar' | 'archivar') {
@@ -396,22 +364,79 @@ export class Aplicacion {
     this.nombreEspacio = espacio.nombre;
     this.periodo = espacio.periodo;
   }
+  async cargarEstudiantes() {
+    if (this.cargandoEstudiantes()) return;
+    const usuario = this.api.usuario();
+    this.cargandoEstudiantes.set(true);
+    try {
+      const estudiantes = await this.api.consultar<Usuario[]>('/identidad/estudiantes/listado');
+      if (this.api.usuario() === usuario) this.estudiantes.set(estudiantes);
+    } catch (error) {
+      if (this.api.usuario() === usuario)
+        this.error.set(error instanceof Error ? error.message : 'No se pudo cargar la lista.');
+    } finally {
+      this.cargandoEstudiantes.set(false);
+    }
+  }
+
+  async registrarEstudiante() {
+    await this.ejecutar(async () => {
+      const estudiante = await this.api.enviar<Usuario>('/identidad/estudiantes', this.altaEstudiante);
+      this.altaEstudiante = { nombre: '', correo: '' };
+      this.estudiantes.update((lista) => lista.some((actual) => actual.id === estudiante.id)
+        ? lista : [...lista, estudiante]);
+      this.programacion.estudiantes = [...new Set([...this.programacion.estudiantes, estudiante.id])];
+      this.abrir('programar');
+      this.aviso.set('Estudiante registrado y agregado a la convocatoria.');
+    });
+  }
+
   async buscarEstudiante() {
     await this.ejecutar(async () => {
       this.estudianteEncontrado.set(null);
       this.estudianteEncontrado.set(await this.api.buscarEstudiante(this.correoBusqueda));
     });
   }
+
   agregarEstudiante() {
     const estudiante = this.estudianteEncontrado();
     if (!estudiante) return;
-    const estudiantes = this.programacion.estudiantes
-      .split(',')
-      .map((valor) => valor.trim())
-      .filter(Boolean);
-    this.programacion.estudiantes = [...new Set([...estudiantes, estudiante.id])].join(', ');
+    this.estudiantes.update(lista => lista.some(actual => actual.id === estudiante.id) ? lista : [...lista, estudiante]);
+    this.programacion.estudiantes = [...new Set([...this.programacion.estudiantes, estudiante.id])];
     this.estudianteEncontrado.set(null);
     this.correoBusqueda = '';
+  }
+
+  editarConvocados(sesion: Sesion) {
+    this.convocadosSeleccionados = this.convocadosActuales(sesion);
+    this.sesionPendiente.set(sesion);
+    this.abrir('convocados');
+  }
+
+  private convocadosActuales(sesion: Sesion) {
+    return sesion.convocatorias.filter((convocatoria) => convocatoria.autorizada !== false)
+      .map((convocatoria) => convocatoria.idEstudiante);
+  }
+
+  cambiosConvocados() {
+    const sesion = this.sesionPendiente();
+    const anteriores = sesion ? this.convocadosActuales(sesion) : [];
+    return {
+      agregar: this.convocadosSeleccionados.filter((id) => !anteriores.includes(id)),
+      retirar: anteriores.filter((id) => !this.convocadosSeleccionados.includes(id)),
+    };
+  }
+
+  async guardarConvocados() {
+    await this.ejecutar(async () => {
+      const sesion = this.sesionPendiente();
+      if (!sesion) return;
+      await this.api.enviar<Sesion>(`/sesiones/${sesion.id}/convocados`, this.cambiosConvocados(), 'PUT');
+      const actualizada = await this.api.consultar<Sesion>(`/sesiones/${sesion.id}`);
+      this.sesiones.update((sesiones) => sesiones.map((actual) => actual.id === actualizada.id ? actualizada : actual));
+      this.modal.set('');
+      this.aviso.set('Convocatoria actualizada.');
+    });
   }
   async guardarEspacio() {
     await this.ejecutar(async () => {
@@ -445,10 +470,6 @@ export class Aplicacion {
         ...this.programacion,
         inicioPrevisto: new Date(this.programacion.inicioPrevisto).toISOString(),
         finPrevisto: new Date(this.programacion.finPrevisto).toISOString(),
-        estudiantes: this.programacion.estudiantes
-          .split(',')
-          .map((valor) => valor.trim())
-          .filter(Boolean),
       };
       if (new Date(datos.finPrevisto) <= new Date(datos.inicioPrevisto))
         throw new Error('La fecha final debe ser posterior al inicio.');
@@ -456,6 +477,7 @@ export class Aplicacion {
         ? await this.api.enviar<Sesion>('/sesiones', datos)
         : { ...datos, id: crypto.randomUUID(), estado: 'SIN_INICIAR', convocatorias: [] };
       this.sesiones.update((sesiones) => [...sesiones, sesion]);
+      this.programacion.estudiantes = [];
       this.modal.set('');
       this.navegar('sesiones');
       this.aviso.set(
@@ -490,6 +512,41 @@ export class Aplicacion {
         ),
       );
     });
+  }
+
+  async valorar(reporte: Reporte) {
+    await this.ejecutar(async () => {
+      const id = reporte.participacion.idIntento;
+      const valoracion = await this.api.enviar<Reporte['valoracionesGenerales'][number]>(
+        `/reportes/participaciones/${id}/valoraciones`, { mensaje: this.valoraciones[id].trim() },
+      );
+      this.resultado.update((reportes) => reportes?.map((actual) => actual.participacion.idIntento === id
+        ? { ...actual, valoracionesGenerales: [...actual.valoracionesGenerales, valoracion] } : actual) ?? null);
+      this.valoraciones[id] = '';
+      this.aviso.set('Valoración publicada.');
+    });
+  }
+
+  async consultarReporteSesion() {
+    await this.ejecutar(async () => {
+      this.reporteSesion.set(null);
+      this.reporteSesion.set(await this.api.consultar<FilaReporteSesion[]>(
+        `/reportes/sesiones/${encodeURIComponent(this.idSesionReporte)}`,
+      ));
+    });
+  }
+
+  descargarReporteSesion() {
+    const filas = this.reporteSesion();
+    if (!filas) return;
+    const csv = ['Estudiante,Intento,Estado,Calificación', ...filas.map((fila) =>
+      [fila.idEstudiante, fila.idIntento, fila.estado, fila.calificacion].join(','))].join('\r\n');
+    const url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }));
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = 'participacion.csv';
+    enlace.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   nombreCaso(id: string) {
     return this.casos().find((caso) => caso.id === id)?.nombre ?? 'Caso ' + id;

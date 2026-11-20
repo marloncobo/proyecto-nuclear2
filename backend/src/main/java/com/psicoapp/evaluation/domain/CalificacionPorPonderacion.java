@@ -1,6 +1,7 @@
 package com.psicoapp.evaluation.domain;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -42,8 +43,10 @@ public final class CalificacionPorPonderacion implements EstrategiaCalificacion 
     private Map<UUID, BigDecimal> ponderacionesPorPregunta(RubricaEvaluable rubrica) {
         Map<UUID, BigDecimal> ponderaciones = new HashMap<>();
         for (CriterioEvaluable criterio : rubrica.criterios()) {
+            BigDecimal pesoPorPregunta = criterio.ponderacion().divide(
+                    BigDecimal.valueOf(criterio.preguntas().size()), MathContext.DECIMAL128);
             for (UUID idPregunta : criterio.preguntas()) {
-                ponderaciones.merge(idPregunta, criterio.ponderacion(), BigDecimal::add);
+                ponderaciones.merge(idPregunta, pesoPorPregunta, BigDecimal::add);
             }
         }
         return ponderaciones;

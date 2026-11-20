@@ -6,8 +6,7 @@ test('administración: roles, filtros, detalle, edición y errores sin perder el
 }) => {
   const estado = await simularApi(pagina);
   await ingresar(pagina);
-  await expect(pagina.getByRole('heading', { name: 'Roles y permisos' })).toHaveCount(0);
-  await expect(pagina.getByRole('button', { name: 'Permisos docentes' })).toHaveCount(0);
+  await expect(pagina.getByRole('heading', { name: 'Roles y permisos' })).toBeVisible();
   await expect(pagina.getByRole('heading', { name: 'Administración de usuarios.' })).toBeVisible();
   await expect(
     pagina.getByRole('button', { name: 'Biblioteca de casos', exact: true }),
@@ -47,7 +46,7 @@ test('administración: roles, filtros, detalle, edición y errores sin perder el
     estado.solicitudes.some((solicitud) => solicitud.ruta.includes('/academico/')),
   ).toBeFalsy();
   expect(
-    estado.solicitudes.some((solicitud) => solicitud.ruta.includes('/creacion-casos')),
+    estado.solicitudes.some((solicitud) => solicitud.metodo === 'PUT' && solicitud.ruta.includes('/creacion-casos')),
   ).toBeFalsy();
   await pagina.getByRole('button', { name: 'Volver al listado' }).click();
   await expect(pagina.getByRole('dialog')).toHaveCount(0);
@@ -111,6 +110,10 @@ test('administración: confirmación de estado y reactivación', async ({ page: 
       .filter((solicitud) => solicitud.metodo === 'PUT')
       .every((solicitud) => solicitud.csrf === 'csrf-gestion'),
   ).toBeTruthy();
+  await pagina.getByRole('button', { name: 'Retirar permiso de creación' }).click();
+  await pagina.getByRole('button', { name: 'Confirmar permiso' }).click();
+  await expect(pagina.getByRole('button', { name: 'Conceder permiso de creación' })).toBeVisible();
+  expect(estado.permiso).toBe(false);
   await pagina.getByRole('button', { name: 'Cerrar sesión', exact: true }).click();
   await expect(pagina.getByRole('heading', { name: 'Administración de usuarios.' })).toHaveCount(0);
   expect(await pagina.evaluate(() => [localStorage.length, sessionStorage.length])).toEqual([0, 0]);
@@ -148,14 +151,15 @@ test('docente: buscar correo exacto, agregar sin duplicados y limpiar resultado 
   await ingresar(pagina, 'docente@example.test');
   await pagina.getByRole('button', { name: 'Espacios académicos', exact: true }).click();
   await pagina.getByRole('button', { name: 'Programar un encuentro' }).click();
-  const campo = pagina.getByLabel('Estudiantes (identificadores separados por comas)');
+  const campo = pagina.getByRole('checkbox', { name: /Alumna de prueba/ });
   for (let intento = 0; intento < 2; intento++) {
     await pagina
       .getByLabel('Correo del estudiante', { exact: true })
       .fill('alumna+grupo@example.test');
     await pagina.getByRole('button', { name: 'Buscar por correo' }).click();
     await pagina.getByRole('button', { name: 'Agregar a Alumna de prueba' }).click();
-    await expect(campo).toHaveValue('00000000-0000-0000-0000-000000000123');
+    await expect(campo).toBeChecked();
+    await expect(pagina.getByText('1 seleccionado', { exact: true })).toBeVisible();
   }
   expect(
     estado.solicitudes
@@ -171,6 +175,25 @@ test('docente: buscar correo exacto, agregar sin duplicados y limpiar resultado 
   await expect(pagina.getByRole('alert')).toHaveText('Estudiante no encontrado');
   await expect(pagina.getByRole('button', { name: 'Agregar a Alumna de prueba' })).toHaveCount(0);
   await expect(pagina.getByRole('button', { name: 'Administración', exact: true })).toHaveCount(0);
+});
+
+test('docente: selecciona estudiantes por nombre y conserva la selección al filtrar', async ({
+  page: pagina,
+}) => {
+  await simularApi(pagina, 'DOCENTE');
+  await ingresar(pagina, 'docente@example.test');
+  await pagina.getByRole('button', { name: 'Espacios académicos', exact: true }).click();
+  await pagina.getByRole('button', { name: 'Programar un encuentro' }).click();
+  const estudiante = pagina.getByRole('checkbox', { name: /Alumna de prueba/ });
+  const filtro = pagina.getByRole('searchbox', { name: 'Filtrar por nombre o correo' });
+  await estudiante.check();
+  await filtro.fill('sin coincidencias');
+  await expect(pagina.getByText('No hay coincidencias.')).toBeVisible();
+  await expect(pagina.getByText('1 seleccionado', { exact: true })).toBeVisible();
+  await filtro.fill('alumna+grupo');
+  await expect(estudiante).toBeChecked();
+  await estudiante.uncheck();
+  await expect(pagina.getByText('0 seleccionados')).toBeVisible();
 });
 
 test('administración móvil: filtros, teclado y contenido sin desbordamiento', async ({
@@ -478,4 +501,27 @@ test('administración: fallo de lectura tras guardar no vuelve a enviar la escri
     pagina.getByRole('heading', { name: 'Docente guardado', exact: true }),
   ).toBeVisible();
   expect(estado.solicitudes.filter((s) => s.metodo === 'PUT')).toHaveLength(1);
+});
+
+test('el código de convocatoria abre la simulación sin entrar al panel del personal', async ({
+  page: pagina,
+}) => {
+  await simularApi(pagina, 'ESTUDIANTE');
+  await pagina.route('**/api/participaciones/ingreso', async (ruta) => {
+    expect(ruta.request().postDataJSON()).toEqual({ idSesion: 'sesion-prueba', codigoAcceso: '123456' });
+    await ruta.fulfill({
+      json: {
+        nombre: 'Simulación de prueba',
+        intento: { id: 'intento', limite: '2026-11-30T12:00:00Z', estado: 'EN_PROGRESO', preguntaActual: 'p1', respuestas: {} },
+        preguntas: [{ id: 'p1', escenario: 'Escenario', contexto: 'Contexto', enunciado: '¿Qué harías?', opciones: [] }],
+      },
+    });
+  });
+  await pagina.goto('/ingreso?sesion=sesion-prueba');
+  await expect(pagina.getByLabel('Identificador de sesión')).toHaveValue('sesion-prueba');
+  await pagina.getByLabel('Correo institucional').fill('alumna+grupo@example.test');
+  await pagina.getByLabel('Código de convocatoria').fill('123456');
+  await pagina.getByRole('button', { name: 'Entrar a la simulación' }).click();
+  await expect(pagina.getByRole('heading', { name: 'Simulación de prueba' })).toBeVisible();
+  await expect(pagina.getByRole('navigation', { name: 'Navegación principal' })).toHaveCount(0);
 });

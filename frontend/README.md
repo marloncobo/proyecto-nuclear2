@@ -1,6 +1,6 @@
 # Frontend de Psicoapp
 
-Interfaz para docentes y administradores en Angular 21, TypeScript y CSS. Componentes standalone, estado mediante signals e identificadores propios en español. Diseño adaptable con el logo proporcionado, azul profundo, verde salvia, tonos cálidos y formas orgánicas.
+Interfaz para docentes, administradores y estudiantes en Angular 21, TypeScript y CSS.
 
 Consulta la [configuración de skills, Figma y validación visual](HERRAMIENTAS-FRONTEND.md) y las [reglas locales del frontend](AGENTS.md). Angular sigue siendo el framework del proyecto.
 
@@ -25,22 +25,23 @@ Si aparece una respuesta HTML en el acceso, comprobar que `/api/identidad/yo` en
 - Pantalla inicial `/ingreso` para docentes y administradores: correo y contraseña, validación de campos, mostrar/ocultar contraseña, indicador de acceso en curso y errores accesibles. La identidad se comprueba con la API y la navegación se adapta al rol recibido; no se permite elegir un rol en el formulario.
 - Inicio con resumen de registros cargados en la pestaña actual.
 - Biblioteca con búsqueda por nombre, filtros, detalle, publicación y archivado confirmado.
-- Creación de un borrador con un escenario, una pregunta, dos opciones con justificación y una rúbrica inicial: un criterio al 100 %, escala máxima 5.
-- Consulta de casos y sesiones por UUID. La API existente no ofrece listados; conservar los identificadores para recuperar registros tras recargar.
+- Creación y edición de borradores con varios escenarios, preguntas, opciones justificadas y criterios de rúbrica. Cada criterio reparte su ponderación entre sus preguntas.
+- Carga de casos y sesiones del docente al conectar la cuenta, con consulta adicional por UUID.
 - Creación, consulta y edición de espacios académicos. El backend impide editar espacios asociados a cualquier sesión; el formulario conserva los valores cuando hay conflicto.
-- Programación con caso publicado, espacio, fechas, duración, navegación, lugar y UUID de estudiantes existentes. Búsqueda estudiantil por correo institucional exacto para agregar identidades activas sin duplicados. El servidor gestiona las convocatorias.
+- Programación con caso publicado, espacio, fechas, duración, navegación y lugar. Los docentes pueden buscar por correo exacto o seleccionar estudiantes activos por nombre o correo, registrar estudiantes y editar convocados. El servidor gestiona las convocatorias.
 - Inicio y finalización de sesiones, con confirmación y validaciones del servidor.
-- Reportes por caso y estudiante: calificación, retroalimentación y valoraciones existentes. Una evaluación pendiente no se convierte en cero; una lista vacía no se interpreta como ausencia.
+- Reportes por caso y estudiante con calificación, retroalimentación y publicación de valoraciones. Una evaluación pendiente se muestra como pendiente y la exportación CSV por sesión incluye intentos, notas y ausencias cuando la sesión está cerrada.
 - Administración con navegación propia según rol: listado de usuarios con búsqueda por nombre/correo en el servidor y filtros combinables de rol/estado, detalle y edición de docentes en una ventana modal, y activación/desactivación confirmada. La ventana se cierra con Escape, la cruz, el fondo o «Volver al listado» y devuelve el foco al botón de origen; durante el guardado permanece abierta. Los errores de edición se muestran dentro de ella. La cuenta propia no se puede desactivar.
 - Registro de docentes en un modal con nombre, correo y contraseña inicial (8 caracteres como mínimo, hasta 72 bytes). No se almacena la contraseña en el navegador; el formulario se limpia al cancelar o completar el registro. Un error conserva los campos para corregirlos. El nuevo docente se incorpora al listado si coincide con los filtros actuales.
 - Cambio de rol desde el detalle, con revisión y confirmación dentro de la misma ventana. Se conserva el estado activo/inactivo y se respetan los filtros del listado. No se permite retirar el rol de la propia cuenta administrativa. El servidor valida el dominio al convertir a estudiante y rechaza cuentas estudiantiles sin contraseña al convertirlas a personal.
-- La activación y desactivación de usuarios se confirman en modales. La configuración global del permiso de creación de casos no se ofrece en el frontend; el backend conserva sus validaciones y contratos.
+- La activación y desactivación de usuarios se confirman en modales. La configuración global del permiso de creación de casos requiere confirmación y afecta a todo el rol docente.
+- El enlace «Ingresar con código de convocatoria» abre el acceso estudiantil en `/ingreso?sesion=`. El estudiante usa su correo institucional, identificador de sesión y código de convocatoria para responder, navegar, entregar y consultar su calificación y las valoraciones.
 
-El acceso sin identificar dirige a `/ingreso`. La demostración se abre de forma explícita con «Explorar la demostración» y utiliza datos ficticios **solo en memoria**; los cambios desaparecen al recargar. El parámetro público `demostracion=1` permite recuperar esa navegación sin autenticar ni acceder a datos reales. Al ingresar con una cuenta se descartan esos datos: el docente carga los espacios reales y el administrador carga usuarios y roles. La administración y la búsqueda estudiantil requieren conexión real. Los casos y sesiones reales consultados permanecen en memoria hasta recargar. El panel de encuentro muestra la primera sesión cargada; el resumen no representa totales globales del servidor.
+El acceso sin identificar dirige a `/ingreso`. La demostración se abre de forma explícita con «Explorar la demostración» y utiliza datos ficticios **solo en memoria**; los cambios desaparecen al recargar. El parámetro público `demostracion=1` permite recuperar esa navegación sin autenticar ni acceder a datos reales. Al ingresar con una cuenta se descartan esos datos: el docente carga sus espacios, casos y sesiones y el administrador carga usuarios y roles. La administración y la búsqueda estudiantil requieren conexión real. Los casos y sesiones reales consultados permanecen en memoria hasta recargar. El panel de encuentro muestra la primera sesión cargada; el resumen no representa totales globales del servidor.
 
 La contraseña se limpia al completar o fallar el acceso. Al cerrar sesión se eliminan las credenciales y los datos consultados, y se regresa al login; volver con el historial no recupera una sesión cerrada. Recargar la página requiere identificarse de nuevo porque las credenciales no se almacenan en el navegador. No hay recuperación automática de contraseña: la pantalla orienta a contactar al administrador institucional.
 
-La interfaz no incluye acceso estudiantil, alta de estudiantes, restablecimiento de contraseñas, editor de múltiples escenarios, sustitución de borradores, rúbricas avanzadas, cambios de convocados, escritura de valoraciones ni exportación de reportes. No declara cumplimiento completo de los RF. La autorización, tiempos y evaluación pertenecen al backend. El registro y la búsqueda de estudiantes son operaciones exclusivas del docente en la API actual; no se ofrecen al administrador.
+El restablecimiento de contraseñas queda fuera del alcance de la interfaz. La autorización, los tiempos y la evaluación pertenecen al backend. El registro, listado y búsqueda de estudiantes son operaciones del docente.
 
 ### Contratos administrativos integrados
 
@@ -52,6 +53,7 @@ La interfaz no incluye acceso estudiantil, alta de estudiantes, restablecimiento
 | Registrar docente        | `POST /api/identidad/docentes`                                     |
 | Editar docente           | `PUT /api/identidad/docentes/{id}`                                 |
 | Activar/desactivar       | `PUT /api/identidad/usuarios/{id}/estado`                          |
+| Permiso de creación     | `GET /api/identidad/roles/{rol}/creacion-casos`, `PUT /api/identidad/roles/DOCENTE/creacion-casos` |
 | Catálogo y cambio de rol | `GET /api/identidad/roles`, `PUT /api/identidad/usuarios/{id}/rol` |
 
 Las escrituras obtienen CSRF y solo actualizan los datos visibles tras una respuesta correcta. Se utilizan los contratos existentes sin cambios al backend. No hay endpoints administrativos de borrado o recuperación de contraseñas en este contrato.
@@ -60,7 +62,7 @@ Las escrituras obtienen CSRF y solo actualizan los datos visibles tras una respu
 
 `src/app/servicio-api.ts` centraliza HTTP Basic, `/api/identidad/yo` y la obtención de CSRF antes de cada escritura. Envía la cabecera indicada por el servidor y conserva cookies de mismo origen. Credenciales solo en memoria; no se guardan claves, tokens o respuestas en almacenamiento del navegador. Los errores y tiempos de espera aparecen en pantalla.
 
-Producción: publicar `dist/psicoapp/browser` mediante HTTPS, configurar fallback a `index.html` y proxy de mismo origen para `/api`. El proxy de Angular funciona únicamente en desarrollo. La interfaz de ingreso estudiantil de los enlaces de convocatoria sigue pendiente. Google Fonts proporciona DM Sans y Manrope, con fuentes de sistema como respaldo.
+En producción, publicar `dist/psicoapp/browser` mediante HTTPS, configurar fallback a `index.html` y un proxy de mismo origen para `/api`. Google Fonts proporciona DM Sans y Manrope, con fuentes de sistema como respaldo.
 
 Accesibilidad: foco visible, ventanas con contención de foco, cierre con Escape y retorno al control de origen, etiquetas de formularios y movimiento reducido. Verificar además contraste y uso con lector de pantalla antes de una publicación institucional.
 

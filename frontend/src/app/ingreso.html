@@ -1,3 +1,65 @@
+@if (sesionEstudiante() !== null) {
+<main class="ingreso-estudiante">
+  <a href="/ingreso"><img src="/logo-psicoapp.png" alt="Psicoapp, inicio" /></a>
+  @if (simulacion(); as caso) {
+    <h1>{{ caso.nombre }}</h1>
+    @if (intento()?.estado === 'EN_PROGRESO') {
+      <p>Hora límite {{ intento()?.limite | date: 'shortTime' }}</p>
+      @if (pregunta(); as actual) {
+        <p>Pregunta {{ indice() + 1 }} de {{ caso.preguntas.length }}</p>
+        <h2>{{ actual.escenario }}</h2>
+        <p>{{ actual.contexto }}</p>
+        <fieldset [disabled]="ocupado()">
+          <legend>{{ actual.enunciado }}</legend>
+          @for (opcion of actual.opciones; track opcion.id) {
+            <label>
+              <input type="radio" name="respuesta" [checked]="intento()?.respuestas?.[actual.id] === opcion.id"
+                (change)="responder(actual.id, opcion.id)" />
+              {{ opcion.texto }}
+            </label>
+          }
+        </fieldset>
+        <footer>
+          <button type="button" [disabled]="ocupado() || indice() === 0" (click)="operar('retroceder')">Anterior</button>
+          <button type="button" [disabled]="ocupado() || indice() === caso.preguntas.length - 1"
+            (click)="operar('avanzar')">Siguiente</button>
+          <button type="button" [disabled]="ocupado()" (click)="confirmarEntrega.set(true)">Entregar intento</button>
+        </footer>
+        @if (confirmarEntrega()) {
+          <p>¿Confirmas la entrega de tus respuestas?</p>
+          <button type="button" [disabled]="ocupado()" (click)="operar('finalizar')">Confirmar entrega</button>
+          <button type="button" [disabled]="ocupado()" (click)="confirmarEntrega.set(false)">Seguir respondiendo</button>
+        }
+      }
+    } @else if (resultado(); as nota) {
+      <h2>Calificación {{ nota.calificacion }}</h2>
+      <ul>
+        @for (detalle of nota.detalles; track detalle.idPregunta) {
+          <li>{{ detalle.retroalimentacion }}</li>
+        }
+      </ul>
+      @for (valoracion of valoraciones(); track valoracion.id) {
+        <blockquote>{{ valoracion.mensaje }}</blockquote>
+      }
+      <button type="button" [disabled]="ocupado()" (click)="consultarResultado()">Actualizar resultado</button>
+    } @else {
+      <p>Intento entregado.</p>
+      <button type="button" [disabled]="ocupado()" (click)="consultarResultado()">Consultar calificación</button>
+    }
+  } @else {
+    <h1>Ingreso a la sesión</h1>
+    <form #convocatoria="ngForm" (ngSubmit)="convocatoria.valid && iniciar()">
+      <label>Correo institucional <input type="email" name="correo" [(ngModel)]="correo" required email /></label>
+      <label>Identificador de sesión <input name="sesion" [(ngModel)]="idSesion" required /></label>
+      <label>Código de convocatoria <input type="password" name="codigo" [(ngModel)]="codigo" required /></label>
+      <button type="submit" [disabled]="ocupado() || convocatoria.invalid">Entrar a la simulación</button>
+    </form>
+  }
+  @if (error()) {
+    <p role="alert">{{ error() }}</p>
+  }
+</main>
+} @else {
 <main class="pagina-ingreso" id="principal">
   <section class="presentacion" aria-label="Psicoapp, simulador académico">
     <img class="logo-ingreso" src="logo-psicoapp.png" alt="Psicoapp" width="130" height="93" />
@@ -108,6 +170,7 @@
           administrador de tu institución.
         </p>
       </form>
+      <p class="ayuda-acceso"><a href="/ingreso?sesion=">Ingresar con código de convocatoria</a></p>
       <div class="separador"><span>¿Quieres conocer Psicoapp?</span></div>
       <button
         class="boton-demostracion"
@@ -124,3 +187,4 @@
     </footer>
   </section>
 </main>
+}

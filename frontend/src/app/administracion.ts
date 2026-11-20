@@ -20,6 +20,32 @@ export class Administracion implements OnInit {
   readonly estadoAplicado = signal('');
   readonly usuariosVisibles = this.usuarios;
   readonly nombreEtiqueta = nombreEtiqueta;
+  readonly permisoDocente = signal<boolean | null>(null);
+  readonly confirmarPermiso = signal(false);
+  readonly errorPermiso = signal('');
+
+  async cargarPermiso() {
+    this.errorPermiso.set('');
+    try {
+      const permiso = await this.api.consultarPermiso('DOCENTE');
+      this.permisoDocente.set(permiso.habilitado);
+    } catch {
+      this.errorPermiso.set('No se pudo consultar el permiso docente.');
+    }
+  }
+
+  async cambiarPermiso() {
+    const permiso = this.permisoDocente();
+    if (permiso === null) return;
+    await this.ejecutar(async () => {
+      await this.api.configurarPermiso(!permiso);
+      this.permisoDocente.set(!permiso);
+      this.confirmarPermiso.set(false);
+      await this.refrescarListado();
+      this.aviso.set('Permiso docente actualizado.');
+    });
+  }
+
   readonly roles = signal<Rol[]>([]);
   readonly seleccionado = signal<UsuarioAdministrado | null>(null);
   readonly vistaModal = signal<'' | 'detalle' | 'registro' | 'rol' | 'estado'>('');
@@ -70,7 +96,9 @@ export class Administracion implements OnInit {
 
   ngOnInit() {
     void this.cargar();
+    void this.cargarPermiso();
   }
+
   async ejecutar(accion: () => Promise<void>) {
     if (this.ocupado()) return;
     this.ocupado.set(true);
@@ -244,6 +272,7 @@ export class Administracion implements OnInit {
       setTimeout(() => document.querySelector<HTMLElement>('#detalle-usuario')?.focus());
     });
   }
+
   private actualizar(usuario: UsuarioAdministrado) {
     this.usuarios.update((usuarios) =>
       usuarios.map((anterior) => (anterior.id === usuario.id ? usuario : anterior)),

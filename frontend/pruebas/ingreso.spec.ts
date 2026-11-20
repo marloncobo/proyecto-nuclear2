@@ -210,7 +210,8 @@ test('un 401 de la cuenta activa cierra la sesión y un 403 no lo hace', async (
           puedeCrearCasos: true,
         },
       });
-    if (url.pathname === '/api/academico/espacios') return ruta.fulfill({ json: [] });
+    if (['/api/academico/espacios', '/api/casos', '/api/sesiones'].includes(url.pathname))
+      return ruta.fulfill({ json: [] });
     if (estado === 'prohibida') return ruta.fulfill({ status: 403, json: {} });
     if (estado === 'revocada') return ruta.fulfill({ status: 401, json: {} });
     return ruta.fulfill({ json: {} });
@@ -223,6 +224,7 @@ test('un 401 de la cuenta activa cierra la sesión y un 403 no lo hace', async (
 
   estado = 'prohibida';
   await pagina.getByRole('button', { name: /^Consultar/ }).click();
+  await expect(pagina.getByRole('alert')).toHaveText('Tu cuenta no tiene permiso para esta operación.');
   await expect(pagina).toHaveURL(/vista=casos/);
   await expect(pagina.getByRole('navigation')).toBeVisible();
 

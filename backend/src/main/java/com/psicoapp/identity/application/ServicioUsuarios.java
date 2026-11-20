@@ -99,6 +99,14 @@ public class ServicioUsuarios implements DirectorioIdentidad {
                 .orElseThrow(() -> new NoEncontrado("Estudiante no encontrado"));
     }
 
+    @Transactional(readOnly = true)
+    public List<DatosUsuario> listarEstudiantes(UUID idActor) {
+        exigirRol(idActor, Rol.DOCENTE);
+        return usuarios.listar(Rol.ESTUDIANTE, true).stream()
+                .filter(usuario -> dominioInstitucional(usuario.correo()))
+                .map(this::representarUsuario).toList();
+    }
+
     private DatosUsuarioAdministrado representarAdministrado(Usuario usuario) {
         DatosUsuario datos = representarUsuario(usuario);
         return new DatosUsuarioAdministrado(datos.id(), datos.correo(), datos.nombre(), datos.rol(),
@@ -211,10 +219,14 @@ public class ServicioUsuarios implements DirectorioIdentidad {
 
     private String validarCorreoInstitucional(String correo) {
         String normalizado = Usuario.normalizarCorreo(correo);
-        if (!dominiosInstitucionales.contains(normalizado.substring(normalizado.indexOf('@') + 1))) {
+        if (!dominioInstitucional(normalizado)) {
             throw new IllegalArgumentException("El correo debe pertenecer a un dominio institucional configurado");
         }
         return normalizado;
+    }
+
+    private boolean dominioInstitucional(String correo) {
+        return dominiosInstitucionales.contains(correo.substring(correo.indexOf('@') + 1));
     }
 
     private Usuario buscarUsuario(UUID id) {

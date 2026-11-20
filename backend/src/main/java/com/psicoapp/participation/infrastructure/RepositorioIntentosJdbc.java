@@ -60,6 +60,15 @@ public class RepositorioIntentosJdbc implements RepositorioIntentos, Repositorio
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Optional<Intento> buscarUltimo(UUID idSesion, UUID idEstudiante) {
+        return jdbc.sql("""
+                SELECT * FROM intento WHERE id_sesion = ? AND id_estudiante = ?
+                ORDER BY fecha_inicio DESC, id_intento DESC LIMIT 1
+                """).params(idSesion.toString(), idEstudiante.toString()).query(this::mapear).optional();
+    }
+
+    @Override
     public void actualizar(Intento intento) {
         if (jdbc.sql("""
                 UPDATE intento SET posicion_actual=?, estado=?, fecha_limite=?
@@ -135,6 +144,9 @@ public class RepositorioIntentosJdbc implements RepositorioIntentos, Repositorio
 
     private void guardarRespuestas(Intento intento) {
         for (var respuesta : intento.respuestas().entrySet()) {
+            boolean opcionValida = jdbc.sql("SELECT COUNT(*) FROM opcion_respuesta WHERE id_opcion = ? AND id_pregunta = ?")
+                    .params(respuesta.getValue().toString(), respuesta.getKey().toString()).query(Integer.class).single() == 1;
+            if (!opcionValida) throw new IllegalArgumentException("La opción no pertenece a la pregunta");
             int actualizadas = jdbc.sql("""
                     UPDATE respuesta SET id_opcion=?, fecha_actualizacion=CURRENT_TIMESTAMP
                     WHERE id_intento=? AND id_pregunta=?
