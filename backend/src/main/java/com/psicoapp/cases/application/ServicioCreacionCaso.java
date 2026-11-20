@@ -41,6 +41,12 @@ public class ServicioCreacionCaso {
     }
 
     @Transactional(readOnly = true)
+    public List<DatosCaso> listar(UUID idDocente) {
+        identidades.exigirDocente(idDocente);
+        return casos.listarPorDocente(idDocente).stream().map(this::representar).toList();
+    }
+
+    @Transactional(readOnly = true)
     public DatosCaso consultar(UUID idDocente, UUID idCaso) {
         identidades.exigirDocente(idDocente);
         Caso caso = casos.buscarPorId(idCaso).orElseThrow(() -> new NoEncontrado("Caso no encontrado"));

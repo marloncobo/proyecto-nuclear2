@@ -43,6 +43,7 @@ class PruebaServicioEvaluacion {
             @Override public void guardar(Intento valor) { almacen.put(valor.id(), valor); }
             @Override public Optional<Intento> buscarPorId(UUID id) { return Optional.ofNullable(almacen.get(id)); }
             @Override public Optional<Intento> buscarActivo(UUID sesion, UUID estudiante) { return Optional.empty(); }
+            @Override public Optional<Intento> buscarUltimo(UUID sesion, UUID estudiante) { return Optional.empty(); }
             @Override public void actualizar(Intento valor) { almacen.put(valor.id(), valor); }
             @Override public Optional<Intento> bloquearPorId(UUID id) { return buscarPorId(id); }
             @Override public List<Intento> buscarVencidos(Instant ahora) { return List.of(); }

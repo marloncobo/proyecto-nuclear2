@@ -70,6 +70,11 @@ public class ControladorIdentidad {
             @RequestParam String correo) {
         return identidades.buscarEstudiante(UUID.fromString(principal.getName()), correo);
     }
+
+    @GetMapping("/estudiantes/listado")
+    public List<DatosUsuario> listarEstudiantes(Principal principal) {
+        return identidades.listarEstudiantes(UUID.fromString(principal.getName()));
+    }
     public record SolicitudDocente(@NotBlank @Email @Size(max = 180) String correo,
             @NotBlank @Size(max = 120) String nombre, @NotBlank @Size(min = 8, max = 72) String clave) {
         @Override

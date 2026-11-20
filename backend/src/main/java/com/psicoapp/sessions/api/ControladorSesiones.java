@@ -29,6 +29,11 @@ public class ControladorSesiones {
         return sesiones.modificarConvocados(UUID.fromString(principal.getName()), id, cambio);
     }
 
+    @GetMapping
+    public java.util.List<DatosSesion> listar(Principal principal) {
+        return sesiones.listar(UUID.fromString(principal.getName()));
+    }
+
     @GetMapping("/{id}")
     public DatosSesion consultar(Principal principal, @PathVariable UUID id) {
         return sesiones.consultar(UUID.fromString(principal.getName()), id);

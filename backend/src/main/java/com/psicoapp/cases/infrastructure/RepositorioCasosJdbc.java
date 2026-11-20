@@ -70,6 +70,13 @@ public class RepositorioCasosJdbc implements RepositorioCasos {
     }
 
     @Override
+    public java.util.List<Caso> listarPorDocente(UUID idDocente) {
+        return jdbc.sql("SELECT id_caso FROM caso WHERE id_usuario_docente = ? ORDER BY nombre, id_caso")
+                .param(idDocente.toString()).query(String.class).list().stream()
+                .map(UUID::fromString).map(this::buscarPorId).flatMap(Optional::stream).toList();
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Optional<Caso> buscarPorId(UUID id) {
         return consultar(id, false);

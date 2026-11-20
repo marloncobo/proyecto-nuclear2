@@ -105,6 +105,10 @@ class PruebaServicioGestionParticipacion {
                     && i.estado() == EstadoIntento.EN_PROGRESO).findFirst();
         }
         @Override public void actualizar(Intento intento) { intentos.put(intento.id(), intento); }
+        @Override public Optional<Intento> buscarUltimo(UUID idSesion, UUID idEstudiante) {
+            return intentos.values().stream().filter(i -> i.idSesion().equals(idSesion)
+                    && i.idEstudiante().equals(idEstudiante)).max(java.util.Comparator.comparing(Intento::inicio));
+        }
         @Override public Optional<Intento> bloquearPorId(UUID id) { return buscarPorId(id); }
         @Override public List<Intento> buscarVencidos(Instant ahora) {
             return new ArrayList<>(intentos.values()).stream().filter(i -> i.estaVencido(ahora)

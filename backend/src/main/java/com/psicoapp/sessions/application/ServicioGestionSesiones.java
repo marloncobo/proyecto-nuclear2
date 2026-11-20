@@ -141,6 +141,12 @@ public class ServicioGestionSesiones implements ConsultaSesiones, AutorizacionDo
     }
 
     @Transactional(readOnly = true)
+    public List<DatosSesion> listar(UUID idDocente) {
+        identidades.exigirDocente(idDocente);
+        return sesiones.listarPorDocente(idDocente).stream().map(this::representar).toList();
+    }
+
+    @Transactional(readOnly = true)
     public DatosSesion consultar(UUID idDocente, UUID idSesion) {
         identidades.exigirDocente(idDocente);
         Sesion sesion = sesiones.buscarPorId(idSesion).orElseThrow(() -> new NoEncontrado("Sesion no encontrada"));

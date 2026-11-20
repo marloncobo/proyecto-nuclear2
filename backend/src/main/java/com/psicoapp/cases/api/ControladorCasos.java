@@ -23,6 +23,11 @@ public class ControladorCasos {
         return casos.crear(UUID.fromString(principal.getName()), solicitud);
     }
 
+    @GetMapping
+    public java.util.List<DatosCaso> listar(Principal principal) {
+        return casos.listar(UUID.fromString(principal.getName()));
+    }
+
     @GetMapping("/{id}")
     public DatosCaso consultar(Principal principal, @PathVariable UUID id) {
         return casos.consultar(UUID.fromString(principal.getName()), id);

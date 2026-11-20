@@ -34,7 +34,8 @@ public class ConfiguracionIdentidad {
                 .authorizeHttpRequests(acceso -> acceso
                         .requestMatchers("/api/identidad/yo", "/api/identidad/csrf").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/identidad/estudiantes").hasRole("DOCENTE")
-                        .requestMatchers(HttpMethod.GET, "/api/identidad/estudiantes").hasRole("DOCENTE")
+                        .requestMatchers(HttpMethod.GET, "/api/identidad/estudiantes",
+                                "/api/identidad/estudiantes/listado").hasRole("DOCENTE")
                         .requestMatchers("/api/identidad/**").hasRole("ADMINISTRADOR")
                         .requestMatchers("/api/academico/**").hasRole("DOCENTE")
                         .requestMatchers("/api/casos", "/api/casos/**").hasRole("DOCENTE")

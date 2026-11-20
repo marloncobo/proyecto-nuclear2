@@ -2,6 +2,7 @@ package com.psicoapp.sessions.application;
 
 import com.psicoapp.identity.application.VerificadorAccesoEstudiante;
 import com.psicoapp.sessions.domain.Convocatoria;
+import com.psicoapp.sessions.domain.Sesion;
 import com.psicoapp.sessions.domain.TipoEstadoSesion;
 import com.psicoapp.identity.application.DirectorioIdentidad;
 import com.psicoapp.shared.exceptions.AccesoDenegado;
@@ -39,6 +40,17 @@ public class VerificadorConvocatorias implements VerificadorAccesoEstudiante, Au
     @Override
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
     public void exigirAcceso(UUID estudiante, UUID idSesion, String codigo) {
+        var sesion = exigirConvocatoria(estudiante, idSesion, codigo);
+        var ahora = reloj.instant();
+        var limite = sesion.inicioPrevisto().plus(Duration.between(sesion.inicioPrevisto(), sesion.finPrevisto()).dividedBy(2));
+        if (sesion.estado().codigo() != TipoEstadoSesion.EN_CURSO || sesion.estaVencida(ahora)
+                || ahora.isBefore(sesion.inicioPrevisto()) || ahora.isAfter(limite)) {
+            throw new AccesoDenegado("El estado o la ventana de ingreso no permite iniciar participacion");
+        }
+    }
+
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public Sesion exigirConvocatoria(UUID estudiante, UUID idSesion, String codigo) {
         identidades.exigirEstudiante(estudiante);
         var sesion = sesiones.bloquearPorId(idSesion).orElseThrow(() -> new NoEncontrado("Sesion no encontrada"));
         if (codigo == null || !codigo.matches("[0-9a-f]{32}")) throw new AccesoDenegado("Codigo invalido");
@@ -46,11 +58,6 @@ public class VerificadorConvocatorias implements VerificadorAccesoEstudiante, Au
         if (convocatoria.isEmpty() || !convocatoria.get().idSesion().equals(idSesion)) {
             throw new AccesoDenegado("No esta autorizado para esta sesion");
         }
-        var ahora = reloj.instant();
-        var limite = sesion.inicioPrevisto().plus(Duration.between(sesion.inicioPrevisto(), sesion.finPrevisto()).dividedBy(2));
-        if (sesion.estado().codigo() != TipoEstadoSesion.EN_CURSO || sesion.estaVencida(ahora)
-                || ahora.isBefore(sesion.inicioPrevisto()) || ahora.isAfter(limite)) {
-            throw new AccesoDenegado("El estado o la ventana de ingreso no permite iniciar participacion");
-        }
+        return sesion;
     }
 }

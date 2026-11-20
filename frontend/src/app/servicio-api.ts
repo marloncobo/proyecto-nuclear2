@@ -46,7 +46,7 @@ export interface Sesion {
   modoNavegacion: string;
   lugar: string;
   mensaje: string;
-  convocatorias: { id: string; idEstudiante: string; codigoAcceso: string | null }[];
+  convocatorias: { id: string; idEstudiante: string; codigoAcceso: string | null; autorizada?: boolean }[];
 }
 export interface Espacio {
   id: string;
@@ -71,7 +71,7 @@ export class ServicioApi {
   readonly conectado = signal(false);
   private autorizacion = '';
   private generacionSesion = 0;
-  async ingresar(correo: string, clave: string) {
+  async ingresar(correo: string, clave: string, estudiante = false) {
     const generacionAnterior = this.generacionSesion;
     const generacionIngreso = ++this.generacionSesion;
     const anterior = this.autorizacion;
@@ -84,8 +84,9 @@ export class ServicioApi {
       );
     try {
       const usuario = await this.consultar<Usuario>('/identidad/yo');
-      if (!['DOCENTE', 'ADMINISTRADOR'].includes(usuario.rol))
-        throw new Error('Esta interfaz está disponible para docentes y administradores.');
+      if (estudiante ? usuario.rol !== 'ESTUDIANTE' : !['DOCENTE', 'ADMINISTRADOR'].includes(usuario.rol))
+        throw new Error(estudiante ? 'Usa la cuenta estudiantil indicada en la convocatoria.' :
+          'Esta interfaz está disponible para docentes y administradores.');
       this.usuario.set(usuario);
       this.conectado.set(true);
     } catch (error) {
@@ -144,6 +145,12 @@ export class ServicioApi {
     return this.consultar<Usuario>(
       '/identidad/estudiantes?' + new URLSearchParams({ correo: correo.trim() }),
     );
+  }
+  consultarPermiso(rol: Rol) {
+    return this.consultar<{ habilitado: boolean }>(`/identidad/roles/${rol}/creacion-casos`);
+  }
+  configurarPermiso(habilitado: boolean) {
+    return this.enviar<void>('/identidad/roles/DOCENTE/creacion-casos', { habilitado }, 'PUT');
   }
   editarEspacio(id: string, datos: { nombre: string; periodo: string }) {
     return this.enviar<Espacio>(`/academico/espacios/${encodeURIComponent(id)}`, datos, 'PUT');
@@ -243,4 +250,11 @@ export interface Reporte {
     }[];
   } | null;
   valoracionesGenerales: { id: string; mensaje: string; fecha: string }[];
+}
+
+export interface FilaReporteSesion {
+  idEstudiante: string;
+  idIntento: string | null;
+  estado: string;
+  calificacion: number | null;
 }

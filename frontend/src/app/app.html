@@ -1,4 +1,6 @@
-@if (!api.conectado() && !demostracion()) {
+@if (sesionEstudiante() !== null && (!api.conectado() || api.usuario()?.rol === 'ESTUDIANTE')) {
+  <psico-ingreso [sesionEstudiante]="sesionEstudiante()" />
+} @else if (!api.conectado() && !demostracion()) {
   <psico-ingreso (autenticado)="completarIngreso()" (explorar)="iniciarDemostracion()" />
 } @else {
   <a class="saltar-contenido" href="#principal">Ir al contenido</a>
@@ -364,6 +366,9 @@
                     <small class="identificador">ID: {{ sesion.id }}</small>
                   </div>
                   @if (sesion.estado !== 'FINALIZADO') {
+                    @if (api.conectado()) {
+                      <button class="boton secundario" (click)="editarConvocados(sesion)">Editar convocados</button>
+                    }
                     <button
                       class="boton secundario"
                       [disabled]="ocupado()"
@@ -437,6 +442,21 @@
                 <p class="nota">Conecta tu cuenta docente para consultar resultados reales.</p>
                 <button class="boton primario" (click)="abrir('ingreso')">Conectar cuenta ↗</button>
               } @else {
+                <form (ngSubmit)="consultarReporteSesion()">
+                  <label>Sesión para exportar
+                    <select name="sesionReporte" [(ngModel)]="idSesionReporte" (ngModelChange)="reporteSesion.set(null)" required>
+                      <option value="">Selecciona una sesión</option>
+                      @for (sesion of sesiones(); track sesion.id) {
+                        <option [value]="sesion.id">{{ nombreCaso(sesion.idCaso) }} · {{ sesion.inicioPrevisto | date: 'short' }}</option>
+                      }
+                    </select>
+                  </label>
+                  <button class="boton secundario" [disabled]="ocupado() || !idSesionReporte">Preparar reporte</button>
+                  @if (reporteSesion(); as filas) {
+                    <p role="status">{{ filas.length }} filas listas para exportar.</p>
+                    <button type="button" class="boton secundario" (click)="descargarReporteSesion()">Descargar CSV</button>
+                  }
+                </form>
                 <form (ngSubmit)="consultarReporte()">
                   <label
                     >Identificador del caso<input
@@ -498,6 +518,11 @@
                         }}<small>{{ valoracion.fecha | date: 'mediumDate' }}</small>
                       </blockquote>
                     }
+                  <form (ngSubmit)="valorar(reporte)">
+                    <label>Valoración docente<textarea name="valoracion" [(ngModel)]="valoraciones[reporte.participacion.idIntento]"
+                      required maxlength="2000"></textarea></label>
+                    <button class="boton secundario" [disabled]="ocupado() || !valoraciones[reporte.participacion.idIntento]?.trim()">Publicar valoración</button>
+                  </form>
                   </article>
                 } @empty {
                   <p class="vacio">No hay intentos finalizados para este estudiante y caso.</p>
@@ -546,83 +571,10 @@
             <button class="boton secundario" (click)="salir()">Cerrar sesión</button>
           }
           @case ('crear') {
-            <p class="sobretitulo">UNA IDEA, MUCHAS PERSPECTIVAS</p>
-            <h2 id="titulo-modal">Crea una experiencia.</h2>
-            <p>
-              Comienza con un escenario y una pregunta. Rúbrica inicial: análisis de la situación,
-              100 %, escala de 0 a 5.
-            </p>
-            <form (ngSubmit)="guardarCaso()">
-              <label
-                >Nombre del caso<input
-                  name="nombre"
-                  [(ngModel)]="formulario.nombre"
-                  maxlength="180"
-                  required
-              /></label>
-              <div class="dos-columnas">
-                <label
-                  >Tema o contexto<input
-                    name="contexto"
-                    [(ngModel)]="formulario.contexto"
-                    required /></label
-                ><label
-                  >Duración estimada (min)<input
-                    name="tiempo"
-                    type="number"
-                    [(ngModel)]="formulario.tiempoEstimadoMin"
-                    min="1"
-                    max="240"
-                    required
-                /></label>
-              </div>
-              <label
-                >Desarrollo de la situación<textarea
-                  name="desarrollo"
-                  [(ngModel)]="formulario.desarrolloSituacional"
-                  required
-                ></textarea>
-              </label>
-              <h3>01 / El escenario</h3>
-              <label>Título<input name="titulo" [(ngModel)]="formulario.titulo" required /></label
-              ><label
-                >Contexto del escenario<textarea
-                  name="situacion"
-                  [(ngModel)]="formulario.contextoSituacional"
-                  required
-                ></textarea></label
-              ><label
-                >Pregunta<input name="pregunta" [(ngModel)]="formulario.enunciado" required
-              /></label>
-              <div class="dos-columnas">
-                <label
-                  >Opción correcta<input
-                    name="correcta"
-                    [(ngModel)]="formulario.correcta"
-                    required /></label
-                ><label
-                  >Opción incorrecta<input
-                    name="incorrecta"
-                    [(ngModel)]="formulario.incorrecta"
-                    required /></label
-                ><label
-                  >Justificación correcta<textarea
-                    name="justa"
-                    [(ngModel)]="formulario.justificacionCorrecta"
-                    required
-                  ></textarea></label
-                ><label
-                  >Justificación incorrecta<textarea
-                    name="justb"
-                    [(ngModel)]="formulario.justificacionIncorrecta"
-                    required
-                  ></textarea>
-                </label>
-              </div>
-              <button class="boton primario" [disabled]="ocupado()">
-                {{ ocupado() ? 'Guardando…' : 'Guardar borrador ↗' }}
-              </button>
-            </form>
+            <h2 id="titulo-modal">{{ seleccionado() ? 'Editar borrador' : 'Crea una experiencia.' }}</h2>
+            @if (borrador; as caso) {
+              <psico-editor-caso [caso]="caso" [ocupado]="ocupado()" (guardar)="guardarCaso($event)" />
+            }
           }
           @case ('detalle') {
             @if (seleccionado(); as caso) {
@@ -659,6 +611,7 @@
               }
               <div class="acciones-modal">
                 @if (caso.estado === 'BORRADOR') {
+                  <button class="boton secundario" (click)="abrir('crear', caso)">Editar borrador</button>
                   <button
                     class="boton primario"
                     [disabled]="ocupado()"
@@ -735,6 +688,14 @@
             <h2 id="titulo-modal">Dale fecha a una idea.</h2>
             <form (ngSubmit)="programar()">
               @if (api.conectado()) {
+                <fieldset [disabled]="ocupado() || cargandoEstudiantes()" class="busqueda-estudiante">
+                  <legend>Agregar estudiantes</legend>
+                  @if (cargandoEstudiantes()) {
+                    <p role="status">Cargando estudiantes…</p>
+                  }
+                  <psico-selector-estudiantes [estudiantes]="estudiantes()" [(seleccion)]="programacion.estudiantes" />
+                  <button type="button" class="boton secundario" (click)="abrir('alta-estudiante')">Registrar estudiante</button>
+                </fieldset>
                 <fieldset [disabled]="ocupado()" class="busqueda-estudiante">
                   <legend>Buscar estudiantes</legend>
                   <label
@@ -816,12 +777,6 @@
               </div>
               <label>Lugar<input name="lugar" [(ngModel)]="programacion.lugar" required /></label
               ><label
-                >Estudiantes (identificadores separados por comas)<textarea
-                  name="estudiantes"
-                  [(ngModel)]="programacion.estudiantes"
-                  required
-                ></textarea></label
-              ><label
                 >Mensaje de convocatoria<textarea
                   name="mensaje"
                   [(ngModel)]="programacion.mensaje"
@@ -830,6 +785,30 @@
               ><button class="boton primario" [disabled]="ocupado()">
                 {{ ocupado() ? 'Programando…' : 'Programar sesión ↗' }}
               </button>
+            </form>
+          }
+          @case ('alta-estudiante') {
+            <h2 id="titulo-modal">Registrar estudiante</h2>
+            <form #alta="ngForm" (ngSubmit)="alta.valid && registrarEstudiante()">
+              <label>Nombre del estudiante<input name="nombre" [(ngModel)]="altaEstudiante.nombre" required maxlength="120" /></label>
+              <label>Correo del estudiante<input name="correo" type="email" [(ngModel)]="altaEstudiante.correo" required email maxlength="180" /></label>
+              <button class="boton primario" [disabled]="ocupado() || alta.invalid">Registrar y agregar</button>
+              <button type="button" class="boton secundario" (click)="abrir('programar')">Volver a programación</button>
+            </form>
+          }
+          @case ('convocados') {
+            <h2 id="titulo-modal">Editar convocados</h2>
+            <form (ngSubmit)="guardarConvocados()">
+              <fieldset class="busqueda-estudiante" [disabled]="ocupado() || cargandoEstudiantes()">
+                <legend>Estudiantes convocados</legend>
+                <p>Marca a quienes quieres convocar y desmarca a quienes quieres retirar.</p>
+                @if (cargandoEstudiantes()) {
+                  <p role="status">Procesando solicitud…</p>
+                }
+                <psico-selector-estudiantes [estudiantes]="estudiantes()" [(seleccion)]="convocadosSeleccionados" />
+              </fieldset>
+              @let cambios = cambiosConvocados();
+              <button class="boton primario" [disabled]="ocupado() || (!cambios.agregar.length && !cambios.retirar.length)">Guardar convocatoria</button>
             </form>
           }
           @case ('iniciar-sesion') {

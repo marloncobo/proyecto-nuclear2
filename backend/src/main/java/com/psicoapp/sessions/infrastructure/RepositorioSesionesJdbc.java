@@ -38,6 +38,13 @@ public class RepositorioSesionesJdbc implements RepositorioSesiones {
     }
 
     @Override
+    public java.util.List<Sesion> listarPorDocente(UUID idDocente) {
+        return jdbc.sql("SELECT id_sesion FROM sesion WHERE id_docente = ? ORDER BY fecha_inicio, id_sesion")
+                .param(idDocente.toString()).query(String.class).list().stream()
+                .map(UUID::fromString).map(this::buscarPorId).flatMap(Optional::stream).toList();
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Optional<Sesion> buscarPorId(UUID id) {
         return jdbc.sql("SELECT * FROM sesion WHERE id_sesion = ?")

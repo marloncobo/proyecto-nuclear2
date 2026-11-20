@@ -49,6 +49,11 @@ public class ServicioGestionParticipacion {
     }
 
     @Transactional(readOnly = true)
+    public java.util.Optional<DatosIntento> consultarUltimo(UUID estudiante, UUID sesion) {
+        return intentos.buscarUltimo(sesion, estudiante).map(this::representar);
+    }
+
+    @Transactional(readOnly = true)
     public DatosIntento consultar(UUID idEstudiante, UUID idIntento) {
         return representar(exigirPropietario(idEstudiante, idIntento));
     }

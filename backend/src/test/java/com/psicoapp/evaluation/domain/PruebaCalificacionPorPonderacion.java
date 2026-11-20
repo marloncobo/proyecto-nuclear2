@@ -40,6 +40,20 @@ class PruebaCalificacionPorPonderacion {
                 () -> evaluar(Map.of(pregunta1, UUID.randomUUID())));
     }
 
+    @Test
+    void reparteElPesoDeUnCriterioEntreSusPreguntas() {
+        var opcion = new OpcionEvaluable(correcta, true, "Bien");
+        var preguntas = List.of(new PreguntaEvaluable(pregunta1, List.of(opcion)),
+                new PreguntaEvaluable(pregunta2, List.of(opcion)));
+        var rubrica = new RubricaEvaluable(new BigDecimal("5.00"), List.of(
+                new CriterioEvaluable(BigDecimal.ONE, List.of(pregunta1, pregunta2))));
+        var resultado = new CalificacionPorPonderacion().calificar(
+                preguntas, Map.of(pregunta1, correcta, pregunta2, correcta), rubrica);
+
+        assertEquals(new BigDecimal("5.00"), resultado.calificacion());
+        assertEquals(new BigDecimal("2.50"), resultado.detalles().getFirst().puntos());
+    }
+
     private ResultadoEvaluacion evaluar(Map<UUID, UUID> respuestas) {
         PreguntaEvaluable primera = new PreguntaEvaluable(pregunta1,
                 List.of(new OpcionEvaluable(correcta, true, "Bien"),

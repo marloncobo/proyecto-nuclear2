@@ -9,6 +9,7 @@ import java.util.UUID;
 public interface RepositorioSesiones {
     void guardar(Sesion sesion);
     Optional<Sesion> buscarPorId(UUID id);
+    java.util.List<Sesion> listarPorDocente(UUID idDocente);
     /** Requiere transaccion activa; mantiene bloqueo hasta su finalizacion. */
     Optional<Sesion> bloquearPorId(UUID id);
     void actualizarEstado(Sesion sesion);

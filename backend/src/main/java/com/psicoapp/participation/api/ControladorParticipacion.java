@@ -2,6 +2,7 @@ package com.psicoapp.participation.api;
 
 import com.psicoapp.participation.application.ServicioGestionParticipacion;
 import com.psicoapp.participation.application.ServicioGestionParticipacion.DatosIntento;
+import com.psicoapp.participation.domain.TransicionIntentoInvalida;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -10,6 +11,7 @@ import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -23,6 +25,11 @@ public class ControladorParticipacion {
 
     public ControladorParticipacion(ServicioGestionParticipacion participaciones) {
         this.participaciones = participaciones;
+    }
+
+    @ExceptionHandler(TransicionIntentoInvalida.class)
+    public ProblemDetail transicionInvalida(TransicionIntentoInvalida excepcion) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, excepcion.getMessage());
     }
 
     @PostMapping

@@ -1,0 +1,75 @@
+<form #editor="ngForm" (ngSubmit)="editor.valid && guardar.emit(caso())">
+  <label>Nombre del caso<input name="nombre" [(ngModel)]="caso().nombre" maxlength="180" required /></label>
+  <div class="dos-columnas">
+    <label>Tema o contexto<input name="contexto" [(ngModel)]="caso().contexto" required /></label>
+    <label>Duración estimada (min)<input name="tiempo" type="number" min="1" [(ngModel)]="caso().tiempoEstimadoMin" required /></label>
+  </div>
+  <label>Desarrollo de la situación<textarea name="desarrollo" [(ngModel)]="caso().desarrolloSituacional" required></textarea></label>
+  @for (escenario of caso().escenarios; track escenario.id; let i = $index) {
+    <fieldset>
+      <legend>Escenario {{ i + 1 }}</legend>
+      <label>Título<input [name]="'titulo-' + escenario.id" [(ngModel)]="escenario.titulo" required /></label>
+      <label>Contexto del escenario<textarea [name]="'contexto-' + escenario.id" [(ngModel)]="escenario.contextoSituacional" required></textarea></label>
+      @for (pregunta of escenario.preguntas; track pregunta.id; let j = $index) {
+        <fieldset>
+          <legend>Pregunta {{ j + 1 }}</legend>
+          <label>Pregunta<input [name]="'pregunta-' + pregunta.id" [(ngModel)]="pregunta.enunciado" required /></label>
+          @for (opcion of pregunta.opciones; track opcion.id; let k = $index) {
+            <label>{{ opcion.esCorrecta ? 'Opción correcta' : (k === 1 ? 'Opción incorrecta' : 'Opción ' + (k + 1)) }}
+              <input [name]="'opcion-' + opcion.id" [(ngModel)]="opcion.texto" required />
+            </label>
+            <label>{{ opcion.esCorrecta ? 'Justificación correcta' : (k === 1 ? 'Justificación incorrecta' : 'Justificación ' + (k + 1)) }}
+              <textarea [name]="'justificacion-' + opcion.id" [(ngModel)]="opcion.justificacion" required></textarea>
+            </label>
+            @if (!opcion.esCorrecta) {
+              <button type="button" class="boton secundario" (click)="marcarCorrecta(pregunta, opcion.id)">Marcar opción {{ k + 1 }} como correcta</button>
+              @if (pregunta.opciones.length > 2) {
+                <button type="button" class="boton secundario" (click)="pregunta.opciones.splice(k, 1)">Quitar opción {{ k + 1 }}</button>
+              }
+            }
+          }
+          <button type="button" class="boton secundario" (click)="agregarOpcion(pregunta)">Agregar opción</button>
+          @if (escenario.preguntas.length > 1) {
+            <button type="button" class="boton secundario" (click)="quitarPregunta(escenario, j)">Quitar pregunta {{ j + 1 }}</button>
+          }
+        </fieldset>
+      }
+      <button type="button" class="boton secundario" (click)="agregarPregunta(escenario)">Agregar pregunta</button>
+      @if (caso().escenarios.length > 1) {
+        <button type="button" class="boton secundario" (click)="quitarEscenario(i)">Quitar escenario {{ i + 1 }}</button>
+      }
+    </fieldset>
+  }
+  <button type="button" class="boton secundario" (click)="agregarEscenario()">Agregar escenario</button>
+  @if (caso().rubrica; as rubrica) {
+    <fieldset>
+      <legend>Rúbrica</legend>
+      <label>Nombre de rúbrica<input name="rubrica" [(ngModel)]="rubrica.nombre" required /></label>
+      <label>Escala máxima<input name="escala" type="number" min="1" [(ngModel)]="rubrica.escalaMaxima" required /></label>
+      <p>Las ponderaciones se expresan entre 0 y 1 y deben sumar 1 para publicar.</p>
+      @for (criterio of rubrica.criterios; track criterio.id; let i = $index) {
+        <fieldset>
+          <legend>Criterio {{ i + 1 }}</legend>
+          <label>Nombre del criterio<input [name]="'criterio-' + criterio.id" [(ngModel)]="criterio.nombre" required /></label>
+          <label>Ponderación<input [name]="'peso-' + criterio.id" type="number" min="0" max="1" step="0.01" [(ngModel)]="criterio.ponderacion" required /></label>
+          <label>Preguntas del criterio
+            <select [name]="'preguntas-' + criterio.id" [(ngModel)]="criterio.preguntas" multiple>
+              @for (escenario of caso().escenarios; track escenario.id) {
+                <optgroup [label]="escenario.titulo || 'Escenario ' + escenario.orden">
+                  @for (pregunta of escenario.preguntas; track pregunta.id) {
+                    <option [ngValue]="pregunta.id">{{ pregunta.enunciado || 'Pregunta ' + pregunta.orden }}</option>
+                  }
+                </optgroup>
+              }
+            </select>
+          </label>
+          <button type="button" class="boton secundario" (click)="rubrica.criterios.splice(i, 1)">Quitar criterio</button>
+        </fieldset>
+      }
+      <button type="button" class="boton secundario" (click)="agregarCriterio()">Agregar criterio</button>
+    </fieldset>
+  } @else {
+    <button type="button" class="boton secundario" (click)="agregarRubrica()">Agregar rúbrica</button>
+  }
+  <button class="boton primario" [disabled]="ocupado() || editor.invalid">Guardar borrador ↗</button>
+</form>

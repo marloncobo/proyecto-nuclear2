@@ -7,6 +7,7 @@ import java.util.UUID;
 public interface RepositorioCasos {
     void guardar(Caso caso);
     Optional<Caso> buscarPorId(UUID id);
+    java.util.List<Caso> listarPorDocente(UUID idDocente);
     Optional<Caso> bloquearPorId(UUID id);
     void actualizarBorrador(Caso caso);
     boolean archivar(UUID id, UUID idDocente);

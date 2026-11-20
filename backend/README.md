@@ -16,7 +16,8 @@ el alcance pendiente y las instrucciones para ejecutar la prueba MySQL optativa.
 opciones y rubrica. Reutiliza `DirectorioIdentidad` para exigir el permiso
 `CREAR_CASOS`; solo su docente responsable puede consultar el borrador.
 La persistencia JDBC agrega las siete tablas del contenido academico del ER.
-Las rutas son `POST /api/casos` y `GET /api/casos/{id}`, con HTTP Basic y CSRF.
+Las rutas incluyen `GET /api/casos` para listar casos del docente,
+`POST /api/casos` y `GET /api/casos/{id}`, con HTTP Basic y CSRF para escrituras.
 `POST /api/casos/{id}/publicar` valida estructura, preguntas y rubrica con
 Template Method antes de cambiar BORRADOR a PUBLICADO. Devuelve 422 con errores
 acumulados si el contenido es invalido; exige permiso de creacion y propiedad.
@@ -35,14 +36,15 @@ la sesion mediante los estados `SinIniciar`, `EnCurso` y `Finalizado`.
 Un planificador cierra automaticamente al alcanzar fin previsto + 24 horas,
 incluidas sesiones nunca iniciadas. Las transiciones usan bloqueo transaccional.
 
-Rutas docentes: `POST /api/sesiones`, `GET /api/sesiones/{id}`,
+Rutas docentes: `GET /api/sesiones`, `POST /api/sesiones`, `GET /api/sesiones/{id}`,
 `POST /api/sesiones/{id}/iniciar` y `POST /api/sesiones/{id}/finalizar`.
 Usan HTTP Basic y CSRF en POST. Programar exige una lista no vacia de UUID
 `estudiantes` institucionales existentes y devuelve codigos iniciales de convocatoria.
 La programacion registra correos pendientes en su misma transaccion.
 `PUT /api/sesiones/{id}/convocados` recibe listas `agregar` y `retirar`,
 actualiza autorizaciones y registra avisos por correo. Reincorporar rota el codigo.
-Sigue pendiente consolidar ausencias al cerrar sesion (CU-16/CU-35).
+El reporte de una sesión cerrada incluye como ausentes con nota cero a los
+estudiantes convocados que no iniciaron ningún intento.
 Consulta [reglas, tiempo, integraciones y pruebas](../docs/pruebas/sesiones.md).
 
 ## Participacion — intentos
@@ -56,6 +58,8 @@ convocatoria y la ventana de ingreso se delegan a `sessions`. Un planificador
 marca automaticamente como vencidos los intentos cuyo limite individual se
 agota. La finalizacion voluntaria y por vencimiento solicita evaluacion y
 registro del aviso de resultado en la misma transaccion mediante eventos.
+`POST /api/participaciones/ingreso` usa el código y la sesión para iniciar
+o recuperar un intento y entrega las preguntas sin claves de corrección.
 
 ## Evaluacion — calificacion
 
@@ -87,7 +91,7 @@ Se agregan las tablas `notificacion` y `valoracion_docente` al esquema.
 La dependencia nueva `spring-boot-starter-mail` implementa el puerto SMTP.
 **Antes de convocar:** configurar clave AES persistente, URL de acceso y SMTP
 segun la [guia de notificaciones](../docs/pruebas/notificaciones.md).
-El frontend sigue pendiente; esta entrega expone APIs y envio de correo.
+El correo incluye el enlace de ingreso, la sesión y el código de convocatoria.
 
 ## Reportes — seguimiento docente
 
@@ -97,7 +101,8 @@ Basic y rol DOCENTE; solo el responsable del caso puede consultar el historial.
 Devuelve cada intento finalizado o vencido con sus respuestas y la evaluacion
 almacenada, si existe (`resultado: null` indica evaluacion pendiente).
 Consume contratos publicos de `participation` y `evaluation`, sin consultar
-repositorios ajenos ni calcular notas. Exportacion RF-16 y consolidacion de ausencias siguen pendientes.
+repositorios ajenos ni calcular notas. `GET /api/reportes/sesiones/{id}`
+consulta el estado de participación y las notas por sesión para exportar el CSV.
 La respuesta incluye `valoracionesGenerales` por intento. El docente responsable
 puede agregar una con `POST /api/reportes/participaciones/{idIntento}/valoraciones`,
 JSON `mensaje` y CSRF. Se reutiliza `GestionValoraciones` de evaluation: guarda

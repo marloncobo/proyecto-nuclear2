@@ -9,6 +9,7 @@ public interface RepositorioIntentos {
     void guardar(Intento intento);
     Optional<Intento> buscarPorId(UUID id);
     Optional<Intento> buscarActivo(UUID idSesion, UUID idEstudiante);
+    Optional<Intento> buscarUltimo(UUID idSesion, UUID idEstudiante);
     void actualizar(Intento intento);
     Optional<Intento> bloquearPorId(UUID id);
     java.util.List<Intento> buscarVencidos(java.time.Instant ahora);
