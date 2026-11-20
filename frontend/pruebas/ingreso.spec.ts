@@ -3,11 +3,13 @@
 async function simularCuenta(pagina: Page, rol = 'DOCENTE') {
   await pagina.route('**/api/**', (ruta) => {
     if (new URL(ruta.request().url()).pathname.endsWith('/yo')) {
+      const autorizacion = ruta.request().headers()['authorization'] ?? '';
+      const correo = Buffer.from(autorizacion.slice(6), 'base64').toString().split(':')[0];
       return ruta.fulfill({
         json: {
-          id: 'cuenta-prueba',
-          nombre: 'Cuenta de prueba',
-          correo: 'personal@example.test',
+          id: correo === 'personal@example.test' ? 'cuenta-primera' : 'cuenta-segunda',
+          nombre: correo === 'personal@example.test' ? 'Cuenta de prueba' : 'Segunda cuenta',
+          correo,
           rol,
           puedeCrearCasos: rol === 'DOCENTE',
         },
@@ -16,8 +18,8 @@ async function simularCuenta(pagina: Page, rol = 'DOCENTE') {
     return ruta.fulfill({ json: [] });
   });
 }
-async function completarFormulario(pagina: Page) {
-  await pagina.getByLabel('Correo institucional').fill('personal@example.test');
+async function completarFormulario(pagina: Page, correo = 'personal@example.test') {
+  await pagina.getByLabel('Correo institucional').fill(correo);
   await pagina.getByLabel('Contraseña', { exact: true }).fill('clave-ficticia');
 }
 
@@ -81,6 +83,67 @@ test('el docente entra a su espacio y el cierre de sesión impide volver con el 
   expect(await pagina.evaluate(() => [localStorage.length, sessionStorage.length])).toEqual([0, 0]);
 });
 
+test('un 401 tardío de una generación anterior no cierra el nuevo ingreso', async ({
+  page: pagina,
+}) => {
+  let retrasarListado = false;
+  let liberarRespuesta!: () => void;
+  let confirmarSolicitud!: () => void;
+  const solicitudIniciada = new Promise<void>((resolve) => (confirmarSolicitud = resolve));
+  const respuestaPendiente = new Promise<void>((resolve) => (liberarRespuesta = resolve));
+  await pagina.route('**/api/**', async (ruta) => {
+    const url = new URL(ruta.request().url());
+    if (url.pathname.endsWith('/yo'))
+      return ruta.fulfill({
+        json: {
+          id: 'admin',
+          nombre: 'Administradora',
+          correo: 'personal@example.test',
+          rol: 'ADMINISTRADOR',
+          puedeCrearCasos: false,
+        },
+      });
+    if (url.pathname === '/api/identidad/usuarios' && retrasarListado) {
+      retrasarListado = false;
+      confirmarSolicitud();
+      await respuestaPendiente;
+      return ruta.fulfill({ status: 401, json: {} });
+    }
+    if (url.pathname === '/api/identidad/usuarios') return ruta.fulfill({ json: [] });
+    if (url.pathname === '/api/identidad/roles')
+      return ruta.fulfill({ json: ['ADMINISTRADOR', 'DOCENTE', 'ESTUDIANTE'] });
+    return ruta.fulfill({ json: [] });
+  });
+  await pagina.goto('/ingreso');
+  await completarFormulario(pagina);
+  await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
+  retrasarListado = true;
+  const actualizacionAnterior = pagina.getByRole('button', { name: 'Actualizar lista' }).click();
+  await solicitudIniciada;
+  await pagina.getByLabel('Cerrar sesión').click();
+  await completarFormulario(pagina);
+  await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
+  await expect(pagina.getByText('Administradora', { exact: true }).first()).toBeVisible();
+  liberarRespuesta();
+  await actualizacionAnterior;
+  await pagina.waitForTimeout(200);
+  await expect(pagina).toHaveURL(/vista=administracion/);
+  await expect(pagina.getByRole('navigation')).toBeVisible();
+});
+
+test('cerrar sesión y explorar la demostración restaura sus datos', async ({ page: pagina }) => {
+  await simularCuenta(pagina);
+  await pagina.goto('/ingreso');
+  await completarFormulario(pagina);
+  await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
+  await pagina.getByLabel('Cerrar sesión').click();
+  await pagina.getByRole('button', { name: 'Explorar la demostración' }).click();
+  await pagina.getByRole('button', { name: 'Biblioteca de casos', exact: true }).click();
+  await expect(pagina.getByRole('heading', { name: 'El poder de pertenecer' })).toBeVisible();
+  await pagina.getByRole('button', { name: 'Sesiones', exact: true }).click();
+  await expect(pagina.getByText('Aula 302')).toBeVisible();
+});
+
 test('la cuenta administrativa entra únicamente a administración', async ({ page: pagina }) => {
   await simularCuenta(pagina, 'ADMINISTRADOR');
   await pagina.goto('/ingreso');
@@ -115,8 +178,9 @@ test('al cambiar de cuenta se reinician consultas y programación', async ({ pag
     .getByRole('dialog')
     .getByRole('button', { name: 'Cerrar sesión', exact: true })
     .click();
-  await completarFormulario(pagina);
+  await completarFormulario(pagina, 'segunda@example.test');
   await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
+  await expect(pagina.getByText('Segunda cuenta', { exact: true })).toBeVisible();
 
   await pagina.getByRole('button', { name: 'Biblioteca de casos', exact: true }).click();
   await expect(pagina.getByLabel('Consultar un caso existente')).toHaveValue('');

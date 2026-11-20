@@ -316,6 +316,28 @@ test('administración: rol rechazado conserva selección y el rol propio se prot
   await expect(pagina.getByRole('dialog').getByText('Estudiante', { exact: true })).toBeVisible();
 });
 
+test('administración: conserva el rol guardado si falla la recarga del detalle', async ({
+  page: pagina,
+}) => {
+  const estado = await simularApi(pagina);
+  await ingresar(pagina);
+  await pagina.getByRole('button', { name: 'Ver detalle de Docente original' }).click();
+  await pagina.getByRole('button', { name: 'Cambiar rol', exact: true }).click();
+  await pagina.getByLabel('Nuevo rol').selectOption('ADMINISTRADOR');
+  await pagina.getByRole('button', { name: 'Revisar cambio' }).click();
+  estado.falloDetalle = true;
+  await pagina.getByRole('button', { name: 'Confirmar cambio de rol' }).click();
+  await expect(pagina.getByRole('dialog').getByText('Administrador', { exact: true })).toBeVisible();
+  await expect(pagina.getByText(/Rol actualizado\. No se pudo recargar el detalle/)).toBeVisible();
+  await expect(pagina.getByRole('button', { name: 'Cambiar rol', exact: true })).toBeVisible();
+  expect(estado.solicitudes.filter((s) => s.ruta.endsWith('/rol'))).toHaveLength(1);
+  estado.falloDetalle = false;
+  await pagina.getByRole('button', { name: 'Reintentar consulta' }).click();
+  await expect(pagina.getByText('El cambio se guardó, pero el detalle no pudo recargarse.')).toHaveCount(0);
+  await expect(pagina.getByRole('dialog').getByText('Administrador', { exact: true })).toBeVisible();
+  expect(estado.solicitudes.filter((s) => s.ruta.endsWith('/rol'))).toHaveLength(1);
+});
+
 test('administración: registro de docentes en móvil', async ({ page: pagina }) => {
   const estado = await simularApi(pagina);
   await pagina.setViewportSize({ width: 390, height: 844 });

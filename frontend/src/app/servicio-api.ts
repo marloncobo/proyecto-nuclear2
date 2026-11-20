@@ -70,7 +70,10 @@ export class ServicioApi {
   readonly usuario = signal<Usuario | null>(null);
   readonly conectado = signal(false);
   private autorizacion = '';
+  private generacionSesion = 0;
   async ingresar(correo: string, clave: string) {
+    const generacionAnterior = this.generacionSesion;
+    const generacionIngreso = ++this.generacionSesion;
     const anterior = this.autorizacion;
     this.autorizacion =
       'Basic ' +
@@ -87,10 +90,12 @@ export class ServicioApi {
       this.conectado.set(true);
     } catch (error) {
       this.autorizacion = anterior;
+      if (this.generacionSesion === generacionIngreso) this.generacionSesion = generacionAnterior;
       throw error;
     }
   }
   salir() {
+    this.generacionSesion++;
     this.autorizacion = '';
     this.usuario.set(null);
     this.conectado.set(false);
@@ -157,6 +162,7 @@ export class ServicioApi {
     cabeceras: Record<string, string> = {},
   ): Promise<T> {
     const autorizacion = this.autorizacion;
+    const generacionSesion = this.generacionSesion;
     let respuesta: Response;
     try {
       respuesta = await fetch('/api' + ruta, {
@@ -183,6 +189,7 @@ export class ServicioApi {
       const sesionExpirada =
         respuesta.status === 401 &&
         this.usuario() !== null &&
+        generacionSesion === this.generacionSesion &&
         autorizacion !== '' &&
         autorizacion === this.autorizacion;
       if (sesionExpirada) {
