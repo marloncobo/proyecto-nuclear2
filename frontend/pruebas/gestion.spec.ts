@@ -1,138 +1,5 @@
-import { test, expect, Page } from '@playwright/test';
-
-async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
-  const administrador = {
-    id: 'admin',
-    nombre: 'Administradora',
-    correo: 'admin@example.test',
-    rol: 'ADMINISTRADOR',
-    activo: true,
-    puedeCrearCasos: false,
-  };
-  const docente = {
-    id: 'docente',
-    nombre: 'Docente original',
-    correo: 'docente@example.test',
-    rol: 'DOCENTE',
-    activo: true,
-    puedeCrearCasos: true,
-  };
-  const estudiante = {
-    id: '00000000-0000-0000-0000-000000000123',
-    nombre: 'Alumna de prueba',
-    correo: 'alumna+grupo@example.test',
-    rol: 'ESTUDIANTE',
-    activo: true,
-    puedeCrearCasos: false,
-  };
-  const estado = {
-    rol,
-    usuarios: [administrador, docente, estudiante],
-    permiso: true,
-    espacio: { id: 'espacio-real', nombre: 'Psicología social', periodo: '2026-2' },
-    conflictoEspacio: false,
-    conflictoDocente: false,
-    conflictoRegistro: false,
-    rechazarRol: false,
-    solicitudes: [] as { ruta: string; metodo: string; datos: any; csrf: string | undefined }[],
-  };
-  await pagina.route('**/api/**', async (ruta) => {
-    const solicitud = ruta.request();
-    const url = new URL(solicitud.url());
-    const metodo = solicitud.method();
-    const datos = solicitud.postData() ? solicitud.postDataJSON() : null;
-    estado.solicitudes.push({
-      ruta: url.pathname + url.search,
-      metodo,
-      datos,
-      csrf: solicitud.headers()['x-csrf-token'],
-    });
-    if (url.pathname.endsWith('/yo'))
-      return ruta.fulfill({
-        json:
-          estado.rol === 'ADMINISTRADOR'
-            ? administrador
-            : estado.rol === 'DOCENTE'
-              ? docente
-              : estudiante,
-      });
-    if (url.pathname.endsWith('/csrf'))
-      return ruta.fulfill({ json: { nombreCabecera: 'X-CSRF-TOKEN', token: 'csrf-gestion' } });
-    if (url.pathname === '/api/identidad/usuarios')
-      return ruta.fulfill({
-        json: estado.usuarios.filter(
-          (usuario) =>
-            (!url.searchParams.get('rol') || usuario.rol === url.searchParams.get('rol')) &&
-            (!url.searchParams.get('activo') ||
-              String(usuario.activo) === url.searchParams.get('activo')),
-        ),
-      });
-    if (url.pathname === '/api/identidad/roles')
-      return ruta.fulfill({ json: ['ADMINISTRADOR', 'DOCENTE', 'ESTUDIANTE'] });
-    if (url.pathname === '/api/identidad/estudiantes') {
-      if (url.searchParams.get('correo')?.toLowerCase() !== estudiante.correo)
-        return ruta.fulfill({ status: 404, json: { detail: 'Estudiante no encontrado' } });
-      return ruta.fulfill({ json: estudiante });
-    }
-    if (url.pathname.startsWith('/api/identidad/usuarios/')) {
-      const usuario = estado.usuarios.find((usuario) => usuario.id === url.pathname.split('/')[4]);
-      if (!usuario) return ruta.fulfill({ status: 404, json: {} });
-      if (metodo === 'PUT' && url.pathname.endsWith('/rol')) {
-        if (estado.rechazarRol)
-          return ruta.fulfill({
-            status: 400,
-            json: { detail: 'El personal requiere una contraseña' },
-          });
-        usuario.rol = datos.rol;
-        usuario.puedeCrearCasos = datos.rol === 'DOCENTE' && estado.permiso;
-        const { activo, ...respuesta } = usuario;
-        return ruta.fulfill({ json: respuesta });
-      }
-      if (metodo === 'PUT') usuario.activo = datos.activo;
-      return ruta.fulfill({ json: usuario });
-    }
-    if (url.pathname === '/api/identidad/docentes' && metodo === 'POST') {
-      if (estado.conflictoRegistro)
-        return ruta.fulfill({ status: 409, json: { detail: 'El correo ya está registrado' } });
-      const nuevo = {
-        id: 'docente-nuevo',
-        nombre: datos.nombre,
-        correo: datos.correo,
-        rol: 'DOCENTE',
-        puedeCrearCasos: estado.permiso,
-        activo: true,
-      };
-      estado.usuarios.push(nuevo);
-      const { activo, ...respuesta } = nuevo;
-      return ruta.fulfill({ status: 201, json: respuesta });
-    }
-    if (url.pathname.startsWith('/api/identidad/docentes/')) {
-      if (estado.conflictoDocente)
-        return ruta.fulfill({ status: 409, json: { detail: 'El correo ya está registrado' } });
-      Object.assign(docente, datos);
-      return ruta.fulfill({ json: docente });
-    }
-    if (url.pathname === '/api/academico/espacios') return ruta.fulfill({ json: [estado.espacio] });
-    if (url.pathname.startsWith('/api/academico/espacios/') && metodo === 'PUT') {
-      if (estado.conflictoEspacio)
-        return ruta.fulfill({
-          status: 409,
-          json: { detail: 'El espacio ya esta asociado a una sesion' },
-        });
-      Object.assign(estado.espacio, datos);
-      return ruta.fulfill({ json: estado.espacio });
-    }
-    return ruta.fulfill({ status: 404, json: { detail: 'Ruta no simulada' } });
-  });
-  return estado;
-}
-
-async function ingresar(pagina: Page, correo = 'admin@example.test') {
-  await pagina.goto('/');
-  await pagina.getByLabel('Correo institucional').fill(correo);
-  await pagina.getByLabel('Contraseña', { exact: true }).fill('clave-ficticia');
-  await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
-}
+import { test, expect } from '@playwright/test';
+import { simularApi, ingresar } from './soporte/identidad';
 
 test('administración: roles, filtros, detalle, edición y errores sin perder el formulario', async ({
   page: pagina,
@@ -401,7 +268,7 @@ test('administración: confirma cambio de rol y respeta el filtro actual', async
   await expect(pagina.getByRole('dialog').getByText('Activo', { exact: true })).toBeVisible();
   await pagina.getByRole('button', { name: 'Volver al listado' }).click();
   await expect(pagina.locator('.cuenta')).toHaveCount(0);
-  await expect(pagina.getByRole('button', { name: 'Actualizar datos' })).toBeFocused();
+  await expect(pagina.getByRole('button', { name: 'Actualizar lista' })).toBeFocused();
   const solicitud = estado.solicitudes.find((s) => s.ruta.endsWith('/docente/rol'))!;
   expect(solicitud.datos).toEqual({ rol: 'ADMINISTRADOR' });
   expect(solicitud.csrf).toBe('csrf-gestion');
@@ -443,4 +310,130 @@ test('administración: registro de docentes en móvil', async ({ page: pagina })
   await pagina.screenshot({ path: 'capturas/registro-docente-movil.png' });
   await pagina.setViewportSize({ width: 1440, height: 1000 });
   await pagina.screenshot({ path: 'capturas/registro-docente-escritorio.png' });
+});
+
+test('administración: búsqueda en API, contador y limpieza de filtros combinados', async ({
+  page: pagina,
+}) => {
+  const estado = await simularApi(pagina);
+  await ingresar(pagina);
+  const buscar = pagina.getByLabel('Buscar usuarios');
+  await expect(pagina.locator('.resumen-usuarios')).toContainText('3 usuarios encontrados');
+  await buscar.fill('DOCENTE');
+  await buscar.press('Enter');
+  await expect(pagina.locator('.cuenta')).toHaveCount(1);
+  await expect(pagina.locator('.resumen-usuarios')).toContainText('1 usuario encontrado');
+  expect(
+    estado.solicitudes.some(
+      (s) => new URL('http://prueba' + s.ruta).searchParams.get('busqueda') === 'DOCENTE',
+    ),
+  ).toBe(true);
+  await buscar.fill('ALUMNA+GRUPO@EXAMPLE.TEST');
+  await pagina.getByRole('button', { name: 'Aplicar filtros' }).click();
+  await expect(
+    pagina.getByRole('heading', { name: 'Alumna de prueba', exact: true }),
+  ).toBeVisible();
+  const peticion = estado.solicitudes
+    .filter((s) => s.ruta.startsWith('/api/identidad/usuarios?'))
+    .at(-1)!;
+  expect(new URL('http://prueba' + peticion.ruta).searchParams.get('busqueda')).toBe(
+    'ALUMNA+GRUPO@EXAMPLE.TEST',
+  );
+  await pagina.getByLabel('Filtrar por rol').selectOption('DOCENTE');
+  await pagina.getByRole('button', { name: 'Aplicar filtros' }).click();
+  await expect(pagina.locator('.cuenta')).toHaveCount(0);
+  await expect(pagina.getByText('No encontramos coincidencias.')).toBeVisible();
+  await pagina.getByRole('button', { name: 'Limpiar filtros' }).click();
+  await expect(buscar).toHaveValue('');
+  await expect(pagina.getByLabel('Filtrar por rol')).toHaveValue('');
+  await expect(pagina.getByLabel('Filtrar por estado')).toHaveValue('');
+  await expect(pagina.locator('.cuenta')).toHaveCount(3);
+});
+
+test('administración: tabla compacta, etiquetas y explicación de cuenta propia', async ({
+  page: pagina,
+}) => {
+  await pagina.setViewportSize({ width: 1440, height: 1000 });
+  await simularApi(pagina);
+  await ingresar(pagina);
+  await expect(pagina.getByRole('columnheader', { name: 'Usuario', exact: true })).toBeVisible();
+  await expect(pagina.getByRole('columnheader', { name: 'Rol', exact: true })).toBeVisible();
+  const propia = pagina.locator('.cuenta').filter({ hasText: 'Administradora' });
+  await expect(propia.locator('psico-etiqueta-usuario').first()).toHaveText('Administrador');
+  const desactivar = pagina.getByRole('button', { name: 'Desactivar Administradora', exact: true });
+  await expect(desactivar).toBeDisabled();
+  await expect(desactivar).toHaveAccessibleDescription('No puedes desactivar tu propia cuenta.');
+  expect(
+    await pagina
+      .locator('.cuenta')
+      .first()
+      .evaluate((e) => getComputedStyle(e).display),
+  ).toBe('table-row');
+  const primera = await pagina.locator('.cuenta').first().boundingBox();
+  expect(primera!.height).toBeLessThan(150);
+});
+
+test('administración móvil: primera cuenta visible y menú explícito accesible', async ({
+  page: pagina,
+}) => {
+  await pagina.setViewportSize({ width: 390, height: 844 });
+  await simularApi(pagina);
+  await ingresar(pagina);
+  await expect(pagina.locator('.cuenta')).toHaveCount(3);
+  const primera = await pagina.locator('.cuenta').first().boundingBox();
+  expect(primera!.y + primera!.height).toBeLessThanOrEqual(844);
+  expect(
+    await pagina
+      .locator('.cuenta')
+      .first()
+      .evaluate((e) => getComputedStyle(e).display),
+  ).toBe('grid');
+  for (const selector of [
+    '.ruta',
+    '.acciones-cabecera .boton-texto',
+    '.celda-rol .etiqueta',
+    '.celda-usuario p',
+  ]) {
+    expect(
+      await pagina
+        .locator(selector)
+        .first()
+        .evaluate((e) => parseFloat(getComputedStyle(e).fontSize)),
+    ).toBeGreaterThanOrEqual(12);
+  }
+  const menu = pagina.getByRole('button', { name: 'Abrir menú principal' });
+  await expect(menu).toHaveAttribute('aria-expanded', 'false');
+  await menu.click();
+  await expect(pagina.getByRole('button', { name: 'Administración', exact: true })).toBeVisible();
+  await pagina.keyboard.press('Escape');
+  await expect(menu).toBeFocused();
+  await menu.click();
+  await pagina.getByRole('button', { name: 'Administración', exact: true }).click();
+  await expect(menu).toHaveAttribute('aria-expanded', 'false');
+  expect(await pagina.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+    390,
+  );
+});
+
+test('administración: fallo de lectura tras guardar no vuelve a enviar la escritura', async ({
+  page: pagina,
+}) => {
+  const estado = await simularApi(pagina);
+  await ingresar(pagina);
+  await pagina.getByRole('button', { name: 'Ver detalle de Docente original' }).click();
+  await pagina.getByRole('button', { name: 'Editar docente', exact: true }).click();
+  await pagina.getByLabel('Nombre del docente').fill('Docente guardado');
+  estado.falloListado = true;
+  await pagina.getByRole('button', { name: 'Guardar docente' }).click();
+  await expect(pagina.getByRole('heading', { name: 'Detalle de Docente guardado' })).toBeVisible();
+  await expect(
+    pagina.getByText('Los cambios se guardaron. Actualiza el listado al cerrar esta ventana.'),
+  ).toBeVisible();
+  await pagina.getByRole('button', { name: 'Volver al listado' }).click();
+  estado.falloListado = false;
+  await pagina.getByRole('button', { name: 'Actualizar lista' }).click();
+  await expect(
+    pagina.getByRole('heading', { name: 'Docente guardado', exact: true }),
+  ).toBeVisible();
+  expect(estado.solicitudes.filter((s) => s.metodo === 'PUT')).toHaveLength(1);
 });

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { simularApi, ingresar } from '../pruebas/soporte/identidad';
 
 test.beforeEach(async ({ page: pagina }) => {
   await pagina.goto('/ingreso');
@@ -20,6 +21,8 @@ test('ingreso institucional', async ({ page: pagina }) => {
 
 test('biblioteca y modal con datos ficticios', async ({ page: pagina }) => {
   await pagina.getByRole('button', { name: 'Explorar la demostración' }).click();
+  const menu = pagina.getByRole('button', { name: 'Abrir menú principal' });
+  if (await menu.isVisible()) await menu.click();
   await pagina.getByRole('button', { name: 'Biblioteca de casos', exact: true }).click();
   await expect(pagina.locator('.tarjeta-caso')).toHaveCount(3);
   await pagina.evaluate(async () => {
@@ -42,4 +45,21 @@ test('biblioteca y modal con datos ficticios', async ({ page: pagina }) => {
   await expect(pagina).toHaveScreenshot('modal-caso.png');
   await pagina.keyboard.press('Escape');
   await expect(ventana).toHaveCount(0);
+});
+
+test('administración de usuarios adaptable', async ({ page: pagina }) => {
+  await simularApi(pagina);
+  await ingresar(pagina);
+  await expect(pagina.locator('.cuenta')).toHaveCount(3);
+  await pagina.evaluate(async () => {
+    await document.fonts.ready;
+    window.scrollTo(0, 0);
+    (document.activeElement as HTMLElement | null)?.blur();
+  });
+  const primera = await pagina.locator('.cuenta').first().boundingBox();
+  expect(primera!.y + primera!.height).toBeLessThanOrEqual(pagina.viewportSize()!.height);
+  expect(await pagina.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+    pagina.viewportSize()!.width,
+  );
+  await expect(pagina).toHaveScreenshot('usuarios.png');
 });
