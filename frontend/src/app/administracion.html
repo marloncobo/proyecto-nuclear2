@@ -1,24 +1,67 @@
 <section aria-labelledby="titulo-administracion" [attr.aria-busy]="ocupado()">
-  <p class="sobretitulo">CUIDAR NUESTRA COMUNIDAD</p>
-  <h1 id="titulo-administracion">Administración de <em>usuarios.</em></h1>
-  <p>Consulta las cuentas de la institución y gestiona su acceso.</p>
-  @if (error()) {
+  <header class="encabezado-usuarios">
+    <div>
+      <h1 id="titulo-administracion">Administración de <em>usuarios.</em></h1>
+      <p>Gestiona el acceso de tu institución.</p>
+    </div>
+    <div class="barra-administracion">
+      <button
+        class="boton"
+        [disabled]="ocupado() || !cargado()"
+        (click)="abrirVentana('registro', $event)"
+      >
+        <span aria-hidden="true">＋</span> Registrar docente
+      </button>
+      <button
+        id="actualizar-usuarios"
+        class="boton secundario"
+        [disabled]="ocupado()"
+        (click)="cargar()"
+      >
+        <span aria-hidden="true">↻</span> Actualizar lista
+      </button>
+    </div>
+  </header>
+  @if (error() && !vistaModal()) {
     <p class="error" role="alert">{{ error() }}</p>
   }
-  @if (aviso()) {
-    <p class="aviso" role="status">{{ aviso() }}</p>
+  @if (aviso() && !vistaModal()) {
+    <div class="aviso aviso-flotante" role="status">
+      <span>{{ aviso() }}</span><button
+        type="button"
+        class="cerrar-aviso"
+        aria-label="Cerrar notificación"
+        (click)="aviso.set('')"
+      >
+        ×
+      </button>
+    </div>
   }
-  @if (ocupado()) {
+  @if (ocupado() && !vistaModal()) {
     <p role="status">Procesando solicitud…</p>
   }
-  <button class="boton" [disabled]="ocupado()" (click)="cargar()">Actualizar datos</button>
+  @if (requiereActualizar() && !vistaModal()) {
+    <p class="error" role="status">
+      Los cambios se guardaron, pero no se pudo refrescar el listado. Usa «Actualizar lista».
+    </p>
+  }
   @if (cargado()) {
     <form class="filtros panel" (ngSubmit)="filtrar()">
+      <label class="busqueda-usuarios"
+        >Buscar usuarios<input
+          type="search"
+          name="busquedaUsuarios"
+          placeholder="Nombre o correo"
+          maxlength="180"
+          [disabled]="ocupado()"
+          [ngModel]="busqueda()"
+          (ngModelChange)="busqueda.set($event)"
+      /></label>
       <label
         >Filtrar por rol<select name="rol" [(ngModel)]="rol" [disabled]="ocupado()">
           <option value="">Todos los roles</option>
           @for (rol of roles(); track rol) {
-            <option [value]="rol">{{ rol }}</option>
+            <option [value]="rol">{{ nombreEtiqueta(rol) }}</option>
           }
         </select></label
       >
@@ -29,137 +72,402 @@
           <option value="false">Inactivos</option>
         </select></label
       >
-      <button class="boton" [disabled]="ocupado()">Aplicar filtros</button>
+      <div class="acciones-filtros">
+        <button class="boton secundario" [disabled]="ocupado()">Aplicar filtros</button
+        ><button
+          type="button"
+          class="boton-limpiar"
+          [disabled]="ocupado()"
+          (click)="limpiarFiltros()"
+        >
+          Limpiar filtros
+        </button>
+      </div>
     </form>
-    <div class="usuarios" aria-label="Usuarios encontrados">
-      @for (usuario of usuarios(); track usuario.id) {
-        <article class="panel cuenta">
-          <div>
-            <h2>{{ usuario.nombre }}</h2>
-            <p>{{ usuario.correo }}</p>
-            <small>{{ usuario.rol }} · {{ usuario.activo ? 'Activo' : 'Inactivo' }}</small>
-          </div>
-          <div class="acciones">
-            <button class="boton" [disabled]="ocupado()" (click)="consultar(usuario)">
-              Ver detalle de {{ usuario.nombre }}
-            </button>
-            <button
-              class="boton secundario"
-              [disabled]="ocupado() || usuario.id === api.usuario()?.id"
-              (click)="confirmacion.set(usuario)"
-            >
-              {{ usuario.activo ? 'Desactivar' : 'Reactivar' }} {{ usuario.nombre }}
-            </button>
-          </div>
-        </article>
-      } @empty {
-        <p class="panel">No hay usuarios que coincidan con los filtros.</p>
+    <div class="resumen-usuarios">
+      <p role="status" aria-live="polite">
+        <strong>{{ usuariosVisibles().length }}</strong>
+        {{ usuariosVisibles().length === 1 ? 'usuario encontrado' : 'usuarios encontrados' }}
+      </p>
+      @if (busquedaAplicada()) {
+        <span>Resultados por nombre o correo</span>
       }
     </div>
-    @if (confirmacion(); as usuario) {
-      <section class="panel confirmacion" aria-label="Confirmar cambio de estado">
-        <h2>¿{{ usuario.activo ? 'Desactivar' : 'Reactivar' }} a {{ usuario.nombre }}?</h2>
-        <p>
-          {{
-            usuario.activo
-              ? 'La cuenta no podrá autenticarse. Se conservarán sus datos e historial.'
-              : 'La cuenta recuperará el acceso con sus credenciales existentes.'
-          }}
-        </p>
-        <div class="acciones">
-          <button class="boton" [disabled]="ocupado()" (click)="cambiarEstado()">
-            Confirmar {{ usuario.activo ? 'desactivación' : 'reactivación' }}
-          </button>
-          <button class="boton secundario" [disabled]="ocupado()" (click)="confirmacion.set(null)">
-            Cancelar cambio de estado
-          </button>
-        </div>
-      </section>
-    }
+    <div class="usuarios" aria-label="Usuarios encontrados">
+      <table class="tabla-usuarios">
+        <caption class="solo-lectores">
+          Cuentas de la institución. Acciones disponibles para cada usuario.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Usuario</th>
+            <th scope="col">Rol</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (usuario of usuariosVisibles(); track usuario.id) {
+            <tr class="cuenta">
+              <th scope="row" class="celda-usuario">
+                <div class="identidad-usuario">
+                  <span class="avatar-listado" aria-hidden="true">{{
+                    usuario.nombre.charAt(0)
+                  }}</span>
+                  <div>
+                    <h2>{{ usuario.nombre }}</h2>
+                    <p>{{ usuario.correo }}</p>
+                  </div>
+                </div>
+              </th>
+              <td class="celda-rol"><psico-etiqueta-usuario [valor]="usuario.rol" /></td>
+              <td class="celda-estado">
+                <psico-etiqueta-usuario [valor]="usuario.activo ? 'ACTIVO' : 'INACTIVO'" />
+              </td>
+              <td class="celda-acciones">
+                <div class="acciones">
+                  <button
+                    class="boton"
+                    [attr.aria-label]="'Ver detalle de ' + usuario.nombre"
+                    [disabled]="ocupado()"
+                    (click)="consultar(usuario, $event)"
+                  >
+                    Ver detalle <span aria-hidden="true">↗</span>
+                  </button>
+                  <div class="accion-estado">
+                    <button
+                      class="boton secundario"
+                      [attr.aria-label]="
+                        (usuario.activo ? 'Desactivar' : 'Reactivar') + ' ' + usuario.nombre
+                      "
+                      [disabled]="ocupado() || usuario.id === api.usuario()?.id"
+                      [attr.aria-describedby]="
+                        usuario.id === api.usuario()?.id ? 'motivo-estado-' + usuario.id : null
+                      "
+                      (click)="abrirVentana('estado', $event, usuario)"
+                    >
+                      {{ usuario.activo ? 'Desactivar' : 'Reactivar' }}
+                    </button>
+                    @if (usuario.id === api.usuario()?.id) {
+                      <small class="motivo-estado" [id]="'motivo-estado-' + usuario.id"
+                        >No puedes desactivar tu propia cuenta.</small
+                      >
+                    }
+                  </div>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td class="usuarios-vacios" colspan="4">
+                <strong>No encontramos coincidencias.</strong>
+                <p>Prueba otro nombre o correo, o limpia los filtros.</p>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>
+
+<dialog
+  #ventanaDetalle
+  class="ventana-detalle"
+  aria-modal="true"
+  aria-labelledby="detalle-usuario"
+  (cancel)="cerrarDetalle($event)"
+  (click)="cerrarDesdeFondo($event)"
+  (keydown)="mantenerFocoDetalle($event)"
+>
+  <button
+    type="button"
+    class="cerrar-detalle"
+    [attr.aria-label]="vistaModal() === 'detalle' ? 'Cerrar detalle de usuario' : 'Cerrar ventana'"
+    [disabled]="ocupado()"
+    (click)="cerrarDetalle()"
+  >
+    ×
+  </button>
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+  @if (aviso()) {
+    <p class="aviso" role="status">{{ aviso() }}</p>
+  }
+  @if (requiereActualizar()) {
+    <p class="nota-modal" role="status">
+      Los cambios se guardaron. Actualiza el listado al cerrar esta ventana.
+    </p>
+  }
+  @if (ocupado()) {
+    <p role="status">Procesando solicitud…</p>
+  }
+  @if (vistaModal() === 'detalle') {
     @if (seleccionado(); as usuario) {
-      <section class="panel" aria-labelledby="detalle-usuario">
-        <h2 id="detalle-usuario" tabindex="-1">Detalle de {{ usuario.nombre }}</h2>
-        <p>{{ usuario.correo }}</p>
-        <p class="identificador">Identificador: {{ usuario.id }}</p>
-        <p>
-          {{ usuario.rol }} · {{ usuario.activo ? 'Activo' : 'Inactivo' }} · Creación de casos:
-          {{ usuario.puedeCrearCasos ? 'Habilitada' : 'Sin permiso' }}
-        </p>
-        @if (editando) {
-          <form #edicion="ngForm" (ngSubmit)="edicion.valid && guardar()">
-            <label
-              >Nombre del docente<input
-                name="nombreDocente"
-                [(ngModel)]="nombre"
-                maxlength="120"
-                required
-                [disabled]="ocupado()"
-            /></label>
-            <label
-              >Correo del docente<input
-                name="correoDocente"
-                type="email"
-                [(ngModel)]="correo"
-                maxlength="180"
-                required
-                [disabled]="ocupado()"
-            /></label>
-            <div class="acciones">
-              <button class="boton" [disabled]="ocupado() || edicion.invalid">
-                Guardar docente
-              </button>
-              <button
-                type="button"
-                class="boton secundario"
-                [disabled]="ocupado()"
-                (click)="editando = false"
-              >
-                Cancelar edición
-              </button>
-            </div>
-          </form>
-        } @else if (usuario.rol === 'DOCENTE') {
-          <button
-            class="boton"
-            [disabled]="ocupado()"
-            (click)="editando = true; nombre = usuario.nombre; correo = usuario.correo"
-          >
-            Editar docente
-          </button>
-        }
-      </section>
-    }
-    <section class="panel" aria-labelledby="titulo-permisos">
-      <h2 id="titulo-permisos">Roles y permisos</h2>
-      <p>El permiso de creación de casos se aplica a todos los docentes.</p>
-      @for (permiso of permisos(); track permiso.rol) {
-        <p>
-          <strong>{{ permiso.rol }}</strong> · Creación de casos:
-          {{ permiso.habilitado ? 'Habilitada' : 'Sin permiso' }}
-        </p>
-        @if (permiso.rol === 'DOCENTE') {
-          <button class="boton" [disabled]="ocupado()" (click)="confirmarPermiso.set(true)">
-            {{ permiso.habilitado ? 'Retirar' : 'Conceder' }} permiso de creación
-          </button>
-        }
-      }
-      @if (confirmarPermiso()) {
-        <div class="confirmacion" role="region" aria-label="Confirmar permiso docente">
-          <p>Este cambio afectará a todos los docentes. ¿Deseas aplicarlo?</p>
-          <div class="acciones">
-            <button class="boton" [disabled]="ocupado()" (click)="cambiarPermiso()">
-              Confirmar permiso
-            </button>
+      <p class="sobretitulo">NUESTRA COMUNIDAD</p>
+      <div class="encabezado-detalle">
+        <span class="avatar-detalle" aria-hidden="true">{{ usuario.nombre.charAt(0) }}</span>
+        <div>
+          <h2 id="detalle-usuario" tabindex="-1">Detalle de {{ usuario.nombre }}</h2>
+          <p>{{ usuario.correo }}</p>
+        </div>
+      </div>
+      <dl class="datos-detalle">
+        <div>
+          <dt>Rol</dt>
+          <dd><psico-etiqueta-usuario [valor]="usuario.rol" /></dd>
+        </div>
+        <div>
+          <dt>Estado de la cuenta</dt>
+          <dd>
+            <psico-etiqueta-usuario [valor]="usuario.activo ? 'ACTIVO' : 'INACTIVO'" />
+          </dd>
+        </div>
+        <div>
+          <dt>Creación de casos</dt>
+          <dd>{{ usuario.puedeCrearCasos ? 'Habilitada' : 'Sin permiso' }}</dd>
+        </div>
+        <div class="identificador-detalle">
+          <dt>Identificador</dt>
+          <dd>{{ usuario.id }}</dd>
+        </div>
+      </dl>
+      @if (editando) {
+        <form
+          #edicion="ngForm"
+          (ngSubmit)="edicion.valid && guardar()"
+          [attr.aria-busy]="ocupado()"
+        >
+          <label
+            >Nombre del docente<input
+              name="nombreDocente"
+              [(ngModel)]="nombre"
+              maxlength="120"
+              required
+              [disabled]="ocupado()"
+          /></label>
+          <label
+            >Correo del docente<input
+              name="correoDocente"
+              type="email"
+              [(ngModel)]="correo"
+              maxlength="180"
+              required
+              [disabled]="ocupado()"
+          /></label>
+          <div class="acciones pie-detalle">
+            <button class="boton" [disabled]="ocupado() || edicion.invalid">Guardar docente</button>
             <button
+              type="button"
               class="boton secundario"
               [disabled]="ocupado()"
-              (click)="confirmarPermiso.set(false)"
+              (click)="cancelarEdicion()"
             >
-              Cancelar permiso
+              Cancelar edición
+            </button>
+          </div>
+        </form>
+      } @else {
+        <div class="acciones pie-detalle">
+          @if (usuario.rol === 'DOCENTE') {
+            <button
+              class="boton editar-detalle"
+              [disabled]="ocupado()"
+              (click)="editarDetalle(usuario)"
+            >
+              Editar docente
+            </button>
+          }
+          <button
+            class="boton secundario"
+            [disabled]="ocupado() || usuario.id === api.usuario()?.id"
+            (click)="abrirVentana('rol')"
+          >
+            Cambiar rol
+          </button>
+          <button class="boton secundario" [disabled]="ocupado()" (click)="cerrarDetalle()">
+            Volver al listado
+          </button>
+        </div>
+        @if (usuario.id === api.usuario()?.id) {
+          <p class="nota-modal">
+            Tu propio rol de administrador debe conservarse para mantener el acceso.
+          </p>
+        }
+      }
+    }
+  } @else if (vistaModal() === 'registro') {
+    <p class="sobretitulo">AMPLIAR NUESTRA COMUNIDAD</p>
+    <h2 id="detalle-usuario" class="titulo-modal" tabindex="-1">Registrar docente</h2>
+    <p class="descripcion-modal">
+      Crea una cuenta para que un docente ingrese con su correo y contraseña.
+    </p>
+    <form
+      #registro="ngForm"
+      (ngSubmit)="registro.valid && registrarDocente()"
+      [attr.aria-busy]="ocupado()"
+    >
+      <label
+        >Nombre del docente<input
+          name="nombreNuevo"
+          [(ngModel)]="nuevoDocente.nombre"
+          maxlength="120"
+          required
+          [disabled]="ocupado()"
+          autocomplete="off"
+      /></label>
+      <label
+        >Correo del docente<input
+          name="correoNuevo"
+          type="email"
+          email
+          [(ngModel)]="nuevoDocente.correo"
+          maxlength="180"
+          required
+          [disabled]="ocupado()"
+          autocomplete="off"
+      /></label>
+      <label for="clave-docente">Contraseña inicial</label>
+      <div class="campo-clave">
+        <input
+          id="clave-docente"
+          name="claveNueva"
+          [type]="mostrarClave ? 'text' : 'password'"
+          [(ngModel)]="nuevoDocente.clave"
+          minlength="8"
+          maxlength="72"
+          required
+          [disabled]="ocupado()"
+          autocomplete="new-password"
+          aria-describedby="ayuda-clave-docente"
+        />
+        <button
+          type="button"
+          class="alternar-clave"
+          [disabled]="ocupado()"
+          [attr.aria-pressed]="mostrarClave"
+          (click)="mostrarClave = !mostrarClave"
+        >
+          {{ mostrarClave ? 'Ocultar contraseña' : 'Mostrar contraseña' }}
+        </button>
+      </div>
+      <small id="ayuda-clave-docente" class="nota-modal"
+        >Mínimo 8 caracteres y máximo 72 bytes. Algunos símbolos ocupan más de un byte. Comparte el
+        acceso con el docente por un canal privado.</small
+      >
+      <div class="acciones pie-detalle">
+        <button class="boton" [disabled]="ocupado() || registro.invalid">
+          {{ ocupado() ? 'Registrando…' : 'Crear cuenta docente' }}</button><button
+          type="button"
+          class="boton secundario"
+          [disabled]="ocupado()"
+          (click)="cerrarDetalle()"
+        >
+          Cancelar registro
+        </button>
+      </div>
+    </form>
+  } @else if (vistaModal() === 'estado') {
+    @if (seleccionado(); as usuario) {
+      <p class="sobretitulo">ACCESO A LA PLATAFORMA</p>
+      <h2 id="detalle-usuario" class="titulo-modal" tabindex="-1">
+        ¿{{ usuario.activo ? 'Desactivar' : 'Reactivar' }} a {{ usuario.nombre }}?
+      </h2>
+      <p class="descripcion-modal">
+        {{
+          usuario.activo
+            ? 'La cuenta no podrá autenticarse. Se conservarán sus datos e historial.'
+            : 'La cuenta recuperará el acceso con sus credenciales existentes.'
+        }}
+      </p>
+      <div class="acciones pie-detalle">
+        <button class="boton" [disabled]="ocupado()" (click)="cambiarEstado()">
+          Confirmar {{ usuario.activo ? 'desactivación' : 'reactivación' }}</button
+        ><button class="boton secundario" [disabled]="ocupado()" (click)="cerrarDetalle()">
+          Cancelar cambio de estado
+        </button>
+      </div>
+    }
+  } @else if (vistaModal() === 'rol') {
+    @if (seleccionado(); as usuario) {
+      <p class="sobretitulo">RESPONSABILIDADES Y ACCESO</p>
+      <h2 id="detalle-usuario" class="titulo-modal" tabindex="-1">
+        Cambiar rol de {{ usuario.nombre }}
+      </h2>
+      <p class="descripcion-modal">
+        El rol define las funciones a las que podrá acceder esta cuenta.
+      </p>
+      <form (ngSubmit)="confirmarCambio = true">
+        <label
+          >Nuevo rol<select
+            name="nuevoRol"
+            [(ngModel)]="nuevoRol"
+            (ngModelChange)="confirmarCambio = false; error.set('')"
+            [disabled]="ocupado() || usuario.id === api.usuario()?.id"
+          >
+            @for (rol of roles(); track rol) {
+              <option [value]="rol">
+                {{
+                  rol === 'DOCENTE'
+                    ? 'Docente'
+                    : rol === 'ADMINISTRADOR'
+                      ? 'Administrador'
+                      : 'Estudiante'
+                }}
+              </option>
+            }
+          </select></label
+        >
+        @if (nuevoRol === 'ESTUDIANTE') {
+          <p class="nota-modal">
+            El correo debe pertenecer a un dominio institucional admitido. El estudiante ingresará
+            con un código de convocatoria.
+          </p>
+        }
+        @if (usuario.rol === 'ESTUDIANTE' && nuevoRol !== 'ESTUDIANTE') {
+          <p class="nota-modal">
+            Una cuenta de estudiante sin contraseña no puede convertirse en una cuenta de personal.
+            El servidor comprobará si este cambio es posible.
+          </p>
+        }
+        @if (!confirmarCambio) {
+          <div class="acciones pie-detalle">
+            <button
+              class="boton"
+              [disabled]="ocupado() || nuevoRol === usuario.rol || usuario.id === api.usuario()?.id"
+            >
+              Revisar cambio</button
+            ><button
+              type="button"
+              class="boton secundario"
+              [disabled]="ocupado()"
+              (click)="abrirVentana('detalle')"
+            >
+              Volver al detalle
+            </button>
+          </div>
+        }
+      </form>
+      @if (confirmarCambio) {
+        <div class="confirmacion">
+          <p>
+            La cuenta pasará de <strong>{{ usuario.rol }}</strong> a
+            <strong>{{ nuevoRol }}</strong>. Sus funciones disponibles cambiarán.
+          </p>
+          <div class="acciones">
+            <button class="boton" [disabled]="ocupado()" (click)="cambiarRol()">
+              Confirmar cambio de rol</button
+            ><button
+              class="boton secundario"
+              [disabled]="ocupado()"
+              (click)="confirmarCambio = false"
+            >
+              Revisar selección
             </button>
           </div>
         </div>
       }
-    </section>
+    }
   }
-</section>
+</dialog>

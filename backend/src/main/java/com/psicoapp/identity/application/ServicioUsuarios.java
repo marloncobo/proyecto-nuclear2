@@ -39,8 +39,14 @@ public class ServicioUsuarios implements DirectorioIdentidad {
 
     @Transactional(readOnly = true)
     public List<DatosUsuarioAdministrado> listarUsuarios(UUID idActor, Rol rol, Boolean activo) {
+        return listarUsuarios(idActor, rol, activo, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<DatosUsuarioAdministrado> listarUsuarios(UUID idActor, Rol rol, Boolean activo, String busqueda) {
         exigirRol(idActor, Rol.ADMINISTRADOR);
-        return usuarios.listar(rol, activo).stream().map(this::representarAdministrado).toList();
+        return usuarios.listar(new FiltroUsuarios(rol, activo, busqueda)).stream()
+                .map(this::representarAdministrado).toList();
     }
 
     @Transactional(readOnly = true)

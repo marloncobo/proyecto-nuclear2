@@ -1524,3 +1524,138 @@ blockquote small {
 .busqueda-estudiante p {
   overflow-wrap: anywhere;
 }
+
+/* Navegación legible y menú móvil con texto. */
+.alternar-menu {
+  display: none;
+}
+.etiqueta-menu {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #60776a;
+}
+nav button {
+  font-size: 14px;
+}
+.nota-lateral strong,
+.nota-lateral p,
+.nota-lateral button {
+  font-size: 12px;
+}
+.perfil strong {
+  font-size: 13px;
+}
+.perfil small {
+  font-size: 12px;
+}
+.ruta {
+  font-size: 13px;
+  color: #60776b;
+}
+.ruta .origen-ruta {
+  margin: 0;
+  color: inherit;
+}
+.ruta .separador-ruta {
+  margin: 0 12px;
+}
+.indicador-conexion {
+  font-size: 12px;
+}
+.acciones-cabecera .boton-texto {
+  font-size: 13px;
+}
+@media (min-width: 651px) and (max-width: 900px) {
+  nav button {
+    font-size: 0;
+  }
+}
+@media (max-width: 650px) {
+  .barra-lateral {
+    position: sticky;
+    top: 0;
+    height: 62px;
+    justify-content: space-between;
+    z-index: 6;
+  }
+  .marca {
+    margin: 8px 16px;
+  }
+  .marca img {
+    width: 58px;
+    height: 44px;
+  }
+  .alternar-menu {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 44px;
+    padding: 10px 14px;
+    margin-right: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+    background: #edf2ea;
+  }
+  .barra-lateral nav {
+    display: none;
+    position: absolute;
+    top: 62px;
+    left: 0;
+    right: 0;
+    padding: 10px 16px 16px;
+    background: #fff;
+    border-bottom: 1px solid var(--borde);
+    box-shadow: 0 12px 20px #183c4e0c;
+  }
+  .barra-lateral.menu-abierto nav {
+    display: grid;
+    gap: 5px;
+  }
+  .barra-lateral nav button {
+    font-size: 14px;
+    justify-content: flex-start;
+    gap: 12px;
+    min-height: 44px;
+    padding: 12px;
+  }
+  .barra-lateral nav .punto {
+    display: inline-block;
+  }
+  .cabecera {
+    height: 54px;
+    padding: 0 16px;
+    gap: 10px;
+  }
+  .ruta {
+    font-size: 13px;
+    min-width: 0;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ruta .origen-ruta,
+  .ruta .separador-ruta {
+    display: none;
+  }
+  .acciones-cabecera {
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .acciones-cabecera .boton-texto {
+    font-size: 13px;
+    min-height: 44px;
+    gap: 7px;
+  }
+  .indicador-conexion {
+    font-size: 12px;
+    padding: 5px 8px;
+  }
+  .indicador-conexion.conectado {
+    display: none;
+  }
+  main {
+    padding: 16px 16px 0;
+  }
+}

@@ -1,6 +1,7 @@
 package com.psicoapp.identity.infrastructure;
 
 import com.psicoapp.identity.application.RepositorioUsuarios;
+import com.psicoapp.identity.application.FiltroUsuarios;
 import com.psicoapp.identity.domain.Rol;
 import com.psicoapp.identity.domain.Usuario;
 import java.sql.ResultSet;
@@ -37,11 +38,15 @@ public class RepositorioUsuariosJdbc implements RepositorioUsuarios {
     }
 
     @Override
-    public List<Usuario> listar(Rol rol, Boolean activo) {
+    public List<Usuario> listar(FiltroUsuarios filtro) {
+        String patron = "%" + filtro.busqueda().replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
         return jdbc.sql(CONSULTA + "WHERE (:rol IS NULL OR r.nombre = :rol) "
-                + "AND (:activo IS NULL OR u.activo = :activo) ORDER BY u.nombre, u.correo, u.id_usuario")
-                .param("rol", rol == null ? null : rol.name(), java.sql.Types.VARCHAR)
-                .param("activo", activo, java.sql.Types.BOOLEAN).query(this::mapear).list();
+                + "AND (:activo IS NULL OR u.activo = :activo) "
+                + "AND (LOWER(u.nombre) LIKE :busqueda ESCAPE '!' OR LOWER(u.correo) LIKE :busqueda ESCAPE '!') "
+                + "ORDER BY u.nombre, u.correo, u.id_usuario")
+                .param("rol", filtro.rol() == null ? null : filtro.rol().name(), java.sql.Types.VARCHAR)
+                .param("activo", filtro.activo(), java.sql.Types.BOOLEAN)
+                .param("busqueda", patron).query(this::mapear).list();
     }
 
     @Override

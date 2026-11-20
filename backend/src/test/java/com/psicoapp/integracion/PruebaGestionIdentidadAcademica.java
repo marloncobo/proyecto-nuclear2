@@ -89,6 +89,43 @@ class PruebaGestionIdentidadAcademica {
     }
 
     @Test
+    @DisplayName("RF-03/RN-10: busqueda por nombre/correo combinada con rol y estado")
+    void filtraUsuariosEnJdbcPorNombreCorreoRolYEstado() throws Exception {
+        String nombre = "Grupo-" + UUID.randomUUID();
+        identidades.editarDocente(administrador, docente, correoDocente, nombre);
+        mvc.perform(comoAdministrador(get("/api/identidad/usuarios").param("busqueda", "  " + nombre.toUpperCase(java.util.Locale.ROOT) + "  ")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(docente.toString()));
+        identidades.cambiarEstado(administrador, docente, false);
+        mvc.perform(comoAdministrador(get("/api/identidad/usuarios").param("busqueda", correoDocente.toUpperCase(java.util.Locale.ROOT))
+                .param("rol", "DOCENTE").param("activo", "false")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].activo").value(false)).andExpect(jsonPath("$..hashClave").isEmpty());
+        mvc.perform(comoAdministrador(get("/api/identidad/usuarios").param("busqueda", correoDocente).param("activo", "true")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
+        mvc.perform(comoAdministrador(get("/api/identidad/usuarios").param("busqueda", correoDocente).param("rol", "ESTUDIANTE")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    @DisplayName("RF-03/RN-10: consulta parametrizada trata comodines e intentos de SQL como texto")
+    void buscaComodinesLiteralesSinInyectarSql() throws Exception {
+        String sufijo = UUID.randomUUID().toString();
+        identidades.editarDocente(administrador, docente, correoDocente, "Marca %_!" + sufijo);
+        mvc.perform(comoAdministrador(get("/api/identidad/usuarios").param("busqueda", "%_!" + sufijo)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(docente.toString()));
+        mvc.perform(comoAdministrador(get("/api/identidad/usuarios").param("busqueda", "' OR 1=1 --")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
+        mvc.perform(comoAdministrador(get("/api/identidad/usuarios").param("busqueda", "x".repeat(181))))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/identidad/usuarios").param("busqueda", sufijo))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/identidad/usuarios").param("busqueda", sufijo).with(httpBasic(correoDocente, CLAVE)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @DisplayName("RF-03: edicion conserva rol, fecha y credenciales; rechaza duplicados")
     void editaDocenteSinPerderCredenciales() throws Exception {
         var anterior = usuarios.buscarPorId(docente).orElseThrow();

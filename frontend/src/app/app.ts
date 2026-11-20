@@ -1,20 +1,24 @@
 import { Component, computed, signal, inject, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
-import { ActivatedRoute, Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
+import { Ingreso } from './ingreso';
 import { Administracion } from './administracion';
 import { ServicioApi, Caso, Sesion, Espacio, Reporte, Usuario } from './servicio-api';
+import { nombreEtiqueta } from './etiqueta-usuario';
 @Component({
   selector: 'psico-raiz',
-  imports: [FormsModule, DatePipe, Administracion],
+  imports: [FormsModule, DatePipe, Administracion, Ingreso],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
 export class Aplicacion {
   readonly api = inject(ServicioApi);
   private readonly enrutador = inject(Router);
-  private readonly ruta = inject(ActivatedRoute);
+  readonly demostracion = signal(false);
   readonly vista = signal('inicio');
+  readonly menuMovilAbierto = signal(false);
+  readonly nombreEtiqueta = nombreEtiqueta;
   readonly menu = computed(() =>
     this.api.usuario()?.rol === 'ADMINISTRADOR'
       ? [{ id: 'administracion', nombre: 'Administración', icono: '◇' }]
@@ -68,8 +72,6 @@ export class Aplicacion {
   readonly espacioEditado = signal<Espacio | null>(null);
   readonly estudianteEncontrado = signal<Usuario | null>(null);
   correoBusqueda = '';
-  correo = '';
-  clave = '';
   identificador = '';
   idEstudiante = '';
   nombreEspacio = '';
@@ -87,17 +89,55 @@ export class Aplicacion {
     estudiantes: '',
   };
   constructor() {
-    this.ruta.queryParamMap.subscribe((parametros) => {
-      const vista = parametros.get('vista') ?? 'inicio';
-      this.vista.set(this.menu().some((item) => item.id === vista) ? vista : 'inicio');
+    this.enrutador.events.subscribe((evento) => {
+      if (!(evento instanceof NavigationEnd)) return;
+      const direccion = this.enrutador.parseUrl(evento.urlAfterRedirects);
+      this.demostracion.set(!this.api.conectado() && direccion.queryParams['demostracion'] === '1');
+      if (!this.api.conectado() && !this.demostracion()) {
+        if (evento.urlAfterRedirects !== '/ingreso')
+          void this.enrutador.navigate(['/ingreso'], { replaceUrl: true });
+        return;
+      }
+      const vista = direccion.queryParams['vista'] ?? this.menu()[0].id;
+      this.vista.set(this.menu().some((item) => item.id === vista) ? vista : this.menu()[0].id);
+      if (evento.urlAfterRedirects.startsWith('/ingreso')) this.navegar(this.menu()[0].id);
     });
   }
   navegar(vista: string) {
-    void this.enrutador.navigate([], { queryParams: { vista } });
+    const cerrarMenu = this.menuMovilAbierto();
+    this.menuMovilAbierto.set(false);
+    void this.enrutador
+      .navigate(['/'], {
+        queryParams: { vista, ...(this.demostracion() ? { demostracion: '1' } : {}) },
+      })
+      .then(() => {
+        window.scrollTo(0, 0);
+        if (cerrarMenu)
+          document.querySelector<HTMLElement>('#principal')?.focus({ preventScroll: true });
+      });
     this.busqueda.set('');
     this.error.set('');
   }
+  iniciarDemostracion() {
+    this.demostracion.set(true);
+    this.error.set('');
+    this.aviso.set(
+      'Modo demostración: los datos son ficticios y los cambios no se guardan en el servidor.',
+    );
+    this.navegar('inicio');
+  }
+  irAlIngreso() {
+    if (this.ocupado()) return;
+    this.demostracion.set(false);
+    this.modal.set('');
+    this.error.set('');
+    void this.enrutador.navigate(['/ingreso']);
+  }
   abrir(tipo: string, caso: Caso | null = null) {
+    if (tipo === 'ingreso' && !this.api.conectado()) {
+      this.irAlIngreso();
+      return;
+    }
     if (!this.modal()) this.focoAnterior = document.activeElement as HTMLElement;
     this.seleccionado.set(caso);
     this.error.set('');
@@ -115,13 +155,16 @@ export class Aplicacion {
     if (!this.ocupado()) {
       this.modal.set('');
       this.error.set('');
-      this.clave = '';
       this.focoAnterior?.focus();
     }
   }
   @HostListener('document:keydown.escape')
   cerrarConEscape() {
     if (this.modal()) this.cerrar();
+    if (this.menuMovilAbierto()) {
+      this.menuMovilAbierto.set(false);
+      document.querySelector<HTMLElement>('#alternar-menu')?.focus();
+    }
   }
   mantenerFoco(evento: Event) {
     const teclado = evento as KeyboardEvent;
@@ -173,10 +216,9 @@ export class Aplicacion {
       this.ocupado.set(false);
     }
   }
-  async ingresar() {
+  async completarIngreso() {
+    this.demostracion.set(false);
     await this.ejecutar(async () => {
-      await this.api.ingresar(this.correo, this.clave);
-      this.clave = '';
       this.casos.set([]);
       this.sesiones.set([]);
       this.espacios.set([]);
@@ -188,7 +230,7 @@ export class Aplicacion {
       this.modal.set('');
       this.aviso.set('Conexión establecida. Consulta tus casos y sesiones por su identificador.');
       if (this.api.usuario()?.rol === 'ADMINISTRADOR') {
-        this.aviso.set('Conexión establecida. Gestiona los usuarios y permisos de la institución.');
+        this.aviso.set('');
         this.navegar('administracion');
       } else {
         this.navegar('inicio');

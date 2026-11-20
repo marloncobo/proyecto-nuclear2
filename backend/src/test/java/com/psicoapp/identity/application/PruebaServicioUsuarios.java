@@ -73,6 +73,18 @@ class PruebaServicioUsuarios {
     }
 
     @Test
+    @DisplayName("RF-03 / RN-10: delega filtros normalizados al puerto y autoriza antes de consultar")
+    void consultaFiltradaDependeDelPuerto() {
+        when(usuarios.buscarPorId(administrador.id())).thenReturn(Optional.of(administrador));
+        when(usuarios.listar(any(FiltroUsuarios.class))).thenReturn(java.util.List.of(docente));
+        var resultado = servicio.listarUsuarios(administrador.id(), Rol.DOCENTE, true, " DOCENTE ");
+        var filtro = ArgumentCaptor.forClass(FiltroUsuarios.class);
+        verify(usuarios).listar(filtro.capture());
+        assertEquals(new FiltroUsuarios(Rol.DOCENTE, true, "docente"), filtro.getValue());
+        assertEquals(docente.id(), resultado.getFirst().id());
+    }
+
+    @Test
     @DisplayName("RF-03 / RN-10: solo administrador crea docentes y almacena un resumen")
     void administradorRegistraDocenteConClaveCifrada() {
         when(usuarios.buscarPorId(administrador.id())).thenReturn(Optional.of(administrador));

@@ -96,14 +96,25 @@ export class ServicioApi {
   consultar<T>(ruta: string) {
     return this.peticion<T>(ruta, 'GET');
   }
-  listarUsuarios(rol = '', activo = '') {
+  listarUsuarios(rol = '', activo = '', busqueda = '') {
     const parametros = new URLSearchParams();
     if (rol) parametros.set('rol', rol);
     if (activo) parametros.set('activo', activo);
+    if (busqueda.trim()) parametros.set('busqueda', busqueda.trim());
     return this.consultar<UsuarioAdministrado[]>('/identidad/usuarios?' + parametros);
   }
   consultarUsuario(id: string) {
     return this.consultar<UsuarioAdministrado>(`/identidad/usuarios/${encodeURIComponent(id)}`);
+  }
+  registrarDocente(datos: { nombre: string; correo: string; clave: string }) {
+    return this.enviar<Usuario>('/identidad/docentes', datos);
+  }
+  cambiarRolUsuario(id: string, rol: Rol) {
+    return this.enviar<Usuario>(
+      `/identidad/usuarios/${encodeURIComponent(id)}/rol`,
+      { rol },
+      'PUT',
+    );
   }
   editarDocente(id: string, datos: { correo: string; nombre: string }) {
     return this.enviar<UsuarioAdministrado>(
@@ -121,12 +132,6 @@ export class ServicioApi {
   }
   listarRoles() {
     return this.consultar<Rol[]>('/identidad/roles');
-  }
-  consultarPermiso(rol: Rol) {
-    return this.consultar<{ habilitado: boolean }>(`/identidad/roles/${rol}/creacion-casos`);
-  }
-  configurarPermiso(habilitado: boolean) {
-    return this.enviar<void>('/identidad/roles/DOCENTE/creacion-casos', { habilitado }, 'PUT');
   }
   buscarEstudiante(correo: string) {
     return this.consultar<Usuario>(
@@ -156,6 +161,7 @@ export class ServicioApi {
         credentials: 'same-origin',
         signal: AbortSignal.timeout(15000),
         headers: {
+          Accept: 'application/json',
           Authorization: this.autorizacion,
           ...(datos !== undefined ? { 'Content-Type': 'application/json' } : {}),
           ...cabeceras,
@@ -167,22 +173,38 @@ export class ServicioApi {
         'No se pudo conectar. Comprueba que el backend está disponible en el puerto 8080.',
       );
     }
+    const tipoContenido = respuesta.headers.get('content-type')?.toLowerCase() ?? '';
+    const esJson = tipoContenido.includes('application/json') || tipoContenido.includes('+json');
     if (!respuesta.ok) {
-      const problema = await respuesta.json().catch(() => null);
+      const problema = esJson ? await respuesta.json().catch(() => null) : null;
       const mensajes: Record<number, string> = {
         401: 'Correo o clave incorrectos.',
         403: 'Tu cuenta no tiene permiso para esta operación.',
         404: 'No se encontró el registro.',
         409: 'El estado actual no permite esta operación.',
         422: 'El caso no cumple los requisitos para publicarse.',
+        500: 'El servicio no está disponible. Comprueba que el backend esté activo y vuelve a intentar.',
+        502: 'No se pudo conectar con el backend. Comprueba que esté activo y vuelve a intentar.',
+        503: 'El servicio no está disponible. Vuelve a intentar en unos momentos.',
+        504: 'El backend tardó demasiado en responder. Vuelve a intentar.',
       };
       throw new Error(
-        problema?.detail ??
+        (typeof problema?.detail === 'string' ? problema.detail : null) ??
           mensajes[respuesta.status] ??
           'No se pudo completar la solicitud. Revisa los datos y la conexión.',
       );
     }
-    return respuesta.status === 204 ? (undefined as T) : ((await respuesta.json()) as T);
+    if (respuesta.status === 204) return undefined as T;
+    if (!esJson) {
+      throw new Error(
+        'La conexión devolvió una página web en lugar de datos de la plataforma. Reinicia el frontend y verifica su conexión con el backend.',
+      );
+    }
+    try {
+      return (await respuesta.json()) as T;
+    } catch {
+      throw new Error('El servicio devolvió datos inválidos. Vuelve a intentar en unos momentos.');
+    }
   }
 }
 

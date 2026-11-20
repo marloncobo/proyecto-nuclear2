@@ -115,6 +115,7 @@ button {
 input::placeholder {
   color: #8d989c;
 }
-body:has(.fondo-modal) {
+body:has(.fondo-modal),
+body:has(dialog[open]) {
   overflow: hidden;
 }

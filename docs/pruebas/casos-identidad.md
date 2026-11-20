@@ -11,6 +11,8 @@
 | Escenario | Resultado esperado | Prueba automatizada |
 | --- | --- | --- |
 | Listar usuarios con rol/estado opcionales y consultar detalle | 200, orden estable, sin claves ni hashes; 400 filtro invalido; 404 UUID ausente | `consultaUsuariosConFiltrosYDetalle` |
+| Buscar parcialmente por nombre/correo y combinar rol/estado | Coincidencias sin distinguir mayúsculas; espacios exteriores ignorados; sin hashes | `filtraUsuariosEnJdbcPorNombreCorreoRolYEstado` |
+| Buscar caracteres especiales y validar límites/permisos | Comodines literales, sin inyección SQL; 400 al superar 180 caracteres; 401/403 según actor | `buscaComodinesLiteralesSinInyectarSql` |
 | Editar nombre/correo docente | 200, normaliza correo, conserva UUID/rol/fecha/clave; 409 duplicado o cuenta no docente | `editaDocenteSinPerderCredenciales` |
 | Desactivar y reactivar | 200 idempotente; 401 al autenticar cuenta inactiva; conserva credenciales; 409 desactivacion propia | `desactivaYReactivaConProteccionPropia` |
 | Consultar roles y permiso | Tres roles; `habilitado` refleja permiso docente y es falso para otros roles | `consultaRolesYPermisos` |
