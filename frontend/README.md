@@ -31,7 +31,7 @@ Si aparece una respuesta HTML en el acceso, comprobar que `/api/identidad/yo` en
 - Programación con caso publicado, espacio, fechas, duración, navegación, lugar y UUID de estudiantes existentes. Búsqueda estudiantil por correo institucional exacto para agregar identidades activas sin duplicados. El servidor gestiona las convocatorias.
 - Inicio y finalización de sesiones, con confirmación y validaciones del servidor.
 - Reportes por caso y estudiante: calificación, retroalimentación y valoraciones existentes. Una evaluación pendiente no se convierte en cero; una lista vacía no se interpreta como ausencia.
-- Administración con navegación propia según rol: listado de usuarios con filtros de rol/estado, detalle y edición de docentes en una ventana modal, y activación/desactivación confirmada. La ventana se cierra con Escape, la cruz, el fondo o «Volver al listado» y devuelve el foco al botón de origen; durante el guardado permanece abierta. Los errores de edición se muestran dentro de ella. La cuenta propia no se puede desactivar.
+- Administración con navegación propia según rol: listado de usuarios con búsqueda por nombre/correo en el servidor y filtros combinables de rol/estado, detalle y edición de docentes en una ventana modal, y activación/desactivación confirmada. La ventana se cierra con Escape, la cruz, el fondo o «Volver al listado» y devuelve el foco al botón de origen; durante el guardado permanece abierta. Los errores de edición se muestran dentro de ella. La cuenta propia no se puede desactivar.
 - Registro de docentes en un modal con nombre, correo y contraseña inicial (8 caracteres como mínimo, hasta 72 bytes). No se almacena la contraseña en el navegador; el formulario se limpia al cancelar o completar el registro. Un error conserva los campos para corregirlos. El nuevo docente se incorpora al listado si coincide con los filtros actuales.
 - Cambio de rol desde el detalle, con revisión y confirmación dentro de la misma ventana. Se conserva el estado activo/inactivo y se respetan los filtros del listado. No se permite retirar el rol de la propia cuenta administrativa. El servidor valida el dominio al convertir a estudiante y rechaza cuentas estudiantiles sin contraseña al convertirlas a personal.
 - La activación y desactivación de usuarios se confirman en modales. La configuración global del permiso de creación de casos no se ofrece en el frontend; el backend conserva sus validaciones y contratos.
@@ -47,7 +47,7 @@ La interfaz no incluye acceso estudiantil, alta de estudiantes, restablecimiento
 | Operación                | Endpoint                                                           |
 | ------------------------ | ------------------------------------------------------------------ |
 | Identidad y CSRF         | `GET /api/identidad/yo`, `GET /api/identidad/csrf`                 |
-| Listado y filtros        | `GET /api/identidad/usuarios?rol=...&activo=...`                   |
+| Listado y filtros        | `GET /api/identidad/usuarios?rol=...&activo=...&busqueda=...`                   |
 | Detalle                  | `GET /api/identidad/usuarios/{id}`                                 |
 | Registrar docente        | `POST /api/identidad/docentes`                                     |
 | Editar docente           | `PUT /api/identidad/docentes/{id}`                                 |
@@ -80,3 +80,5 @@ Pruebas: búsqueda/filtros, navegación, creación/publicación, separación de 
 El presupuesto CSS del componente principal es de 24/30 kB (advertencia/error) porque reúne el diseño completo y sus adaptaciones; el presupuesto inicial total sigue en 500 kB/1 MB.
 
 `npm audit --omit=dev` no reportó vulnerabilidades en las dependencias de producción. La auditoría completa reporta 16 avisos moderados transitivos de herramientas de desarrollo de Angular CLI 21; su solución automática propone cambiar de versión mayor y no se aplicó.
+
+La administración muestra contador y limpieza de filtros, tabla en escritorio y tarjetas en móvil, etiquetas reutilizables de rol/estado y explicación de la desactivación bloqueada de la cuenta propia. El menú móvil tiene un control explícito y accesible. Los avisos de éxito se pueden cerrar y desaparecen automáticamente. Después de cada escritura se consulta de nuevo el listado; si falla esa consulta, se informa sin repetir la operación.

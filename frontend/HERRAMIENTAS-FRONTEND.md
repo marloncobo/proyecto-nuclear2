@@ -52,7 +52,7 @@ npm run test:visual
 npm run test:visual:report
 ```
 
-La configuración visual comprueba ingreso, biblioteca de demostración y modal de creación en escritorio (1440×1000), tableta (768×1024) y móvil (390×844). Captura nueve referencias en seis pruebas. Usa datos ficticios, sin cuentas reales ni escrituras al backend. El navegador emplea español de Colombia, zona horaria de Bogotá, escala 1, tema claro y movimiento reducido; espera a las fuentes antes de comparar.
+La configuración visual comprueba ingreso, biblioteca de demostración y modal de creación en escritorio (1440×1000), tableta (768×1024) y móvil (390×844). Incluye también la administración de usuarios con API simulada: doce referencias en nueve pruebas. Usa datos ficticios, sin cuentas reales ni escrituras al backend. El navegador emplea español de Colombia, zona horaria de Bogotá, escala 1, tema claro y movimiento reducido; espera a las fuentes antes de comparar.
 
 La biblioteca se captura al inicio de la página y sin un control enfocado, para evitar que el desplazamiento heredado del login móvil altere la referencia. Las comprobaciones funcionales de teclado se mantienen en la suite existente; no se ocultan elementos con CSS para hacer pasar la comparación.
 
@@ -91,6 +91,6 @@ No son dependencias de este proyecto React, Next.js, Vite como framework de apli
 
 - Las ocho carpetas de skills contienen su `SKILL.md` en la ubicación de usuario.
 - La CLI 0.1.25 abrió `/ingreso` en Edge, obtuvo la estructura de la página y cerró únicamente su sesión de comprobación; los artefactos temporales se guardaron fuera del repositorio.
-- `npm run build`: correcto. `npm test`: 28 pruebas funcionales aprobadas.
+- `npm run build`: correcto. `npm test`: 32 pruebas funcionales aprobadas.
 - `npm run test:visual:update` creó nueve referencias. Se inspeccionaron ingreso, biblioteca y modal en los tres tamaños; `npm run test:visual` comprobó las seis pruebas contra ellas, sin actualizar las imágenes.
 - La conexión y los archivos de Figma no se han verificado: su instalación/autorización siguen pendientes. No se modificaron pantallas del producto ni archivos del backend como parte de esta configuración.
