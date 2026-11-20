@@ -257,6 +257,7 @@ test('administración: confirma cambio de rol y respeta el filtro actual', async
   await expect(pagina.getByRole('button', { name: 'Revisar cambio' })).toBeDisabled();
   await pagina.getByLabel('Nuevo rol').selectOption('ADMINISTRADOR');
   await pagina.getByRole('button', { name: 'Revisar cambio' }).click();
+  estado.desactivarDuranteCambioRol = true;
   expect(
     estado.solicitudes.filter((s) => s.ruta.endsWith('/rol') && s.metodo === 'PUT'),
   ).toHaveLength(0);
@@ -265,13 +266,18 @@ test('administración: confirma cambio de rol y respeta el filtro actual', async
   await expect(
     pagina.getByRole('dialog').getByText('Administrador', { exact: true }),
   ).toBeVisible();
-  await expect(pagina.getByRole('dialog').getByText('Activo', { exact: true })).toBeVisible();
+  await expect(pagina.getByRole('dialog').getByText('Inactivo', { exact: true })).toBeVisible();
   await pagina.getByRole('button', { name: 'Volver al listado' }).click();
   await expect(pagina.locator('.cuenta')).toHaveCount(0);
   await expect(pagina.getByRole('button', { name: 'Actualizar lista' })).toBeFocused();
   const solicitud = estado.solicitudes.find((s) => s.ruta.endsWith('/docente/rol'))!;
   expect(solicitud.datos).toEqual({ rol: 'ADMINISTRADOR' });
   expect(solicitud.csrf).toBe('csrf-gestion');
+  expect(
+    estado.solicitudes.some(
+      (s) => s.metodo === 'GET' && s.ruta === '/api/identidad/usuarios/docente',
+    ),
+  ).toBe(true);
 });
 
 test('administración: rol rechazado conserva selección y el rol propio se protege', async ({

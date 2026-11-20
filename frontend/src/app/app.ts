@@ -1,4 +1,4 @@
-import { Component, computed, signal, inject, HostListener } from '@angular/core';
+import { Component, computed, effect, signal, inject, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { NavigationEnd, Router } from '@angular/router';
@@ -89,6 +89,16 @@ export class Aplicacion {
     estudiantes: '',
   };
   constructor() {
+    let habiaCuenta = false;
+    effect(() => {
+      if (this.api.conectado()) {
+        habiaCuenta = true;
+      } else if (habiaCuenta) {
+        habiaCuenta = false;
+        this.reiniciarDatosDeCuenta();
+        this.modal.set('');
+      }
+    });
     this.enrutador.events.subscribe((evento) => {
       if (!(evento instanceof NavigationEnd)) return;
       const direccion = this.enrutador.parseUrl(evento.urlAfterRedirects);
@@ -202,6 +212,33 @@ export class Aplicacion {
       justificacionIncorrecta: '',
     };
   }
+  private reiniciarDatosDeCuenta() {
+    this.casos.set([]);
+    this.sesiones.set([]);
+    this.espacios.set([]);
+    this.resultado.set(null);
+    this.seleccionado.set(null);
+    this.sesionPendiente.set(null);
+    this.estudianteEncontrado.set(null);
+    this.espacioEditado.set(null);
+    this.correoBusqueda = '';
+    this.identificador = '';
+    this.idEstudiante = '';
+    this.nombreEspacio = '';
+    this.periodo = '2026-2';
+    this.formulario = this.formularioVacio();
+    this.programacion = {
+      idCaso: '',
+      idEspacio: '',
+      inicioPrevisto: '',
+      finPrevisto: '',
+      duracionMaximaMin: 30,
+      modoNavegacion: 'FLEXIBLE',
+      lugar: '',
+      mensaje: '',
+      estudiantes: '',
+    };
+  }
   async ejecutar(accion: () => Promise<void>) {
     if (this.ocupado()) return;
     this.ocupado.set(true);
@@ -219,14 +256,7 @@ export class Aplicacion {
   async completarIngreso() {
     this.demostracion.set(false);
     await this.ejecutar(async () => {
-      this.casos.set([]);
-      this.sesiones.set([]);
-      this.espacios.set([]);
-      this.resultado.set(null);
-      this.estudianteEncontrado.set(null);
-      this.correoBusqueda = '';
-      this.programacion.estudiantes = '';
-      this.espacioEditado.set(null);
+      this.reiniciarDatosDeCuenta();
       this.modal.set('');
       this.aviso.set('Conexión establecida. Consulta tus casos y sesiones por su identificador.');
       if (this.api.usuario()?.rol === 'ADMINISTRADOR') {
@@ -241,16 +271,10 @@ export class Aplicacion {
   salir() {
     if (this.ocupado()) return;
     this.api.salir();
-    this.estudianteEncontrado.set(null);
-    this.correoBusqueda = '';
-    this.programacion.estudiantes = '';
-    this.espacioEditado.set(null);
+    this.reiniciarDatosDeCuenta();
     this.modal.set('');
     this.error.set('');
     this.casos.set(this.casosEjemplo());
-    this.sesiones.set([]);
-    this.espacios.set([]);
-    this.resultado.set(null);
     this.aviso.set('Estás en modo demostración. Los datos son ficticios.');
     this.navegar('inicio');
   }

@@ -93,6 +93,81 @@ test('la cuenta administrativa entra únicamente a administración', async ({ pa
   ).toHaveCount(0);
 });
 
+test('al cambiar de cuenta se reinician consultas y programación', async ({ page: pagina }) => {
+  await simularCuenta(pagina);
+  await pagina.goto('/ingreso');
+  await completarFormulario(pagina);
+  await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
+
+  await pagina.getByRole('button', { name: 'Biblioteca de casos', exact: true }).click();
+  await pagina.getByLabel('Consultar un caso existente').fill('caso-primera-cuenta');
+  await pagina.getByRole('button', { name: 'Sesiones', exact: true }).click();
+  await pagina.getByRole('button', { name: 'Programar sesión' }).click();
+  await pagina.getByLabel('Lugar').fill('Aula de la primera cuenta');
+  await pagina.getByLabel('Mensaje de convocatoria').fill('Mensaje privado de la primera cuenta');
+  await pagina.keyboard.press('Escape');
+  await pagina.getByRole('button', { name: 'Resultados', exact: true }).click();
+  await pagina.getByLabel('Identificador del caso').fill('caso-reporte-primera');
+  await pagina.getByLabel('Identificador del estudiante').fill('estudiante-primera');
+
+  await pagina.getByRole('button', { name: 'Mi cuenta' }).click();
+  await pagina
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Cerrar sesión', exact: true })
+    .click();
+  await completarFormulario(pagina);
+  await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
+
+  await pagina.getByRole('button', { name: 'Biblioteca de casos', exact: true }).click();
+  await expect(pagina.getByLabel('Consultar un caso existente')).toHaveValue('');
+  await pagina.getByRole('button', { name: 'Sesiones', exact: true }).click();
+  await pagina.getByRole('button', { name: 'Programar sesión' }).click();
+  await expect(pagina.getByLabel('Lugar')).toHaveValue('');
+  await expect(pagina.getByLabel('Mensaje de convocatoria')).toHaveValue('');
+  await pagina.keyboard.press('Escape');
+  await pagina.getByRole('button', { name: 'Resultados', exact: true }).click();
+  await expect(pagina.getByLabel('Identificador del caso')).toHaveValue('');
+  await expect(pagina.getByLabel('Identificador del estudiante')).toHaveValue('');
+});
+
+test('un 401 de la cuenta activa cierra la sesión y un 403 no lo hace', async ({
+  page: pagina,
+}) => {
+  let estado: 'valida' | 'prohibida' | 'revocada' = 'valida';
+  await pagina.route('**/api/**', (ruta) => {
+    const url = new URL(ruta.request().url());
+    if (url.pathname.endsWith('/yo'))
+      return ruta.fulfill({
+        json: {
+          id: 'cuenta-prueba',
+          nombre: 'Cuenta de prueba',
+          correo: 'personal@example.test',
+          rol: 'DOCENTE',
+          puedeCrearCasos: true,
+        },
+      });
+    if (url.pathname === '/api/academico/espacios') return ruta.fulfill({ json: [] });
+    if (estado === 'prohibida') return ruta.fulfill({ status: 403, json: {} });
+    if (estado === 'revocada') return ruta.fulfill({ status: 401, json: {} });
+    return ruta.fulfill({ json: {} });
+  });
+  await pagina.goto('/ingreso');
+  await completarFormulario(pagina);
+  await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
+  await pagina.getByRole('button', { name: 'Biblioteca de casos', exact: true }).click();
+  await pagina.getByLabel('Consultar un caso existente').fill('caso-prueba');
+
+  estado = 'prohibida';
+  await pagina.getByRole('button', { name: /^Consultar/ }).click();
+  await expect(pagina).toHaveURL(/vista=casos/);
+  await expect(pagina.getByRole('navigation')).toBeVisible();
+
+  estado = 'revocada';
+  await pagina.getByRole('button', { name: /^Consultar/ }).click();
+  await expect(pagina).toHaveURL(/\/ingreso$/);
+  await expect(pagina.getByRole('navigation')).toHaveCount(0);
+});
+
 test('la recarga exige autenticación sin guardar credenciales en el navegador', async ({
   page: pagina,
 }) => {

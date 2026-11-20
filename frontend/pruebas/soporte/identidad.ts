@@ -34,6 +34,7 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
     conflictoDocente: false,
     conflictoRegistro: false,
     rechazarRol: false,
+    desactivarDuranteCambioRol: false,
     falloListado: false,
     solicitudes: [] as { ruta: string; metodo: string; datos: any; csrf: string | undefined }[],
   };
@@ -91,6 +92,7 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
           });
         usuario.rol = datos.rol;
         usuario.puedeCrearCasos = datos.rol === 'DOCENTE' && estado.permiso;
+        if (estado.desactivarDuranteCambioRol) usuario.activo = false;
         const { activo, ...respuesta } = usuario;
         return ruta.fulfill({ json: respuesta });
       }

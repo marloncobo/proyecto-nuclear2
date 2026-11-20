@@ -1,4 +1,5 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 export interface Opcion {
   id: string;
   texto: string;
@@ -65,6 +66,7 @@ export interface UsuarioAdministrado extends Usuario {
 }
 @Injectable({ providedIn: 'root' })
 export class ServicioApi {
+  private readonly enrutador = inject(Router);
   readonly usuario = signal<Usuario | null>(null);
   readonly conectado = signal(false);
   private autorizacion = '';
@@ -154,6 +156,7 @@ export class ServicioApi {
     datos?: unknown,
     cabeceras: Record<string, string> = {},
   ): Promise<T> {
+    const autorizacion = this.autorizacion;
     let respuesta: Response;
     try {
       respuesta = await fetch('/api' + ruta, {
@@ -162,7 +165,7 @@ export class ServicioApi {
         signal: AbortSignal.timeout(15000),
         headers: {
           Accept: 'application/json',
-          Authorization: this.autorizacion,
+          Authorization: autorizacion,
           ...(datos !== undefined ? { 'Content-Type': 'application/json' } : {}),
           ...cabeceras,
         },
@@ -177,8 +180,19 @@ export class ServicioApi {
     const esJson = tipoContenido.includes('application/json') || tipoContenido.includes('+json');
     if (!respuesta.ok) {
       const problema = esJson ? await respuesta.json().catch(() => null) : null;
+      const sesionExpirada =
+        respuesta.status === 401 &&
+        this.conectado() &&
+        autorizacion !== '' &&
+        autorizacion === this.autorizacion;
+      if (sesionExpirada) {
+        this.salir();
+        void this.enrutador.navigate(['/ingreso'], { replaceUrl: true });
+      }
       const mensajes: Record<number, string> = {
-        401: 'Correo o clave incorrectos.',
+        401: sesionExpirada
+          ? 'Tu sesión dejó de ser válida. Ingresa de nuevo.'
+          : 'Correo o clave incorrectos.',
         403: 'Tu cuenta no tiene permiso para esta operación.',
         404: 'No se encontró el registro.',
         409: 'El estado actual no permite esta operación.',

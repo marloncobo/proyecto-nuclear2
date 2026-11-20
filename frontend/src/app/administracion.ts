@@ -298,8 +298,9 @@ export class Administracion implements OnInit {
     )
       return;
     await this.ejecutar(async () => {
-      const actualizado = await this.api.cambiarRolUsuario(usuario.id, this.nuevoRol);
-      this.actualizar({ ...actualizado, activo: usuario.activo });
+      await this.api.cambiarRolUsuario(usuario.id, this.nuevoRol);
+      const actualizado = await this.api.consultarUsuario(usuario.id);
+      this.actualizar(actualizado);
       await this.refrescarListado();
     });
     if (!this.error()) {
