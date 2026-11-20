@@ -33,8 +33,9 @@ public class ControladorIdentidad {
     @GetMapping("/usuarios")
     public List<ServicioUsuarios.DatosUsuarioAdministrado> listarUsuarios(Principal principal,
             @RequestParam(required = false) Rol rol,
-            @RequestParam(required = false) Boolean activo) {
-        return identidades.listarUsuarios(UUID.fromString(principal.getName()), rol, activo);
+            @RequestParam(required = false) Boolean activo,
+            @RequestParam(required = false) String busqueda) {
+        return identidades.listarUsuarios(UUID.fromString(principal.getName()), rol, activo, busqueda);
     }
 
     @GetMapping("/usuarios/{idUsuario}")

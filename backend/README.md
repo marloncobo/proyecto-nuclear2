@@ -272,7 +272,7 @@ Para usarla fuera de localhost, servir la API mediante HTTPS.
 | `POST /api/academico/espacios` | Docente: `{ "nombre": "Psicología social", "periodo": "2026-2" }` |
 | `GET /api/academico/espacios` | Docente: espacios disponibles |
 | `GET /api/academico/espacios/{id}` | Docente: espacio por UUID |
-| `GET /api/identidad/usuarios?rol=DOCENTE&activo=true` | Administrador: arreglo de usuarios; ambos filtros son opcionales; orden por nombre, correo y UUID |
+| `GET /api/identidad/usuarios?rol=DOCENTE&activo=true&busqueda=ana` | Administrador: arreglo de usuarios; filtros opcionales combinables; búsqueda parcial por nombre o correo; orden por nombre, correo y UUID |
 | `GET /api/identidad/usuarios/{idUsuario}` | Administrador: detalle, incluyendo `activo`, sin credenciales |
 | `PUT /api/identidad/docentes/{idUsuario}` | Administrador: `{ "correo": "docente@universidad.edu.co", "nombre": "Docente actualizado" }`; exige rol DOCENTE |
 | `PUT /api/identidad/usuarios/{idUsuario}/estado` | Administrador: `{ "activo": false }` desactiva; `true` reactiva |
@@ -375,3 +375,9 @@ se reservan para Failsafe. Los informes de integración quedan en
 Las pruebas se ubican en `src/test/java/com/psicoapp`, siguiendo los mismos
 módulos y capas cuando se incorporen funcionalidades. Las instrucciones de
 arranque y compilación están en el [README principal](../README.md).
+
+### Filtrado administrativo de usuarios
+
+`busqueda` admite hasta 180 caracteres, ignora espacios exteriores y diferencias entre mayúsculas y minúsculas. Una consulta vacía conserva el listado habitual. Los caracteres `%`, `_` y `!` se buscan literalmente; los valores se enlazan como parámetros SQL. No se garantiza equivalencia de tildes entre motores. Una búsqueda demasiado larga devuelve 400; se mantienen la autorización administrativa y el formato de respuesta. No requiere migraciones.
+
+La separación sigue SOLID: `FiltroUsuarios` normaliza los criterios sin depender del framework; el controlador recibe HTTP, el servicio verifica permisos y depende del puerto `RepositorioUsuarios`, y el adaptador JDBC construye la consulta parametrizada. Las pruebas cubren filtros combinados, comodines literales, límites y autorización con Spring/JDBC sobre H2; no sustituyen una ejecución contra MySQL.
