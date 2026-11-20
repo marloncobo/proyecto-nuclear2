@@ -244,7 +244,7 @@ test('administración: registrar docente valida contraseña y conserva datos ant
   await pagina.getByLabel('Contraseña inicial', { exact: true }).fill('🔐'.repeat(20));
   await guardar.click();
   await expect(pagina.getByRole('alert')).toContainText('72 bytes');
-  expect(estado.solicitudes.filter((s) => s.metodo === 'POST')).toHaveLength(0);
+  expect(estado.solicitudes.filter((s) => s.metodo === 'POST' && s.ruta === '/api/identidad/docentes')).toHaveLength(0);
   await pagina.getByLabel('Contraseña inicial', { exact: true }).fill('clave-ficticia');
   estado.conflictoRegistro = true;
   await guardar.click();

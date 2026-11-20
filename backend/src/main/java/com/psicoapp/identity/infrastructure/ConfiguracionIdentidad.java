@@ -17,6 +17,7 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 @Configuration
 @EnableWebSecurity
+@org.springframework.context.annotation.Import(ServicioJwt.class)
 public class ConfiguracionIdentidad {
     @Bean
     PasswordEncoder codificadorClaves() {
@@ -24,14 +25,20 @@ public class ConfiguracionIdentidad {
     }
 
     @Bean
-    SecurityFilterChain seguridadIdentidad(HttpSecurity http, ProveedorAutenticacionIdentidad proveedor) throws Exception {
+    SecurityFilterChain seguridadIdentidad(HttpSecurity http, ProveedorAutenticacionIdentidad proveedor,
+            ServicioJwt tokens) throws Exception {
         return http.authenticationProvider(proveedor)
                 .sessionManagement(sesion -> sesion.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
+                .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .ignoringRequestMatchers(solicitud -> "POST".equals(solicitud.getMethod())
+                                && (solicitud.getContextPath() + "/api/identidad/ingreso").equals(solicitud.getRequestURI())))
                 .exceptionHandling(errores -> errores.accessDeniedHandler(
                         (solicitud, respuesta, excepcion) -> respuesta.setStatus(403)))
                 .httpBasic(Customizer.withDefaults())
+                .oauth2ResourceServer(recurso -> recurso.jwt(jwt -> jwt.decoder(tokens::decodificar)
+                        .jwtAuthenticationConverter(tokens::autenticar)))
                 .authorizeHttpRequests(acceso -> acceso
+                        .requestMatchers(HttpMethod.POST, "/api/identidad/ingreso").permitAll()
                         .requestMatchers("/api/identidad/yo", "/api/identidad/csrf").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/identidad/estudiantes").hasRole("DOCENTE")
                         .requestMatchers(HttpMethod.GET, "/api/identidad/estudiantes",

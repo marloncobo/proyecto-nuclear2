@@ -51,6 +51,9 @@ test('API: autenticación, separación de datos ficticios y CSRF al crear un esp
   let cuerpo: unknown;
   await pagina.route('**/api/**', async (ruta) => {
     const url = new URL(ruta.request().url());
+    if (url.pathname.endsWith('/ingreso'))
+      return ruta.fulfill({ json: { token: 'token-ficticio', tipo: 'Bearer' } });
+    expect(ruta.request().headers()['authorization']).toBe('Bearer token-ficticio');
     if (url.pathname.endsWith('/yo'))
       return ruta.fulfill({
         json: {
@@ -87,7 +90,7 @@ test('API: autenticación, separación de datos ficticios y CSRF al crear un esp
 });
 
 test('error de acceso visible sin abandonar el login', async ({ page: pagina }) => {
-  await pagina.route('**/api/identidad/yo', (ruta) => ruta.fulfill({ status: 401, json: {} }));
+  await pagina.route('**/api/identidad/ingreso', (ruta) => ruta.fulfill({ status: 401, json: {} }));
   await pagina.goto('/');
   await pagina.getByLabel('Correo institucional').fill('docente@ejemplo.edu');
   await pagina.getByLabel('Contraseña', { exact: true }).fill('incorrecta');
@@ -116,6 +119,8 @@ test('reporte: evaluación pendiente y ausencia de intentos sin inventar notas',
   let conIntento = true;
   await pagina.route('**/api/**', async (ruta) => {
     const direccion = new URL(ruta.request().url());
+    if (direccion.pathname.endsWith('/ingreso'))
+      return ruta.fulfill({ json: { token: 'token-ficticio', tipo: 'Bearer' } });
     if (direccion.pathname.endsWith('/yo'))
       return ruta.fulfill({
         json: {

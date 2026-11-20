@@ -50,6 +50,8 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
       datos,
       csrf: solicitud.headers()['x-csrf-token'],
     });
+    if (url.pathname.endsWith('/ingreso'))
+      return ruta.fulfill({ json: { token: 'token-ficticio', tipo: 'Bearer' } });
     if (url.pathname.endsWith('/yo'))
       return ruta.fulfill({
         json:

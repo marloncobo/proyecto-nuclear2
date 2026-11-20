@@ -22,6 +22,13 @@ Si aparece una respuesta HTML en el acceso, comprobar que `/api/identidad/yo` en
 
 ## Funciones y alcance
 
+El ingreso llama a `POST /api/identidad/ingreso` con correo y clave (o código estudiantil),
+y usa el JWT recibido en `Authorization: Bearer` para consultar identidad y operar.
+El token queda únicamente en memoria; la contraseña no se conserva para autenticar
+peticiones posteriores. Un 401 de la sesión activa limpia el acceso y vuelve al ingreso;
+un 403 no cierra la sesión. No hay renovación automática. Consultar la
+[configuración JWT del backend](../backend/README.md#autenticación-jwt).
+
 - Pantalla inicial `/ingreso` para docentes y administradores: correo y contraseña, validación de campos, mostrar/ocultar contraseña, indicador de acceso en curso y errores accesibles. La identidad se comprueba con la API y la navegación se adapta al rol recibido; no se permite elegir un rol en el formulario.
 - Inicio con resumen de registros cargados en la pestaña actual.
 - Biblioteca con búsqueda por nombre, filtros, detalle, publicación y archivado confirmado.

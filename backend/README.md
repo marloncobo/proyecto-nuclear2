@@ -1,5 +1,45 @@
 # Arquitectura del backend
 
+## Autenticación JWT
+
+`POST /api/identidad/ingreso` recibe `{"correo":"docente@example.test","clave":"contraseña-o-codigo"}`
+y devuelve `token`, `tipo` (`Bearer`) y `venceEn` (fecha UTC). No requiere autenticación
+ni CSRF; las credenciales incorrectas devuelven 401 y los campos inválidos 400.
+La respuesta usa `Cache-Control: no-store`. Enviar luego `Authorization: Bearer <token>`.
+El frontend ya utiliza este flujo y conserva el token únicamente en memoria.
+
+Los tokens HS256 duran 900 segundos, validan firma, emisor, audiencia y caducidad.
+Cada petición consulta la cuenta: desactivarla, eliminarla o cambiar su rol invalida
+el token. Para estudiantes se valida además el resumen de la convocatoria vigente;
+el JWT no contiene la contraseña ni el código original. Los permisos de negocio
+y la autorización de la sesión concreta siguen comprobándose en sus servicios.
+
+Configurar `PSICOAPP_JWT_CLAVE` con al menos 32 bytes aleatorios codificados en Base64,
+sin versionarla y usando una clave distinta de la de notificaciones. Alternativamente
+usar `psicoapp.identidad.jwt.clave` mediante configuración externa. Sin clave se genera
+una aleatoria por proceso: los tokens dejan de funcionar al reiniciar. Para despliegues
+persistentes o con varias instancias, proporcionar la misma clave mediante un gestor de
+secretos. Cambiarla invalida todos los tokens. `psicoapp.identidad.jwt.duracion-segundos`
+admite entre 1 y 3600 segundos (predeterminado: 900). Usar HTTPS fuera del entorno local.
+
+No hay renovación automática ni lista de revocación por token. Cerrar sesión elimina
+el token del cliente; una copia sigue siendo válida hasta caducar o invalidar la cuenta,
+el rol, la convocatoria o la clave de firma. La contraseña del personal se comprueba
+al emitir el token, no en cada petición.
+
+HTTP Basic y su protección CSRF se mantienen por compatibilidad con los clientes
+existentes y los ejemplos históricos de esta guía. Spring Security exime de CSRF las
+peticiones Bearer; el frontend conserva su consulta y envío de CSRF para compatibilidad.
+La API no crea sesiones HTTP. Las dependencias `spring-security-oauth2-resource-server`
+y `spring-security-oauth2-jose` proporcionan el filtro Bearer y la firma/validación Nimbus,
+con versiones gestionadas por Spring Boot, siguiendo la
+[documentación de Spring Security](https://docs.spring.io/spring-security/reference/servlet/oauth2/resource-server/jwt.html).
+
+Pruebas RF-02 / CP-ID-009: `PruebaAutenticacionJwt` verifica ingreso, Bearer, roles,
+credenciales incorrectas, firma alterada, tokens malformados, desactivación, cambio de
+rol y retiro de convocatoria. `PruebaServicioJwt` verifica caducidad, emisor, audiencia,
+expiración obligatoria, claves inválidas y aislamiento de claves efímeras.
+
 ## Correcciones posteriores a la revision tecnica
 
 La [guia vigente de correcciones](../docs/pruebas/correcciones-revision.md)

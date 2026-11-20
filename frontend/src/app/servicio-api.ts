@@ -46,7 +46,12 @@ export interface Sesion {
   modoNavegacion: string;
   lugar: string;
   mensaje: string;
-  convocatorias: { id: string; idEstudiante: string; codigoAcceso: string | null; autorizada?: boolean }[];
+  convocatorias: {
+    id: string;
+    idEstudiante: string;
+    codigoAcceso: string | null;
+    autorizada?: boolean;
+  }[];
 }
 export interface Espacio {
   id: string;
@@ -75,23 +80,40 @@ export class ServicioApi {
     const generacionAnterior = this.generacionSesion;
     const generacionIngreso = ++this.generacionSesion;
     const anterior = this.autorizacion;
-    this.autorizacion =
-      'Basic ' +
-      btoa(
-        Array.from(new TextEncoder().encode(correo + ':' + clave), (valor) =>
-          String.fromCharCode(valor),
-        ).join(''),
-      );
     try {
+      const ingreso = await this.peticion<{ token: string }>(
+        '/identidad/ingreso',
+        'POST',
+        { correo, clave },
+        { Authorization: '' },
+      );
+      if (this.generacionSesion !== generacionIngreso)
+        throw new Error('La cuenta cambió. Vuelve a intentar la operación.');
+      if (typeof ingreso.token !== 'string' || ingreso.token.trim() === '')
+        throw new Error(
+          'El servicio devolvió datos inválidos. Vuelve a intentar en unos momentos.',
+        );
+      this.autorizacion = 'Bearer ' + ingreso.token;
       const usuario = await this.consultar<Usuario>('/identidad/yo');
-      if (estudiante ? usuario.rol !== 'ESTUDIANTE' : !['DOCENTE', 'ADMINISTRADOR'].includes(usuario.rol))
-        throw new Error(estudiante ? 'Usa la cuenta estudiantil indicada en la convocatoria.' :
-          'Esta interfaz está disponible para docentes y administradores.');
+      if (this.generacionSesion !== generacionIngreso)
+        throw new Error('La cuenta cambió. Vuelve a intentar la operación.');
+      if (
+        estudiante
+          ? usuario.rol !== 'ESTUDIANTE'
+          : !['DOCENTE', 'ADMINISTRADOR'].includes(usuario.rol)
+      )
+        throw new Error(
+          estudiante
+            ? 'Usa la cuenta estudiantil indicada en la convocatoria.'
+            : 'Esta interfaz está disponible para docentes y administradores.',
+        );
       this.usuario.set(usuario);
       this.conectado.set(true);
     } catch (error) {
-      this.autorizacion = anterior;
-      if (this.generacionSesion === generacionIngreso) this.generacionSesion = generacionAnterior;
+      if (this.generacionSesion === generacionIngreso) {
+        this.autorizacion = anterior;
+        this.generacionSesion = generacionAnterior;
+      }
       throw error;
     }
   }
@@ -194,6 +216,7 @@ export class ServicioApi {
     if (!respuesta.ok) {
       const problema = esJson ? await respuesta.json().catch(() => null) : null;
       const sesionExpirada =
+        ruta !== '/identidad/ingreso' &&
         respuesta.status === 401 &&
         this.usuario() !== null &&
         generacionSesion === this.generacionSesion &&
