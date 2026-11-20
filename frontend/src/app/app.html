@@ -280,7 +280,7 @@
                 ><input
                   id="id-caso"
                   name="idCaso"
-                  [(ngModel)]="identificador"
+                  [(ngModel)]="identificadorCaso"
                   placeholder="Identificador del caso (UUID)"
                   required
                 /><button class="boton secundario" [disabled]="ocupado()">Consultar ↗</button>
@@ -340,7 +340,7 @@
                 ><input
                   id="id-sesion"
                   name="idSesion"
-                  [(ngModel)]="identificador"
+                  [(ngModel)]="identificadorSesion"
                   placeholder="Identificador de la sesión (UUID)"
                   required
                 /><button class="boton secundario" [disabled]="ocupado()">Consultar ↗</button>
@@ -441,7 +441,7 @@
                   <label
                     >Identificador del caso<input
                       name="casoReporte"
-                      [(ngModel)]="identificador"
+                      [(ngModel)]="identificadorReporte"
                       required /></label
                   ><label
                     >Identificador del estudiante<input

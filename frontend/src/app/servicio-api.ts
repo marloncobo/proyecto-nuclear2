@@ -182,12 +182,12 @@ export class ServicioApi {
       const problema = esJson ? await respuesta.json().catch(() => null) : null;
       const sesionExpirada =
         respuesta.status === 401 &&
-        this.conectado() &&
+        this.usuario() !== null &&
         autorizacion !== '' &&
         autorizacion === this.autorizacion;
       if (sesionExpirada) {
         this.salir();
-        void this.enrutador.navigate(['/ingreso'], { replaceUrl: true });
+        await this.enrutador.navigate(['/ingreso'], { replaceUrl: true });
       }
       const mensajes: Record<number, string> = {
         401: sesionExpirada

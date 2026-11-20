@@ -278,6 +278,20 @@ test('administración: confirma cambio de rol y respeta el filtro actual', async
       (s) => s.metodo === 'GET' && s.ruta === '/api/identidad/usuarios/docente',
     ),
   ).toBe(true);
+  const secuencia = estado.solicitudes
+    .filter(
+      (s) =>
+        s.ruta.endsWith('/docente/rol') ||
+        s.ruta === '/api/identidad/usuarios/docente' ||
+        s.ruta.startsWith('/api/identidad/usuarios?'),
+    )
+    .slice(-3)
+    .map((s) => `${s.metodo} ${s.ruta.split('?')[0]}`);
+  expect(secuencia).toEqual([
+    'PUT /api/identidad/usuarios/docente/rol',
+    'GET /api/identidad/usuarios/docente',
+    'GET /api/identidad/usuarios',
+  ]);
 });
 
 test('administración: rol rechazado conserva selección y el rol propio se protege', async ({

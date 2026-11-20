@@ -72,7 +72,9 @@ export class Aplicacion {
   readonly espacioEditado = signal<Espacio | null>(null);
   readonly estudianteEncontrado = signal<Usuario | null>(null);
   correoBusqueda = '';
-  identificador = '';
+  identificadorCaso = '';
+  identificadorSesion = '';
+  identificadorReporte = '';
   idEstudiante = '';
   nombreEspacio = '';
   periodo = '2026-2';
@@ -222,7 +224,9 @@ export class Aplicacion {
     this.estudianteEncontrado.set(null);
     this.espacioEditado.set(null);
     this.correoBusqueda = '';
-    this.identificador = '';
+    this.identificadorCaso = '';
+    this.identificadorSesion = '';
+    this.identificadorReporte = '';
     this.idEstudiante = '';
     this.nombreEspacio = '';
     this.periodo = '2026-2';
@@ -360,9 +364,11 @@ export class Aplicacion {
   }
   async consultarId(tipo: 'casos' | 'sesiones') {
     await this.ejecutar(async () => {
-      if (!this.identificador.trim()) throw new Error('Escribe un identificador.');
+      const identificador =
+        tipo === 'casos' ? this.identificadorCaso.trim() : this.identificadorSesion.trim();
+      if (!identificador) throw new Error('Escribe un identificador.');
       const dato = await this.api.consultar<Caso & Sesion>(
-        `/${tipo}/${encodeURIComponent(this.identificador.trim())}`,
+        `/${tipo}/${encodeURIComponent(identificador)}`,
       );
       if (tipo === 'casos')
         this.casos.update((casos) => [dato, ...casos.filter((caso) => caso.id !== dato.id)]);
@@ -371,7 +377,8 @@ export class Aplicacion {
           dato,
           ...sesiones.filter((sesion) => sesion.id !== dato.id),
         ]);
-      this.identificador = '';
+      if (tipo === 'casos') this.identificadorCaso = '';
+      else this.identificadorSesion = '';
       this.aviso.set('Consulta completada.');
     });
   }
@@ -471,7 +478,7 @@ export class Aplicacion {
       this.resultado.set(null);
       this.resultado.set(
         await this.api.consultar<Reporte[]>(
-          `/reportes/casos/${encodeURIComponent(this.identificador.trim())}/estudiantes/${encodeURIComponent(this.idEstudiante.trim())}`,
+          `/reportes/casos/${encodeURIComponent(this.identificadorReporte.trim())}/estudiantes/${encodeURIComponent(this.idEstudiante.trim())}`,
         ),
       );
     });
