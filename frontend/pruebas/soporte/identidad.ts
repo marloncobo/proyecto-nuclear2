@@ -34,7 +34,9 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
     conflictoDocente: false,
     conflictoRegistro: false,
     rechazarRol: false,
+    desactivarDuranteCambioRol: false,
     falloListado: false,
+    falloDetalle: false,
     solicitudes: [] as { ruta: string; metodo: string; datos: any; csrf: string | undefined }[],
   };
   await pagina.route('**/api/**', async (ruta) => {
@@ -83,6 +85,8 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
     if (url.pathname.startsWith('/api/identidad/usuarios/')) {
       const usuario = estado.usuarios.find((usuario) => usuario.id === url.pathname.split('/')[4]);
       if (!usuario) return ruta.fulfill({ status: 404, json: {} });
+      if (metodo === 'GET' && estado.falloDetalle)
+        return ruta.fulfill({ status: 503, json: { detail: 'No se pudo consultar el detalle' } });
       if (metodo === 'PUT' && url.pathname.endsWith('/rol')) {
         if (estado.rechazarRol)
           return ruta.fulfill({
@@ -91,6 +95,7 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
           });
         usuario.rol = datos.rol;
         usuario.puedeCrearCasos = datos.rol === 'DOCENTE' && estado.permiso;
+        if (estado.desactivarDuranteCambioRol) usuario.activo = false;
         const { activo, ...respuesta } = usuario;
         return ruta.fulfill({ json: respuesta });
       }

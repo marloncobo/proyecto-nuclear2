@@ -15,6 +15,7 @@ export class Administracion implements OnInit {
   readonly busqueda = signal('');
   readonly busquedaAplicada = signal('');
   readonly requiereActualizar = signal(false);
+  readonly requiereRecargarDetalle = signal(false);
   readonly rolAplicado = signal('');
   readonly estadoAplicado = signal('');
   readonly usuariosVisibles = this.usuarios;
@@ -298,13 +299,31 @@ export class Administracion implements OnInit {
     )
       return;
     await this.ejecutar(async () => {
-      const actualizado = await this.api.cambiarRolUsuario(usuario.id, this.nuevoRol);
-      this.actualizar({ ...actualizado, activo: usuario.activo });
+      const respuesta = await this.api.cambiarRolUsuario(usuario.id, this.nuevoRol);
+      this.actualizar({ ...respuesta, activo: usuario.activo });
+      this.requiereRecargarDetalle.set(false);
+      try {
+        this.actualizar(await this.api.consultarUsuario(usuario.id));
+      } catch {
+        this.requiereRecargarDetalle.set(true);
+      }
       await this.refrescarListado();
     });
     if (!this.error()) {
       this.abrirVentana('detalle');
-      this.aviso.set('Rol actualizado. Los permisos de la cuenta corresponden a su nuevo rol.');
+      this.aviso.set(
+        this.requiereRecargarDetalle()
+          ? 'Rol actualizado. No se pudo recargar el detalle; vuelve a consultar su estado.'
+          : 'Rol actualizado. Los permisos de la cuenta corresponden a su nuevo rol.',
+      );
     }
+  }
+  async recargarDetalle() {
+    const usuario = this.seleccionado();
+    if (!usuario) return;
+    await this.ejecutar(async () => {
+      this.actualizar(await this.api.consultarUsuario(usuario.id));
+      this.requiereRecargarDetalle.set(false);
+    });
   }
 }

@@ -200,6 +200,14 @@
       Los cambios se guardaron. Actualiza el listado al cerrar esta ventana.
     </p>
   }
+  @if (requiereRecargarDetalle()) {
+    <p class="nota-modal" role="status">
+      El cambio se guardó, pero el detalle no pudo recargarse.
+      <button class="boton-texto" [disabled]="ocupado()" (click)="recargarDetalle()">
+        Reintentar consulta
+      </button>
+    </p>
+  }
   @if (ocupado()) {
     <p role="status">Procesando solicitud…</p>
   }

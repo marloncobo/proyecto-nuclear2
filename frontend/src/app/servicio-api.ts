@@ -1,4 +1,5 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 export interface Opcion {
   id: string;
   texto: string;
@@ -65,10 +66,14 @@ export interface UsuarioAdministrado extends Usuario {
 }
 @Injectable({ providedIn: 'root' })
 export class ServicioApi {
+  private readonly enrutador = inject(Router);
   readonly usuario = signal<Usuario | null>(null);
   readonly conectado = signal(false);
   private autorizacion = '';
+  private generacionSesion = 0;
   async ingresar(correo: string, clave: string) {
+    const generacionAnterior = this.generacionSesion;
+    const generacionIngreso = ++this.generacionSesion;
     const anterior = this.autorizacion;
     this.autorizacion =
       'Basic ' +
@@ -85,10 +90,12 @@ export class ServicioApi {
       this.conectado.set(true);
     } catch (error) {
       this.autorizacion = anterior;
+      if (this.generacionSesion === generacionIngreso) this.generacionSesion = generacionAnterior;
       throw error;
     }
   }
   salir() {
+    this.generacionSesion++;
     this.autorizacion = '';
     this.usuario.set(null);
     this.conectado.set(false);
@@ -154,6 +161,8 @@ export class ServicioApi {
     datos?: unknown,
     cabeceras: Record<string, string> = {},
   ): Promise<T> {
+    const autorizacion = this.autorizacion;
+    const generacionSesion = this.generacionSesion;
     let respuesta: Response;
     try {
       respuesta = await fetch('/api' + ruta, {
@@ -162,7 +171,7 @@ export class ServicioApi {
         signal: AbortSignal.timeout(15000),
         headers: {
           Accept: 'application/json',
-          Authorization: this.autorizacion,
+          Authorization: autorizacion,
           ...(datos !== undefined ? { 'Content-Type': 'application/json' } : {}),
           ...cabeceras,
         },
@@ -177,8 +186,20 @@ export class ServicioApi {
     const esJson = tipoContenido.includes('application/json') || tipoContenido.includes('+json');
     if (!respuesta.ok) {
       const problema = esJson ? await respuesta.json().catch(() => null) : null;
+      const sesionExpirada =
+        respuesta.status === 401 &&
+        this.usuario() !== null &&
+        generacionSesion === this.generacionSesion &&
+        autorizacion !== '' &&
+        autorizacion === this.autorizacion;
+      if (sesionExpirada) {
+        this.salir();
+        await this.enrutador.navigate(['/ingreso'], { replaceUrl: true });
+      }
       const mensajes: Record<number, string> = {
-        401: 'Correo o clave incorrectos.',
+        401: sesionExpirada
+          ? 'Tu sesión dejó de ser válida. Ingresa de nuevo.'
+          : 'Correo o clave incorrectos.',
         403: 'Tu cuenta no tiene permiso para esta operación.',
         404: 'No se encontró el registro.',
         409: 'El estado actual no permite esta operación.',

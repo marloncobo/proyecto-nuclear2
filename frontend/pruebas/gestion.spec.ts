@@ -257,6 +257,7 @@ test('administración: confirma cambio de rol y respeta el filtro actual', async
   await expect(pagina.getByRole('button', { name: 'Revisar cambio' })).toBeDisabled();
   await pagina.getByLabel('Nuevo rol').selectOption('ADMINISTRADOR');
   await pagina.getByRole('button', { name: 'Revisar cambio' }).click();
+  estado.desactivarDuranteCambioRol = true;
   expect(
     estado.solicitudes.filter((s) => s.ruta.endsWith('/rol') && s.metodo === 'PUT'),
   ).toHaveLength(0);
@@ -265,13 +266,32 @@ test('administración: confirma cambio de rol y respeta el filtro actual', async
   await expect(
     pagina.getByRole('dialog').getByText('Administrador', { exact: true }),
   ).toBeVisible();
-  await expect(pagina.getByRole('dialog').getByText('Activo', { exact: true })).toBeVisible();
+  await expect(pagina.getByRole('dialog').getByText('Inactivo', { exact: true })).toBeVisible();
   await pagina.getByRole('button', { name: 'Volver al listado' }).click();
   await expect(pagina.locator('.cuenta')).toHaveCount(0);
   await expect(pagina.getByRole('button', { name: 'Actualizar lista' })).toBeFocused();
   const solicitud = estado.solicitudes.find((s) => s.ruta.endsWith('/docente/rol'))!;
   expect(solicitud.datos).toEqual({ rol: 'ADMINISTRADOR' });
   expect(solicitud.csrf).toBe('csrf-gestion');
+  expect(
+    estado.solicitudes.some(
+      (s) => s.metodo === 'GET' && s.ruta === '/api/identidad/usuarios/docente',
+    ),
+  ).toBe(true);
+  const secuencia = estado.solicitudes
+    .filter(
+      (s) =>
+        s.ruta.endsWith('/docente/rol') ||
+        s.ruta === '/api/identidad/usuarios/docente' ||
+        s.ruta.startsWith('/api/identidad/usuarios?'),
+    )
+    .slice(-3)
+    .map((s) => `${s.metodo} ${s.ruta.split('?')[0]}`);
+  expect(secuencia).toEqual([
+    'PUT /api/identidad/usuarios/docente/rol',
+    'GET /api/identidad/usuarios/docente',
+    'GET /api/identidad/usuarios',
+  ]);
 });
 
 test('administración: rol rechazado conserva selección y el rol propio se protege', async ({
@@ -294,6 +314,28 @@ test('administración: rol rechazado conserva selección y el rol propio se prot
   await pagina.getByRole('button', { name: 'Revisar selección' }).click();
   await pagina.getByRole('button', { name: 'Volver al detalle' }).click();
   await expect(pagina.getByRole('dialog').getByText('Estudiante', { exact: true })).toBeVisible();
+});
+
+test('administración: conserva el rol guardado si falla la recarga del detalle', async ({
+  page: pagina,
+}) => {
+  const estado = await simularApi(pagina);
+  await ingresar(pagina);
+  await pagina.getByRole('button', { name: 'Ver detalle de Docente original' }).click();
+  await pagina.getByRole('button', { name: 'Cambiar rol', exact: true }).click();
+  await pagina.getByLabel('Nuevo rol').selectOption('ADMINISTRADOR');
+  await pagina.getByRole('button', { name: 'Revisar cambio' }).click();
+  estado.falloDetalle = true;
+  await pagina.getByRole('button', { name: 'Confirmar cambio de rol' }).click();
+  await expect(pagina.getByRole('dialog').getByText('Administrador', { exact: true })).toBeVisible();
+  await expect(pagina.getByText(/Rol actualizado\. No se pudo recargar el detalle/)).toBeVisible();
+  await expect(pagina.getByRole('button', { name: 'Cambiar rol', exact: true })).toBeVisible();
+  expect(estado.solicitudes.filter((s) => s.ruta.endsWith('/rol'))).toHaveLength(1);
+  estado.falloDetalle = false;
+  await pagina.getByRole('button', { name: 'Reintentar consulta' }).click();
+  await expect(pagina.getByText('El cambio se guardó, pero el detalle no pudo recargarse.')).toHaveCount(0);
+  await expect(pagina.getByRole('dialog').getByText('Administrador', { exact: true })).toBeVisible();
+  expect(estado.solicitudes.filter((s) => s.ruta.endsWith('/rol'))).toHaveLength(1);
 });
 
 test('administración: registro de docentes en móvil', async ({ page: pagina }) => {

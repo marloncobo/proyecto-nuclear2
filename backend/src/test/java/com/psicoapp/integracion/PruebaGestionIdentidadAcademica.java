@@ -105,6 +105,15 @@ class PruebaGestionIdentidadAcademica {
                 .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
         mvc.perform(comoAdministrador(get("/api/identidad/usuarios").param("busqueda", correoDocente).param("rol", "ESTUDIANTE")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
+
+        String correoOrdenPosterior = "z-" + UUID.randomUUID() + "@example.test";
+        String correoOrdenAnterior = "a-" + UUID.randomUUID() + "@example.test";
+        UUID posterior = identidades.registrarDocente(administrador, correoOrdenPosterior, "Nombre compartido", CLAVE).id();
+        UUID anterior = identidades.registrarDocente(administrador, correoOrdenAnterior, "Nombre compartido", CLAVE).id();
+        mvc.perform(comoAdministrador(get("/api/identidad/usuarios").param("busqueda", "Nombre compartido")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value(anterior.toString()))
+                .andExpect(jsonPath("$[1].id").value(posterior.toString()));
     }
 
     @Test
@@ -112,9 +121,15 @@ class PruebaGestionIdentidadAcademica {
     void buscaComodinesLiteralesSinInyectarSql() throws Exception {
         String sufijo = UUID.randomUUID().toString();
         identidades.editarDocente(administrador, docente, correoDocente, "Marca %_!" + sufijo);
+        UUID soloPorcentaje = identidades.registrarDocente(administrador, "porcentaje-" + sufijo + "@example.test", "Marca %A!" + sufijo, CLAVE).id();
+        UUID soloGuion = identidades.registrarDocente(administrador, "guion-" + sufijo + "@example.test", "Marca A_!" + sufijo, CLAVE).id();
+        UUID soloExclamacion = identidades.registrarDocente(administrador, "exclamacion-" + sufijo + "@example.test", "Marca %_A" + sufijo, CLAVE).id();
         mvc.perform(comoAdministrador(get("/api/identidad/usuarios").param("busqueda", "%_!" + sufijo)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].id").value(docente.toString()));
+                .andExpect(jsonPath("$[0].id").value(docente.toString()))
+                .andExpect(jsonPath("$[?(@.id == '%s')]".formatted(soloPorcentaje)).isEmpty())
+                .andExpect(jsonPath("$[?(@.id == '%s')]".formatted(soloGuion)).isEmpty())
+                .andExpect(jsonPath("$[?(@.id == '%s')]".formatted(soloExclamacion)).isEmpty());
         mvc.perform(comoAdministrador(get("/api/identidad/usuarios").param("busqueda", "' OR 1=1 --")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
         mvc.perform(comoAdministrador(get("/api/identidad/usuarios").param("busqueda", "x".repeat(181))))

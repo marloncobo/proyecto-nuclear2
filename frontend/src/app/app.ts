@@ -1,4 +1,4 @@
-import { Component, computed, signal, inject, HostListener } from '@angular/core';
+import { Component, computed, effect, signal, inject, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { NavigationEnd, Router } from '@angular/router';
@@ -31,24 +31,8 @@ export class Aplicacion {
         ],
   );
   readonly casos = signal<Caso[]>(this.casosEjemplo());
-  readonly sesiones = signal<Sesion[]>([
-    {
-      id: 'demo-sesion',
-      idCaso: 'demo-1',
-      idEspacio: 'demo-espacio',
-      inicioPrevisto: '2026-11-18T14:00:00-05:00',
-      finPrevisto: '2026-11-18T15:00:00-05:00',
-      duracionMaximaMin: 40,
-      estado: 'SIN_INICIAR',
-      modoNavegacion: 'FLEXIBLE',
-      lugar: 'Aula 302',
-      mensaje: 'Una mirada a las decisiones que tomamos en grupo.',
-      convocatorias: [],
-    },
-  ]);
-  readonly espacios = signal<Espacio[]>([
-    { id: 'demo-espacio', nombre: 'Psicología social', periodo: '2026-2' },
-  ]);
+  readonly sesiones = signal<Sesion[]>(this.sesionesEjemplo());
+  readonly espacios = signal<Espacio[]>(this.espaciosEjemplo());
   readonly busqueda = signal('');
   readonly filtro = signal('TODOS');
   readonly casosVisibles = computed(() =>
@@ -72,7 +56,9 @@ export class Aplicacion {
   readonly espacioEditado = signal<Espacio | null>(null);
   readonly estudianteEncontrado = signal<Usuario | null>(null);
   correoBusqueda = '';
-  identificador = '';
+  identificadorCaso = '';
+  identificadorSesion = '';
+  identificadorReporte = '';
   idEstudiante = '';
   nombreEspacio = '';
   periodo = '2026-2';
@@ -89,6 +75,18 @@ export class Aplicacion {
     estudiantes: '',
   };
   constructor() {
+    let habiaCuenta = false;
+    effect(() => {
+      if (this.api.conectado()) {
+        habiaCuenta = true;
+      } else if (habiaCuenta) {
+        habiaCuenta = false;
+        if (!this.demostracion()) {
+          this.reiniciarDatosDeCuenta();
+          this.modal.set('');
+        }
+      }
+    });
     this.enrutador.events.subscribe((evento) => {
       if (!(evento instanceof NavigationEnd)) return;
       const direccion = this.enrutador.parseUrl(evento.urlAfterRedirects);
@@ -119,6 +117,10 @@ export class Aplicacion {
     this.error.set('');
   }
   iniciarDemostracion() {
+    this.reiniciarDatosDeCuenta();
+    this.casos.set(this.casosEjemplo());
+    this.sesiones.set(this.sesionesEjemplo());
+    this.espacios.set(this.espaciosEjemplo());
     this.demostracion.set(true);
     this.error.set('');
     this.aviso.set(
@@ -202,6 +204,55 @@ export class Aplicacion {
       justificacionIncorrecta: '',
     };
   }
+  private sesionesEjemplo(): Sesion[] {
+    return [
+      {
+        id: 'demo-sesion',
+        idCaso: 'demo-1',
+        idEspacio: 'demo-espacio',
+        inicioPrevisto: '2026-11-18T14:00:00-05:00',
+        finPrevisto: '2026-11-18T15:00:00-05:00',
+        duracionMaximaMin: 40,
+        estado: 'SIN_INICIAR',
+        modoNavegacion: 'FLEXIBLE',
+        lugar: 'Aula 302',
+        mensaje: 'Una mirada a las decisiones que tomamos en grupo.',
+        convocatorias: [],
+      },
+    ];
+  }
+  private espaciosEjemplo(): Espacio[] {
+    return [{ id: 'demo-espacio', nombre: 'Psicología social', periodo: '2026-2' }];
+  }
+  private reiniciarDatosDeCuenta() {
+    this.casos.set([]);
+    this.sesiones.set([]);
+    this.espacios.set([]);
+    this.resultado.set(null);
+    this.seleccionado.set(null);
+    this.sesionPendiente.set(null);
+    this.estudianteEncontrado.set(null);
+    this.espacioEditado.set(null);
+    this.correoBusqueda = '';
+    this.identificadorCaso = '';
+    this.identificadorSesion = '';
+    this.identificadorReporte = '';
+    this.idEstudiante = '';
+    this.nombreEspacio = '';
+    this.periodo = '2026-2';
+    this.formulario = this.formularioVacio();
+    this.programacion = {
+      idCaso: '',
+      idEspacio: '',
+      inicioPrevisto: '',
+      finPrevisto: '',
+      duracionMaximaMin: 30,
+      modoNavegacion: 'FLEXIBLE',
+      lugar: '',
+      mensaje: '',
+      estudiantes: '',
+    };
+  }
   async ejecutar(accion: () => Promise<void>) {
     if (this.ocupado()) return;
     this.ocupado.set(true);
@@ -219,14 +270,7 @@ export class Aplicacion {
   async completarIngreso() {
     this.demostracion.set(false);
     await this.ejecutar(async () => {
-      this.casos.set([]);
-      this.sesiones.set([]);
-      this.espacios.set([]);
-      this.resultado.set(null);
-      this.estudianteEncontrado.set(null);
-      this.correoBusqueda = '';
-      this.programacion.estudiantes = '';
-      this.espacioEditado.set(null);
+      this.reiniciarDatosDeCuenta();
       this.modal.set('');
       this.aviso.set('Conexión establecida. Consulta tus casos y sesiones por su identificador.');
       if (this.api.usuario()?.rol === 'ADMINISTRADOR') {
@@ -241,18 +285,10 @@ export class Aplicacion {
   salir() {
     if (this.ocupado()) return;
     this.api.salir();
-    this.estudianteEncontrado.set(null);
-    this.correoBusqueda = '';
-    this.programacion.estudiantes = '';
-    this.espacioEditado.set(null);
+    this.reiniciarDatosDeCuenta();
     this.modal.set('');
     this.error.set('');
-    this.casos.set(this.casosEjemplo());
-    this.sesiones.set([]);
-    this.espacios.set([]);
-    this.resultado.set(null);
-    this.aviso.set('Estás en modo demostración. Los datos son ficticios.');
-    this.navegar('inicio');
+    void this.enrutador.navigate(['/ingreso'], { replaceUrl: true });
   }
   async guardarCaso() {
     await this.ejecutar(async () => {
@@ -336,9 +372,11 @@ export class Aplicacion {
   }
   async consultarId(tipo: 'casos' | 'sesiones') {
     await this.ejecutar(async () => {
-      if (!this.identificador.trim()) throw new Error('Escribe un identificador.');
+      const identificador =
+        tipo === 'casos' ? this.identificadorCaso.trim() : this.identificadorSesion.trim();
+      if (!identificador) throw new Error('Escribe un identificador.');
       const dato = await this.api.consultar<Caso & Sesion>(
-        `/${tipo}/${encodeURIComponent(this.identificador.trim())}`,
+        `/${tipo}/${encodeURIComponent(identificador)}`,
       );
       if (tipo === 'casos')
         this.casos.update((casos) => [dato, ...casos.filter((caso) => caso.id !== dato.id)]);
@@ -347,7 +385,8 @@ export class Aplicacion {
           dato,
           ...sesiones.filter((sesion) => sesion.id !== dato.id),
         ]);
-      this.identificador = '';
+      if (tipo === 'casos') this.identificadorCaso = '';
+      else this.identificadorSesion = '';
       this.aviso.set('Consulta completada.');
     });
   }
@@ -447,7 +486,7 @@ export class Aplicacion {
       this.resultado.set(null);
       this.resultado.set(
         await this.api.consultar<Reporte[]>(
-          `/reportes/casos/${encodeURIComponent(this.identificador.trim())}/estudiantes/${encodeURIComponent(this.idEstudiante.trim())}`,
+          `/reportes/casos/${encodeURIComponent(this.identificadorReporte.trim())}/estudiantes/${encodeURIComponent(this.idEstudiante.trim())}`,
         ),
       );
     });
