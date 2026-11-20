@@ -96,10 +96,11 @@ export class ServicioApi {
   consultar<T>(ruta: string) {
     return this.peticion<T>(ruta, 'GET');
   }
-  listarUsuarios(rol = '', activo = '') {
+  listarUsuarios(rol = '', activo = '', busqueda = '') {
     const parametros = new URLSearchParams();
     if (rol) parametros.set('rol', rol);
     if (activo) parametros.set('activo', activo);
+    if (busqueda.trim()) parametros.set('busqueda', busqueda.trim());
     return this.consultar<UsuarioAdministrado[]>('/identidad/usuarios?' + parametros);
   }
   consultarUsuario(id: string) {

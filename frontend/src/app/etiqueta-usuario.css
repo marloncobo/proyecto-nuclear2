@@ -1,0 +1,35 @@
+:host {
+  display: inline-flex;
+}
+.etiqueta {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  background: #edf0f1;
+  color: #53636d;
+}
+.administrador {
+  background: #e5edf5;
+  color: #254f70;
+}
+.docente {
+  background: #e8f0e4;
+  color: #3f6749;
+}
+.estudiante {
+  background: #f3e9dc;
+  color: #7b572e;
+}
+.activo {
+  background: #e4f0e8;
+  color: #356342;
+}
+.inactivo {
+  background: #edf0f1;
+  color: #5c6872;
+}

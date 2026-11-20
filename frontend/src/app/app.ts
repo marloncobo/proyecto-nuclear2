@@ -5,6 +5,7 @@ import { NavigationEnd, Router } from '@angular/router';
 import { Ingreso } from './ingreso';
 import { Administracion } from './administracion';
 import { ServicioApi, Caso, Sesion, Espacio, Reporte, Usuario } from './servicio-api';
+import { nombreEtiqueta } from './etiqueta-usuario';
 @Component({
   selector: 'psico-raiz',
   imports: [FormsModule, DatePipe, Administracion, Ingreso],
@@ -16,6 +17,8 @@ export class Aplicacion {
   private readonly enrutador = inject(Router);
   readonly demostracion = signal(false);
   readonly vista = signal('inicio');
+  readonly menuMovilAbierto = signal(false);
+  readonly nombreEtiqueta = nombreEtiqueta;
   readonly menu = computed(() =>
     this.api.usuario()?.rol === 'ADMINISTRADOR'
       ? [{ id: 'administracion', nombre: 'Administración', icono: '◇' }]
@@ -101,9 +104,17 @@ export class Aplicacion {
     });
   }
   navegar(vista: string) {
-    void this.enrutador.navigate(['/'], {
-      queryParams: { vista, ...(this.demostracion() ? { demostracion: '1' } : {}) },
-    });
+    const cerrarMenu = this.menuMovilAbierto();
+    this.menuMovilAbierto.set(false);
+    void this.enrutador
+      .navigate(['/'], {
+        queryParams: { vista, ...(this.demostracion() ? { demostracion: '1' } : {}) },
+      })
+      .then(() => {
+        window.scrollTo(0, 0);
+        if (cerrarMenu)
+          document.querySelector<HTMLElement>('#principal')?.focus({ preventScroll: true });
+      });
     this.busqueda.set('');
     this.error.set('');
   }
@@ -150,6 +161,10 @@ export class Aplicacion {
   @HostListener('document:keydown.escape')
   cerrarConEscape() {
     if (this.modal()) this.cerrar();
+    if (this.menuMovilAbierto()) {
+      this.menuMovilAbierto.set(false);
+      document.querySelector<HTMLElement>('#alternar-menu')?.focus();
+    }
   }
   mantenerFoco(evento: Event) {
     const teclado = evento as KeyboardEvent;
@@ -215,7 +230,7 @@ export class Aplicacion {
       this.modal.set('');
       this.aviso.set('Conexión establecida. Consulta tus casos y sesiones por su identificador.');
       if (this.api.usuario()?.rol === 'ADMINISTRADOR') {
-        this.aviso.set('Conexión establecida. Gestiona las cuentas de la institución.');
+        this.aviso.set('');
         this.navegar('administracion');
       } else {
         this.navegar('inicio');

@@ -1,16 +1,24 @@
-import { Component, ElementRef, OnInit, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, OnInit, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ServicioApi, Rol, UsuarioAdministrado } from './servicio-api';
+import { EtiquetaUsuario, nombreEtiqueta } from './etiqueta-usuario';
 
 @Component({
   selector: 'psico-administracion',
-  imports: [FormsModule],
+  imports: [FormsModule, EtiquetaUsuario],
   templateUrl: './administracion.html',
   styleUrl: './administracion.css',
 })
 export class Administracion implements OnInit {
   readonly api = inject(ServicioApi);
   readonly usuarios = signal<UsuarioAdministrado[]>([]);
+  readonly busqueda = signal('');
+  readonly busquedaAplicada = signal('');
+  readonly requiereActualizar = signal(false);
+  readonly rolAplicado = signal('');
+  readonly estadoAplicado = signal('');
+  readonly usuariosVisibles = this.usuarios;
+  readonly nombreEtiqueta = nombreEtiqueta;
   readonly roles = signal<Rol[]>([]);
   readonly seleccionado = signal<UsuarioAdministrado | null>(null);
   readonly vistaModal = signal<'' | 'detalle' | 'registro' | 'rol' | 'estado'>('');
@@ -30,6 +38,35 @@ export class Administracion implements OnInit {
   readonly ventanaDetalle = viewChild<ElementRef<HTMLDialogElement>>('ventanaDetalle');
   private origenDetalle: HTMLElement | null = null;
 
+  constructor() {
+    effect((limpiar) => {
+      if (!this.aviso() || this.vistaModal()) return;
+      const temporizador = setTimeout(() => this.aviso.set(''), 8000);
+      limpiar(() => clearTimeout(temporizador));
+    });
+  }
+  private async refrescarListado() {
+    try {
+      const usuarios = await this.api.listarUsuarios(
+        this.rolAplicado(),
+        this.estadoAplicado(),
+        this.busquedaAplicada(),
+      );
+      this.usuarios.set(usuarios);
+      this.requiereActualizar.set(false);
+    } catch {
+      // La escritura ya se confirmó: no presentar un fallo de lectura como si no se hubiese guardado.
+      this.requiereActualizar.set(true);
+    }
+  }
+  async limpiarFiltros() {
+    if (this.ocupado()) return;
+    this.rol = '';
+    this.estado = '';
+    this.busqueda.set('');
+    await this.filtrar();
+  }
+
   ngOnInit() {
     void this.cargar();
   }
@@ -48,12 +85,19 @@ export class Administracion implements OnInit {
   }
   async cargar() {
     await this.ejecutar(async () => {
+      const rol = this.rol,
+        estado = this.estado,
+        busqueda = this.busqueda().trim();
       this.cargado.set(false);
       const [usuarios, roles] = await Promise.all([
-        this.api.listarUsuarios(this.rol, this.estado),
+        this.api.listarUsuarios(rol, estado, busqueda),
         this.api.listarRoles(),
       ]);
       this.usuarios.set(usuarios);
+      this.rolAplicado.set(rol);
+      this.estadoAplicado.set(estado);
+      this.busquedaAplicada.set(busqueda);
+      this.requiereActualizar.set(false);
       this.roles.set(roles);
       this.seleccionado.set(null);
       this.cargado.set(true);
@@ -61,8 +105,15 @@ export class Administracion implements OnInit {
   }
   async filtrar() {
     await this.ejecutar(async () => {
-      const usuarios = await this.api.listarUsuarios(this.rol, this.estado);
+      const rol = this.rol,
+        estado = this.estado,
+        busqueda = this.busqueda().trim();
+      const usuarios = await this.api.listarUsuarios(rol, estado, busqueda);
       this.usuarios.set(usuarios);
+      this.rolAplicado.set(rol);
+      this.estadoAplicado.set(estado);
+      this.busquedaAplicada.set(busqueda);
+      this.requiereActualizar.set(false);
       this.seleccionado.set(null);
     });
   }
@@ -186,6 +237,7 @@ export class Administracion implements OnInit {
         correo: this.correo,
       });
       this.actualizar(actualizado);
+      await this.refrescarListado();
       this.editando = false;
       this.aviso.set('Datos del docente actualizados.');
       setTimeout(() => document.querySelector<HTMLElement>('#detalle-usuario')?.focus());
@@ -193,13 +245,7 @@ export class Administracion implements OnInit {
   }
   private actualizar(usuario: UsuarioAdministrado) {
     this.usuarios.update((usuarios) =>
-      usuarios
-        .map((anterior) => (anterior.id === usuario.id ? usuario : anterior))
-        .filter(
-          (actual) =>
-            (!this.rol || actual.rol === this.rol) &&
-            (!this.estado || String(actual.activo) === this.estado),
-        ),
+      usuarios.map((anterior) => (anterior.id === usuario.id ? usuario : anterior)),
     );
     if (this.seleccionado()?.id === usuario.id) this.seleccionado.set(usuario);
   }
@@ -210,6 +256,7 @@ export class Administracion implements OnInit {
     await this.ejecutar(async () => {
       const actualizado = await this.api.cambiarEstadoUsuario(usuario.id, !usuario.activo);
       this.actualizar(actualizado);
+      await this.refrescarListado();
     });
     if (!this.error()) {
       this.cerrarDetalle();
@@ -228,19 +275,12 @@ export class Administracion implements OnInit {
       return;
     }
     await this.ejecutar(async () => {
-      const creado = await this.api.registrarDocente({
+      await this.api.registrarDocente({
         nombre: this.nuevoDocente.nombre.trim(),
         correo: this.nuevoDocente.correo.trim(),
         clave,
       });
-      const usuario: UsuarioAdministrado = { ...creado, activo: true };
-      this.usuarios.update((usuarios) =>
-        [usuario, ...usuarios].filter(
-          (actual) =>
-            (!this.rol || actual.rol === this.rol) &&
-            (!this.estado || String(actual.activo) === this.estado),
-        ),
-      );
+      await this.refrescarListado();
     });
     if (!this.error()) {
       this.cerrarDetalle();
@@ -260,6 +300,7 @@ export class Administracion implements OnInit {
     await this.ejecutar(async () => {
       const actualizado = await this.api.cambiarRolUsuario(usuario.id, this.nuevoRol);
       this.actualizar({ ...actualizado, activo: usuario.activo });
+      await this.refrescarListado();
     });
     if (!this.error()) {
       this.abrirVentana('detalle');

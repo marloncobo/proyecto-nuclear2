@@ -3,7 +3,11 @@
 } @else {
   <a class="saltar-contenido" href="#principal">Ir al contenido</a>
   <div class="aplicacion">
-    <aside class="barra-lateral" aria-label="Navegación principal">
+    <aside
+      class="barra-lateral"
+      [class.menu-abierto]="menuMovilAbierto()"
+      aria-label="Navegación principal"
+    >
       <a
         class="marca"
         href="/"
@@ -12,7 +16,28 @@
         ><img src="logo-psicoapp.png" alt="Psicoapp"
       /></a>
       <div class="etiqueta-menu">CAMPUS VIRTUAL</div>
-      <nav>
+      <button
+        id="alternar-menu"
+        class="alternar-menu"
+        [attr.aria-label]="menuMovilAbierto() ? 'Cerrar menú principal' : 'Abrir menú principal'"
+        [attr.aria-expanded]="menuMovilAbierto()"
+        aria-controls="navegacion-principal"
+        (click)="menuMovilAbierto.set(!menuMovilAbierto())"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          width="21"
+          height="21"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          <path d="M4 6h16M4 12h16M4 18h16" /></svg
+        >Menú
+      </button>
+      <nav id="navegacion-principal" aria-label="Secciones de la plataforma">
         @for (item of menu(); track item.id) {
           <button
             [class.activo]="vista() === item.id"
@@ -36,7 +61,7 @@
         <span class="avatar">{{ api.usuario()?.nombre?.charAt(0) || 'D' }}</span>
         <div>
           <strong>{{ api.usuario()?.nombre || 'Espacio docente' }}</strong><small>{{
-            api.conectado() ? api.usuario()?.rol : 'Vista de demostración'
+            api.conectado() ? nombreEtiqueta(api.usuario()!.rol) : 'Vista de demostración'
           }}</small>
         </div>
         <button
@@ -52,7 +77,7 @@
     <div class="contenido">
       <header class="cabecera">
         <span class="ruta"
-          >Tu campus <span>/</span>
+          ><span class="origen-ruta">Tu campus</span> <span class="separador-ruta">/</span>
           <strong>{{
             vista() === 'administracion'
               ? 'Administración'
