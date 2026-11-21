@@ -165,6 +165,12 @@ test('la cuenta administrativa entra únicamente a administración', async ({ pa
 
 test('al cambiar de cuenta se reinician consultas y programación', async ({ page: pagina }) => {
   await simularCuenta(pagina);
+  await pagina.route('**/api/sesiones', (ruta) => ruta.fulfill({ json: [{
+    id: 'sesion-cuenta', idCaso: 'caso-cuenta', idEspacio: 'espacio-cuenta',
+    inicioPrevisto: '2026-11-15T15:00:00Z', finPrevisto: '2026-11-15T16:00:00Z',
+    duracionMaximaMin: 30, estado: 'FINALIZADO', modoNavegacion: 'FLEXIBLE',
+    lugar: '', mensaje: '', convocatorias: [],
+  }] }));
   await pagina.goto('/ingreso');
   await completarFormulario(pagina);
   await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
@@ -177,8 +183,7 @@ test('al cambiar de cuenta se reinician consultas y programación', async ({ pag
   await pagina.getByLabel('Mensaje de convocatoria').fill('Mensaje privado de la primera cuenta');
   await pagina.keyboard.press('Escape');
   await pagina.getByRole('button', { name: 'Resultados', exact: true }).click();
-  await pagina.getByLabel('Identificador del caso').fill('caso-reporte-primera');
-  await pagina.getByLabel('Identificador del estudiante').fill('estudiante-primera');
+  await pagina.getByLabel('Sesión para exportar').selectOption('sesion-cuenta');
 
   await pagina.getByRole('button', { name: 'Mi cuenta' }).click();
   await pagina
@@ -197,8 +202,7 @@ test('al cambiar de cuenta se reinician consultas y programación', async ({ pag
   await expect(pagina.getByLabel('Mensaje de convocatoria')).toHaveValue('');
   await pagina.keyboard.press('Escape');
   await pagina.getByRole('button', { name: 'Resultados', exact: true }).click();
-  await expect(pagina.getByLabel('Identificador del caso')).toHaveValue('');
-  await expect(pagina.getByLabel('Identificador del estudiante')).toHaveValue('');
+  await expect(pagina.getByLabel('Sesión para exportar')).toHaveValue('');
 });
 
 test('un 401 de la cuenta activa cierra la sesión y un 403 no lo hace', async ({

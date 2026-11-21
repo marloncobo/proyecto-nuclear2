@@ -41,13 +41,14 @@ class PruebaServicioGestionSesiones {
     @Mock DirectorioIdentidad identidades;
     @Mock CatalogoCasos casos;
     @Mock FachadaAdministracion academico;
+    @Mock ConsolidadorReporteSesion consolidadorReportes;
     private ServicioGestionSesiones servicio;
     private final UUID docente = UUID.randomUUID();
     private final Sesion sesion = DatosPruebaSesiones.programada(docente);
 
     @BeforeEach
     void preparar() {
-        servicio = new ServicioGestionSesiones(sesiones, identidades, casos, academico, Clock.fixed(INICIO, ZoneOffset.UTC), convocatorias, mock(com.psicoapp.shared.events.NotificacionSujeto.class), "http://localhost:3000/ingreso");
+        servicio = new ServicioGestionSesiones(sesiones, identidades, casos, academico, Clock.fixed(INICIO, ZoneOffset.UTC), convocatorias, mock(com.psicoapp.shared.events.NotificacionSujeto.class), consolidadorReportes, "http://localhost:3000/ingreso");
     }
 
     @Test
@@ -112,11 +113,26 @@ class PruebaServicioGestionSesiones {
         when(sesiones.bloquearPorId(sesion.id())).thenReturn(Optional.of(sesion));
         assertEquals("EN_CURSO", servicio.iniciar(docente, sesion.id()).estado());
         verify(sesiones).actualizarEstado(argThat(s -> s.estado().codigo() == TipoEstadoSesion.EN_CURSO));
+        verifyNoInteractions(consolidadorReportes);
         var cerrada = sesion.iniciar(INICIO).finalizar(MotivoCierre.DOCENTE, INICIO);
         when(sesiones.bloquearPorId(sesion.id())).thenReturn(Optional.of(cerrada));
         assertEquals("FINALIZADO", servicio.finalizar(docente, sesion.id()).estado());
         verify(sesiones, times(1)).actualizarEstado(any());
+        verifyNoInteractions(consolidadorReportes);
         assertThrows(Conflicto.class, () -> servicio.iniciar(docente, sesion.id()));
+    }
+
+    @Test
+    @DisplayName("CU-35: el cierre docente consolida el reporte una sola vez")
+    void consolidaReporteAlCerrarManualmente() {
+        var iniciada = sesion.iniciar(INICIO);
+        when(sesiones.bloquearPorId(sesion.id())).thenReturn(Optional.of(iniciada));
+
+        assertEquals("FINALIZADO", servicio.finalizar(docente, sesion.id()).estado());
+
+        var orden = inOrder(sesiones, consolidadorReportes);
+        orden.verify(sesiones).actualizarEstado(argThat(s -> s.estado().codigo() == TipoEstadoSesion.FINALIZADO));
+        orden.verify(consolidadorReportes).consolidar(sesion.id(), INICIO);
     }
 
     @Test
@@ -143,6 +159,7 @@ class PruebaServicioGestionSesiones {
         assertEquals(1, servicio.cerrarVencidas(limite));
         verify(sesiones, times(1)).actualizarEstado(argThat(s -> s.id().equals(sesion.id())
                 && s.estado().codigo() == TipoEstadoSesion.FINALIZADO));
+        verify(consolidadorReportes).consolidar(sesion.id(), limite);
     }
 
     @Test

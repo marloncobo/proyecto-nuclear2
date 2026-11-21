@@ -144,7 +144,10 @@ Devuelve cada intento finalizado o vencido con sus respuestas y la evaluacion
 almacenada, si existe (`resultado: null` indica evaluacion pendiente).
 Consume contratos publicos de `participation` y `evaluation`, sin consultar
 repositorios ajenos ni calcular notas. `GET /api/reportes/sesiones/{id}`
-consulta el estado de participación y las notas por sesión para exportar el CSV.
+consulta el estado de participación y las notas por sesión, identifica a cada
+estudiante por nombre y correo y alimenta la exportacion CSV. Al cerrar manual o
+automaticamente una sesion, registra por separado las ausencias con nota cero y
+cero puntos por pregunta; no crea intentos ficticios (CU-35).
 La respuesta incluye `valoracionesGenerales` por intento. El docente responsable
 puede agregar una con `POST /api/reportes/participaciones/{idIntento}/valoraciones`,
 JSON `mensaje`. Se reutiliza `GestionValoraciones` de evaluation: guarda

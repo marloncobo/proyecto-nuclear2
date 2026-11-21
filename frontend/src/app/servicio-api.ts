@@ -272,7 +272,13 @@ export interface Reporte {
 
 export interface FilaReporteSesion {
   idEstudiante: string;
+  nombreEstudiante: string;
+  correoEstudiante: string;
   idIntento: string | null;
   estado: string;
   calificacion: number | null;
+  ausencia: {
+    fechaConsolidacion: string;
+    detalles: { idPregunta: string; puntos: number; valoracion: string }[];
+  } | null;
 }
