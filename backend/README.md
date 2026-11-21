@@ -279,7 +279,20 @@ Requiere MySQL 8.0 o superior y una base de datos creada previamente:
 CREATE DATABASE psicoapp CHARACTER SET utf8mb4;
 ```
 
-Configura estas variables de entorno antes del arranque (sin versionar secretos):
+La configuración de ejecución se centraliza en `.env` en la raíz del repositorio.
+Se carga automáticamente al ejecutar Maven desde `backend/` o desde la raíz.
+Créalo una sola vez desde la plantilla y no lo versiones:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Completa la conexión a MySQL y las claves antes de iniciar el backend. Las variables
+definidas en el sistema conservan prioridad sobre `.env`, así que producción puede
+inyectarlas sin montar ese archivo. La plantilla documenta los valores de desarrollo
+para correo, notificaciones, JWT e intervalos programados.
+
+Configura estas variables en `.env` (sin versionar secretos):
 
 | Variable | Uso / valor predeterminado |
 | --- | --- |
@@ -289,6 +302,8 @@ Configura estas variables de entorno antes del arranque (sin versionar secretos)
 | `PSICOAPP_CORREO_ADMINISTRADOR` | Correo del administrador inicial |
 | `PSICOAPP_CLAVE_ADMINISTRADOR` | Clave inicial de al menos 8 caracteres y hasta 72 bytes |
 | `PSICOAPP_DOMINIOS_INSTITUCIONALES` | Dominios institucionales exactos separados por comas |
+| `PSICOAPP_JWT_CLAVE` | Clave HS256 Base64 de 32 bytes o más; vacía genera una clave efímera |
+| `PSICOAPP_NOTIFICACIONES_CLAVE_CIFRADO` | Clave AES-256-GCM Base64 para cifrar notificaciones |
 
 El arranque crea las tablas de identidad, espacios, casos y sesiones si no existen e inserta los roles y el permiso
 sin duplicarlos. El administrador inicial se crea solo si no existe; no se
