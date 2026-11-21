@@ -12,7 +12,6 @@ import java.security.Principal;
 import java.util.UUID;
 import java.util.List;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -86,12 +85,6 @@ public class ControladorIdentidad {
             @NotBlank @Size(max = 120) String nombre) { }
     public record SolicitudRol(@NotNull Rol rol) { }
     public record SolicitudPermiso(@NotNull Boolean habilitado) { }
-    public record RespuestaCsrf(String nombreCabecera, String token) {
-        @Override
-        public String toString() {
-            return "RespuestaCsrf[token=PROTEGIDA]";
-        }
-    }
 
     private final ServicioUsuarios identidades;
 
@@ -102,11 +95,6 @@ public class ControladorIdentidad {
     @GetMapping("/yo")
     public DatosUsuario yo(Principal principal) {
         return identidades.consultarIdentidad(UUID.fromString(principal.getName()));
-    }
-
-    @GetMapping("/csrf")
-    public RespuestaCsrf csrf(CsrfToken token) {
-        return new RespuestaCsrf(token.getHeaderName(), token.getToken());
     }
 
     @PostMapping("/docentes")

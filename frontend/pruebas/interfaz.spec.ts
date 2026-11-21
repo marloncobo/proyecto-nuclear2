@@ -44,13 +44,16 @@ test('creación de borrador y transición a publicado en demostración', async (
   await expect(pagina.getByRole('dialog').getByText('Publicado', { exact: true })).toBeVisible();
 });
 
-test('API: autenticación, separación de datos ficticios y CSRF al crear un espacio', async ({
+test('API: autenticación Bearer y separación de datos ficticios al crear un espacio', async ({
   page: pagina,
 }) => {
-  let cabecera = '';
+  let autorizacion = '';
   let cuerpo: unknown;
   await pagina.route('**/api/**', async (ruta) => {
     const url = new URL(ruta.request().url());
+    if (url.pathname.endsWith('/ingreso'))
+      return ruta.fulfill({ json: { token: 'token-ficticio', tipo: 'Bearer' } });
+    expect(ruta.request().headers()['authorization']).toBe('Bearer token-ficticio');
     if (url.pathname.endsWith('/yo'))
       return ruta.fulfill({
         json: {
@@ -61,10 +64,9 @@ test('API: autenticación, separación de datos ficticios y CSRF al crear un esp
           puedeCrearCasos: true,
         },
       });
-    if (url.pathname.endsWith('/csrf'))
-      return ruta.fulfill({ json: { nombreCabecera: 'X-CSRF-TOKEN', token: 'token-prueba' } });
     if (ruta.request().method() === 'POST') {
-      cabecera = ruta.request().headers()['x-csrf-token'];
+      autorizacion = ruta.request().headers()['authorization'];
+      expect(ruta.request().headers()['x-csrf-token']).toBeUndefined();
       cuerpo = ruta.request().postDataJSON();
       return ruta.fulfill({ json: { id: 'espacio-real', ...(cuerpo as object) } });
     }
@@ -81,13 +83,13 @@ test('API: autenticación, separación de datos ficticios y CSRF al crear un esp
   await pagina.getByLabel('Nombre', { exact: true }).fill('Psicología comunitaria');
   await pagina.getByRole('button', { name: 'Crear espacio' }).click();
   await expect(pagina.getByRole('heading', { name: 'Psicología comunitaria' })).toBeVisible();
-  expect(cabecera).toBe('token-prueba');
+  expect(autorizacion).toBe('Bearer token-ficticio');
   expect(cuerpo).toEqual({ nombre: 'Psicología comunitaria', periodo: '2026-2' });
   expect(await pagina.evaluate(() => localStorage.length)).toBe(0);
 });
 
 test('error de acceso visible sin abandonar el login', async ({ page: pagina }) => {
-  await pagina.route('**/api/identidad/yo', (ruta) => ruta.fulfill({ status: 401, json: {} }));
+  await pagina.route('**/api/identidad/ingreso', (ruta) => ruta.fulfill({ status: 401, json: {} }));
   await pagina.goto('/');
   await pagina.getByLabel('Correo institucional').fill('docente@ejemplo.edu');
   await pagina.getByLabel('Contraseña', { exact: true }).fill('incorrecta');
@@ -113,9 +115,10 @@ test('vista móvil sin desbordamiento horizontal', async ({ page: pagina }) => {
 test('reporte: evaluación pendiente y ausencia de intentos sin inventar notas', async ({
   page: pagina,
 }) => {
-  let conIntento = true;
   await pagina.route('**/api/**', async (ruta) => {
     const direccion = new URL(ruta.request().url());
+    if (direccion.pathname.endsWith('/ingreso'))
+      return ruta.fulfill({ json: { token: 'token-ficticio', tipo: 'Bearer' } });
     if (direccion.pathname.endsWith('/yo'))
       return ruta.fulfill({
         json: {
@@ -126,23 +129,43 @@ test('reporte: evaluación pendiente y ausencia de intentos sin inventar notas',
           puedeCrearCasos: true,
         },
       });
-    if (direccion.pathname.includes('/reportes/'))
+    if (direccion.pathname.endsWith('/sesiones'))
       return ruta.fulfill({
-        json: conIntento
-          ? [
-              {
-                participacion: {
-                  idIntento: 'intento-1',
-                  estado: 'FINALIZADO',
-                  inicio: '2026-11-15T15:00:00Z',
-                  idSesion: 'sesion',
-                },
-                resultado: null,
-                valoracionesGenerales: [],
-              },
-            ]
-          : [],
+        json: [{
+          id: 'sesion', idCaso: 'caso', idEspacio: 'espacio',
+          inicioPrevisto: '2026-11-15T15:00:00Z', finPrevisto: '2026-11-15T16:00:00Z',
+          duracionMaximaMin: 30, estado: 'FINALIZADO', modoNavegacion: 'FLEXIBLE',
+          lugar: '', mensaje: '', convocatorias: [],
+        }],
       });
+    if (direccion.pathname.endsWith('/reportes/sesiones/sesion'))
+      return ruta.fulfill({
+        json: [
+          {
+            idEstudiante: 'estudiante', nombreEstudiante: 'Ana Aprendiz',
+            correoEstudiante: 'ana@ejemplo.edu', idIntento: 'intento-1',
+            estado: 'FINALIZADO', calificacion: null, ausencia: null,
+          },
+          {
+            idEstudiante: 'ausente', nombreEstudiante: 'Beto Ausente',
+            correoEstudiante: 'beto@ejemplo.edu', idIntento: null,
+            estado: 'AUSENTE', calificacion: 0,
+            ausencia: {
+              fechaConsolidacion: '2026-11-15T16:00:00Z',
+              detalles: [{ idPregunta: 'pregunta', puntos: 0, valoracion: 'Ausencia' }],
+            },
+          },
+        ],
+      });
+    if (direccion.pathname.endsWith('/reportes/casos/caso/estudiantes/estudiante'))
+      return ruta.fulfill({ json: [{
+        participacion: {
+          idIntento: 'intento-1', estado: 'FINALIZADO',
+          inicio: '2026-11-15T15:00:00Z', idSesion: 'sesion',
+        },
+        resultado: null,
+        valoracionesGenerales: [],
+      }] });
     return ruta.fulfill({ json: [] });
   });
   await pagina.goto('/');
@@ -150,14 +173,12 @@ test('reporte: evaluación pendiente y ausencia de intentos sin inventar notas',
   await pagina.getByLabel('Contraseña', { exact: true }).fill('clave-ficticia');
   await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
   await pagina.getByRole('button', { name: 'Resultados', exact: true }).click();
-  await pagina.getByLabel('Identificador del caso').fill('caso');
-  await pagina.getByLabel('Identificador del estudiante').fill('estudiante');
-  await pagina.getByRole('button', { name: 'Consultar resultados' }).click();
+  await pagina.getByLabel('Sesión para exportar').selectOption('sesion');
+  await pagina.getByRole('button', { name: 'Preparar reporte' }).click();
+  await expect(pagina.getByText('Ana Aprendiz', { exact: true })).toBeVisible();
+  await expect(pagina.getByText('Ausencia consolidada · 1 pregunta con 0 puntos.')).toBeVisible();
+  await pagina.getByRole('button', { name: 'Ver resultados de Ana Aprendiz' }).click();
   await expect(pagina.getByText('Evaluación pendiente.', { exact: false })).toBeVisible();
-  await expect(pagina.locator('.nota-calificacion')).toHaveCount(0);
-  conIntento = false;
-  await pagina.getByRole('button', { name: 'Consultar resultados' }).click();
-  await expect(
-    pagina.getByText('No hay intentos finalizados para este estudiante y caso.'),
-  ).toBeVisible();
+  await expect(pagina.locator('.intento-reporte .nota-calificacion')).toHaveCount(0);
+  await expect(pagina.getByRole('heading', { name: 'Recorrido académico · Ana Aprendiz' })).toBeVisible();
 });

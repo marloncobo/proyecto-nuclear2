@@ -5,7 +5,7 @@
 `test/pruebas-identidad-academica`. **Entorno:** MySQL 9.3.0, Java 24.0.1.
 
 `PruebaPersistenciaMysqlIT` utiliza el contexto completo de Spring Boot, MockMvc,
-autenticación HTTP Basic, cookie y token CSRF reales, servicios transaccionales
+autenticación JWT Bearer con tokens reales, servicios transaccionales
 y los tres adaptadores JDBC del proyecto. No sustituye repositorios ni permisos.
 Cada ejecución crea un esquema MySQL aleatorio y comprueba que lo elimina al
 terminar. Las credenciales provienen del entorno; no se guardan en el proyecto.
@@ -16,7 +16,7 @@ terminar. Las credenciales provienen del entorno; no se guardan en el proyecto.
 | --- | --- | --- |
 | CP-ID-001/002 | registraDocenteYRechazaDuplicadosEnMysql; restriccionUniqueProtegeCorreo | BCrypt, autenticación, correo normalizado, HTTP 409 y UNIQUE real incluso sin pasar por el servicio. |
 | CP-ID-003 | datosInvalidosNoPersisten | Cinco variantes HTTP independientes; no se modifican los registros. |
-| CP-ID-004/013 | altasNoAutorizadasNoPersisten | Rol docente y ausencia de CSRF no escriben cuentas. |
+| CP-ID-004/013 | altasNoAutorizadasNoPersisten | Rol docente y ausencia de JWT no escriben cuentas. |
 | CP-ID-005/006 | cambiosDeRolPersisten | Promoción y restitución verificadas en SQL y con autenticación posterior; rechazo del cambio de rol propio. |
 | CP-ID-007/008 | permisosPersistenParaDosDocentes | Concesión y revocación idempotentes en rol_permiso, dos identidades y rechazos de rol. |
 | CP-ID-009 | registraDocenteYRechazaDuplicadosEnMysql y autenticación de cada flujo | Las credenciales se validan contra usuarios y hashes almacenados en MySQL. Las variantes de contraseña incorrecta y anonimato también están en PruebaFlujosIdentidadAcademica. |

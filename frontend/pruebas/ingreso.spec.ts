@@ -2,9 +2,14 @@
 
 async function simularCuenta(pagina: Page, rol = 'DOCENTE') {
   await pagina.route('**/api/**', (ruta) => {
+    if (new URL(ruta.request().url()).pathname.endsWith('/ingreso')) {
+      const { correo } = ruta.request().postDataJSON();
+      return ruta.fulfill({ json: { token: 'ficticio-' + correo, tipo: 'Bearer' } });
+    }
     if (new URL(ruta.request().url()).pathname.endsWith('/yo')) {
       const autorizacion = ruta.request().headers()['authorization'] ?? '';
-      const correo = Buffer.from(autorizacion.slice(6), 'base64').toString().split(':')[0];
+      expect(autorizacion).toMatch(/^Bearer ficticio-/);
+      const correo = autorizacion.slice('Bearer ficticio-'.length);
       return ruta.fulfill({
         json: {
           id: correo === 'personal@example.test' ? 'cuenta-primera' : 'cuenta-segunda',
@@ -93,6 +98,8 @@ test('un 401 tardío de una generación anterior no cierra el nuevo ingreso', as
   const respuestaPendiente = new Promise<void>((resolve) => (liberarRespuesta = resolve));
   await pagina.route('**/api/**', async (ruta) => {
     const url = new URL(ruta.request().url());
+    if (url.pathname.endsWith('/ingreso'))
+      return ruta.fulfill({ json: { token: 'token-ficticio', tipo: 'Bearer' } });
     if (url.pathname.endsWith('/yo'))
       return ruta.fulfill({
         json: {
@@ -158,6 +165,12 @@ test('la cuenta administrativa entra únicamente a administración', async ({ pa
 
 test('al cambiar de cuenta se reinician consultas y programación', async ({ page: pagina }) => {
   await simularCuenta(pagina);
+  await pagina.route('**/api/sesiones', (ruta) => ruta.fulfill({ json: [{
+    id: 'sesion-cuenta', idCaso: 'caso-cuenta', idEspacio: 'espacio-cuenta',
+    inicioPrevisto: '2026-11-15T15:00:00Z', finPrevisto: '2026-11-15T16:00:00Z',
+    duracionMaximaMin: 30, estado: 'FINALIZADO', modoNavegacion: 'FLEXIBLE',
+    lugar: '', mensaje: '', convocatorias: [],
+  }] }));
   await pagina.goto('/ingreso');
   await completarFormulario(pagina);
   await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
@@ -170,8 +183,7 @@ test('al cambiar de cuenta se reinician consultas y programación', async ({ pag
   await pagina.getByLabel('Mensaje de convocatoria').fill('Mensaje privado de la primera cuenta');
   await pagina.keyboard.press('Escape');
   await pagina.getByRole('button', { name: 'Resultados', exact: true }).click();
-  await pagina.getByLabel('Identificador del caso').fill('caso-reporte-primera');
-  await pagina.getByLabel('Identificador del estudiante').fill('estudiante-primera');
+  await pagina.getByLabel('Sesión para exportar').selectOption('sesion-cuenta');
 
   await pagina.getByRole('button', { name: 'Mi cuenta' }).click();
   await pagina
@@ -190,8 +202,7 @@ test('al cambiar de cuenta se reinician consultas y programación', async ({ pag
   await expect(pagina.getByLabel('Mensaje de convocatoria')).toHaveValue('');
   await pagina.keyboard.press('Escape');
   await pagina.getByRole('button', { name: 'Resultados', exact: true }).click();
-  await expect(pagina.getByLabel('Identificador del caso')).toHaveValue('');
-  await expect(pagina.getByLabel('Identificador del estudiante')).toHaveValue('');
+  await expect(pagina.getByLabel('Sesión para exportar')).toHaveValue('');
 });
 
 test('un 401 de la cuenta activa cierra la sesión y un 403 no lo hace', async ({
@@ -200,6 +211,8 @@ test('un 401 de la cuenta activa cierra la sesión y un 403 no lo hace', async (
   let estado: 'valida' | 'prohibida' | 'revocada' = 'valida';
   await pagina.route('**/api/**', (ruta) => {
     const url = new URL(ruta.request().url());
+    if (url.pathname.endsWith('/ingreso'))
+      return ruta.fulfill({ json: { token: 'token-ficticio', tipo: 'Bearer' } });
     if (url.pathname.endsWith('/yo'))
       return ruta.fulfill({
         json: {
@@ -224,7 +237,9 @@ test('un 401 de la cuenta activa cierra la sesión y un 403 no lo hace', async (
 
   estado = 'prohibida';
   await pagina.getByRole('button', { name: /^Consultar/ }).click();
-  await expect(pagina.getByRole('alert')).toHaveText('Tu cuenta no tiene permiso para esta operación.');
+  await expect(pagina.getByRole('alert')).toHaveText(
+    'Tu cuenta no tiene permiso para esta operación.',
+  );
   await expect(pagina).toHaveURL(/vista=casos/);
   await expect(pagina.getByRole('navigation')).toBeVisible();
 
@@ -254,11 +269,13 @@ test('evita doble envío y limpia la contraseña al fallar el acceso', async ({ 
   const respuestaPendiente = new Promise<void>((resolve) => {
     resolver = resolve;
   });
-  await pagina.route('**/api/identidad/yo', async (ruta) => {
+  await pagina.route('**/api/identidad/ingreso', async (ruta) => {
     solicitudes++;
-    expect(ruta.request().headers()['authorization']).toBe(
-      'Basic ' + Buffer.from('personal@example.test:clave-ficticia').toString('base64'),
-    );
+    expect(ruta.request().headers()['authorization'] ?? '').toBe('');
+    expect(ruta.request().postDataJSON()).toEqual({
+      correo: 'personal@example.test',
+      clave: 'clave-ficticia',
+    });
     await respuestaPendiente;
     await ruta.fulfill({ status: 401, json: {} });
   });
@@ -290,7 +307,7 @@ test('el login se adapta a móvil y escritorio sin desbordamiento', async ({ pag
 test('una página HTML no se interpreta como identidad ni expone el error de JSON', async ({
   page: pagina,
 }) => {
-  await pagina.route('**/api/identidad/yo', (ruta) =>
+  await pagina.route('**/api/identidad/ingreso', (ruta) =>
     ruta.fulfill({
       status: 200,
       contentType: 'text/html',
@@ -308,7 +325,7 @@ test('una página HTML no se interpreta como identidad ni expone el error de JSO
 });
 
 test('un JSON inválido muestra un mensaje legible', async ({ page: pagina }) => {
-  await pagina.route('**/api/identidad/yo', (ruta) =>
+  await pagina.route('**/api/identidad/ingreso', (ruta) =>
     ruta.fulfill({ status: 200, contentType: 'application/json', body: '{incorrecto' }),
   );
   await pagina.goto('/ingreso');
@@ -322,7 +339,7 @@ test('un JSON inválido muestra un mensaje legible', async ({ page: pagina }) =>
 test('un error de proxy sin JSON informa que el backend no está disponible', async ({
   page: pagina,
 }) => {
-  await pagina.route('**/api/identidad/yo', (ruta) =>
+  await pagina.route('**/api/identidad/ingreso', (ruta) =>
     ruta.fulfill({ status: 502, contentType: 'text/html', body: '<html>Error de conexión</html>' }),
   );
   await pagina.goto('/ingreso');

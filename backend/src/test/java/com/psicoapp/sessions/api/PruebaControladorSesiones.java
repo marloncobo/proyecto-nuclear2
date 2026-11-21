@@ -43,6 +43,7 @@ class PruebaControladorSesiones {
     @MockitoBean CatalogoCasos casos;
     @MockitoBean FachadaAdministracion academico;
     @MockitoBean Clock reloj;
+    @MockitoBean ConsolidadorReporteSesion consolidadorReportes;
     private final UUID docente = UUID.randomUUID();
     private final Sesion sesion = DatosPruebaSesiones.programada(docente);
 
@@ -52,21 +53,15 @@ class PruebaControladorSesiones {
     }
 
     @Test
-    @DisplayName("RF-02: rutas de sesiones exigen docente y mutaciones exigen CSRF")
+    @DisplayName("RF-02: rutas de sesiones exigen autenticacion JWT y rol docente")
     void restringeAcceso() throws Exception {
         mvc.perform(get("/api/sesiones/{id}", sesion.id())).andExpect(status().isUnauthorized());
         for (String rol : new String[]{"ESTUDIANTE", "ADMINISTRADOR"}) {
             mvc.perform(get("/api/sesiones/{id}", sesion.id()).with(user(docente.toString()).roles(rol)))
                     .andExpect(status().isForbidden());
-            mvc.perform(post("/api/sesiones/{id}/iniciar", sesion.id()).with(csrf())
+            mvc.perform(post("/api/sesiones/{id}/iniciar", sesion.id())
                             .with(user(docente.toString()).roles(rol))).andExpect(status().isForbidden());
         }
-        for (String accion : new String[]{"iniciar", "finalizar"}) {
-            mvc.perform(post("/api/sesiones/{id}/" + accion, sesion.id())
-                            .with(user(docente.toString()).roles("DOCENTE"))).andExpect(status().isForbidden());
-        }
-        mvc.perform(post("/api/sesiones").with(user(docente.toString()).roles("DOCENTE"))
-                        .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
         verifyNoInteractions(sesiones, casos, academico, identidades);
     }
 
@@ -74,7 +69,7 @@ class PruebaControladorSesiones {
     @DisplayName("RF-18: programa SIN_INICIAR con docente autenticado, fechas UTC y campos en espanol")
     void programaDesdeIdentidadAutenticada() throws Exception {
         when(casos.exigirPublicado(docente, sesion.idCaso())).thenReturn(new CatalogoCasos.CasoProgramable(sesion.idCaso(), 40, "Caso formativo"));
-        mvc.perform(post("/api/sesiones").with(csrf()).with(user(docente.toString()).roles("DOCENTE"))
+        mvc.perform(post("/api/sesiones").with(user(docente.toString()).roles("DOCENTE"))
                         .contentType(MediaType.APPLICATION_JSON).content("""
                                 {"idCaso":"%s","idEspacio":"%s","inicioPrevisto":"2026-11-01T09:00:00-05:00",
                                  "finPrevisto":"2026-11-01T10:00:00-05:00","duracionMaximaMin":30,
@@ -91,21 +86,22 @@ class PruebaControladorSesiones {
     @DisplayName("RF-19: inicia y finaliza por HTTP; cierre repetido no escribe otra vez")
     void administraCicloDeVida() throws Exception {
         when(sesiones.bloquearPorId(sesion.id())).thenReturn(Optional.of(sesion));
-        mvc.perform(post("/api/sesiones/{id}/iniciar", sesion.id()).with(csrf())
+        mvc.perform(post("/api/sesiones/{id}/iniciar", sesion.id())
                         .with(user(docente.toString()).roles("DOCENTE")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("EN_CURSO"));
         var iniciada = sesion.iniciar(INICIO);
         when(sesiones.bloquearPorId(sesion.id())).thenReturn(Optional.of(iniciada));
-        mvc.perform(post("/api/sesiones/{id}/finalizar", sesion.id()).with(csrf())
+        mvc.perform(post("/api/sesiones/{id}/finalizar", sesion.id())
                         .with(user(docente.toString()).roles("DOCENTE")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("FINALIZADO"));
         var cerrada = iniciada.finalizar(MotivoCierre.DOCENTE, FIN);
         when(sesiones.bloquearPorId(sesion.id())).thenReturn(Optional.of(cerrada));
-        mvc.perform(post("/api/sesiones/{id}/finalizar", sesion.id()).with(csrf())
+        mvc.perform(post("/api/sesiones/{id}/finalizar", sesion.id())
                         .with(user(docente.toString()).roles("DOCENTE"))).andExpect(status().isOk());
-        mvc.perform(post("/api/sesiones/{id}/iniciar", sesion.id()).with(csrf())
+        mvc.perform(post("/api/sesiones/{id}/iniciar", sesion.id())
                         .with(user(docente.toString()).roles("DOCENTE"))).andExpect(status().isConflict());
         verify(sesiones, times(2)).actualizarEstado(any());
+        verify(consolidadorReportes).consolidar(sesion.id(), INICIO);
     }
 
     @Test
@@ -115,7 +111,7 @@ class PruebaControladorSesiones {
         when(sesiones.buscarPorId(sesion.id())).thenReturn(Optional.of(sesion));
         mvc.perform(get("/api/sesiones/{id}", sesion.id()).with(user(UUID.randomUUID().toString()).roles("DOCENTE")))
                 .andExpect(status().isForbidden());
-        mvc.perform(post("/api/sesiones/{id}/iniciar", sesion.id()).with(csrf())
+        mvc.perform(post("/api/sesiones/{id}/iniciar", sesion.id())
                         .with(user(UUID.randomUUID().toString()).roles("DOCENTE"))).andExpect(status().isForbidden());
         mvc.perform(get("/api/sesiones/{id}", UUID.randomUUID()).with(user(docente.toString()).roles("DOCENTE")))
                 .andExpect(status().isNotFound());
@@ -128,10 +124,10 @@ class PruebaControladorSesiones {
     @Test
     @DisplayName("RF-18: fechas invalidas o datos incompletos responden 400 sin guardar")
     void rechazaDatosInvalidos() throws Exception {
-        mvc.perform(post("/api/sesiones").with(csrf()).with(user(docente.toString()).roles("DOCENTE"))
+        mvc.perform(post("/api/sesiones").with(user(docente.toString()).roles("DOCENTE"))
                         .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isBadRequest());
         when(casos.exigirPublicado(docente, sesion.idCaso())).thenReturn(new CatalogoCasos.CasoProgramable(sesion.idCaso(), 40, "Caso formativo"));
-        mvc.perform(post("/api/sesiones").with(csrf()).with(user(docente.toString()).roles("DOCENTE"))
+        mvc.perform(post("/api/sesiones").with(user(docente.toString()).roles("DOCENTE"))
                         .contentType(MediaType.APPLICATION_JSON).content("""
                                 {"idCaso":"%s","idEspacio":"%s","inicioPrevisto":"2026-11-01T16:00:00Z",
                                 "finPrevisto":"2026-11-01T15:00:00Z","duracionMaximaMin":30,"modoNavegacion":"FLEXIBLE",

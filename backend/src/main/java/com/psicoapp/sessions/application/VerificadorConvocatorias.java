@@ -32,7 +32,13 @@ public class VerificadorConvocatorias implements VerificadorAccesoEstudiante, Au
     @Override
     public boolean verificar(UUID estudiante, String codigo) {
         if (codigo == null || !codigo.matches("[0-9a-f]{32}")) return false;
-        return convocatorias.buscarAutorizada(estudiante, Convocatoria.resumir(codigo))
+        return verificarResumen(estudiante, Convocatoria.resumir(codigo));
+    }
+
+    @Override
+    public boolean verificarResumen(UUID estudiante, String resumen) {
+        if (resumen == null || !resumen.matches("[0-9a-f]{64}")) return false;
+        return convocatorias.buscarAutorizada(estudiante, resumen)
                 .flatMap(c -> sesiones.buscarPorId(c.idSesion()))
                 .isPresent();
     }

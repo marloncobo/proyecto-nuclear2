@@ -18,9 +18,16 @@ Abrir http://localhost:3000. Ejecutar el backend por separado en el puerto 8080 
 
 El puerto y el proxy están definidos en `angular.json`, por lo que también se aplican al ejecutar `npx ng serve`. El patrón `/api/**` incluye las rutas anidadas de la API. Después de cambiar la configuración del proxy, detener y volver a iniciar el servidor de Angular; recargar el navegador no basta.
 
-Si aparece una respuesta HTML en el acceso, comprobar que `/api/identidad/yo` en el servidor del frontend devuelve una respuesta de la API (normalmente 401 sin credenciales), no `index.html`. El cliente pide JSON y muestra un mensaje de conexión ante HTML o datos inválidos. El token CSRF y las respuestas de error JSON siguen usando el contrato existente.
+Si aparece una respuesta HTML en el acceso, comprobar que `/api/identidad/yo` en el servidor del frontend devuelve una respuesta de la API (normalmente 401 sin credenciales), no `index.html`. El cliente pide JSON y muestra un mensaje de conexión ante HTML o datos inválidos.
 
 ## Funciones y alcance
+
+El ingreso llama a `POST /api/identidad/ingreso` con correo y clave (o código estudiantil),
+y usa el JWT recibido en `Authorization: Bearer` para consultar identidad y operar.
+El token queda únicamente en memoria; la contraseña no se conserva para autenticar
+peticiones posteriores. Un 401 de la sesión activa limpia el acceso y vuelve al ingreso;
+un 403 no cierra la sesión. No hay renovación automática. Consultar la
+[configuración JWT del backend](../backend/README.md#autenticación-jwt).
 
 - Pantalla inicial `/ingreso` para docentes y administradores: correo y contraseña, validación de campos, mostrar/ocultar contraseña, indicador de acceso en curso y errores accesibles. La identidad se comprueba con la API y la navegación se adapta al rol recibido; no se permite elegir un rol en el formulario.
 - Inicio con resumen de registros cargados en la pestaña actual.
@@ -30,7 +37,7 @@ Si aparece una respuesta HTML en el acceso, comprobar que `/api/identidad/yo` en
 - Creación, consulta y edición de espacios académicos. El backend impide editar espacios asociados a cualquier sesión; el formulario conserva los valores cuando hay conflicto.
 - Programación con caso publicado, espacio, fechas, duración, navegación y lugar. Los docentes pueden buscar por correo exacto o seleccionar estudiantes activos por nombre o correo, registrar estudiantes y editar convocados. El servidor gestiona las convocatorias.
 - Inicio y finalización de sesiones, con confirmación y validaciones del servidor.
-- Reportes por caso y estudiante con calificación, retroalimentación y publicación de valoraciones. Una evaluación pendiente se muestra como pendiente y la exportación CSV por sesión incluye intentos, notas y ausencias cuando la sesión está cerrada.
+- Reportes navegables desde la sesión y el nombre del estudiante, con calificación, respuestas, retroalimentación y publicación de valoraciones. Una evaluación pendiente se muestra como pendiente y la exportación CSV por sesión incluye identidades, intentos, notas y ausencias consolidadas cuando la sesión está cerrada.
 - Administración con navegación propia según rol: listado de usuarios con búsqueda por nombre/correo en el servidor y filtros combinables de rol/estado, detalle y edición de docentes en una ventana modal, y activación/desactivación confirmada. La ventana se cierra con Escape, la cruz, el fondo o «Volver al listado» y devuelve el foco al botón de origen; durante el guardado permanece abierta. Los errores de edición se muestran dentro de ella. La cuenta propia no se puede desactivar.
 - Registro de docentes en un modal con nombre, correo y contraseña inicial (8 caracteres como mínimo, hasta 72 bytes). No se almacena la contraseña en el navegador; el formulario se limpia al cancelar o completar el registro. Un error conserva los campos para corregirlos. El nuevo docente se incorpora al listado si coincide con los filtros actuales.
 - Cambio de rol desde el detalle, con revisión y confirmación dentro de la misma ventana. Se conserva el estado activo/inactivo y se respetan los filtros del listado. No se permite retirar el rol de la propia cuenta administrativa. El servidor valida el dominio al convertir a estudiante y rechaza cuentas estudiantiles sin contraseña al convertirlas a personal.
@@ -47,7 +54,7 @@ El restablecimiento de contraseñas queda fuera del alcance de la interfaz. La a
 
 | Operación                | Endpoint                                                           |
 | ------------------------ | ------------------------------------------------------------------ |
-| Identidad y CSRF         | `GET /api/identidad/yo`, `GET /api/identidad/csrf`                 |
+| Ingreso e identidad      | `POST /api/identidad/ingreso`, `GET /api/identidad/yo`             |
 | Listado y filtros        | `GET /api/identidad/usuarios?rol=...&activo=...&busqueda=...`                   |
 | Detalle                  | `GET /api/identidad/usuarios/{id}`                                 |
 | Registrar docente        | `POST /api/identidad/docentes`                                     |
@@ -56,11 +63,11 @@ El restablecimiento de contraseñas queda fuera del alcance de la interfaz. La a
 | Permiso de creación     | `GET /api/identidad/roles/{rol}/creacion-casos`, `PUT /api/identidad/roles/DOCENTE/creacion-casos` |
 | Catálogo y cambio de rol | `GET /api/identidad/roles`, `PUT /api/identidad/usuarios/{id}/rol` |
 
-Las escrituras obtienen CSRF y solo actualizan los datos visibles tras una respuesta correcta. Se utilizan los contratos existentes sin cambios al backend. No hay endpoints administrativos de borrado o recuperación de contraseñas en este contrato.
+Las escrituras envían el JWT Bearer y solo actualizan los datos visibles tras una respuesta correcta. No hay endpoints administrativos de borrado o recuperación de contraseñas en este contrato.
 
 ## Integración
 
-`src/app/servicio-api.ts` centraliza HTTP Basic, `/api/identidad/yo` y la obtención de CSRF antes de cada escritura. Envía la cabecera indicada por el servidor y conserva cookies de mismo origen. Credenciales solo en memoria; no se guardan claves, tokens o respuestas en almacenamiento del navegador. Los errores y tiempos de espera aparecen en pantalla.
+`src/app/servicio-api.ts` centraliza el ingreso JWT, `/api/identidad/yo` y la cabecera Bearer para cada solicitud protegida. No usa HTTP Basic, cookies de autenticación ni CSRF. Credenciales y token solo permanecen en memoria; no se guardan en el almacenamiento del navegador. Los errores y tiempos de espera aparecen en pantalla.
 
 En producción, publicar `dist/psicoapp/browser` mediante HTTPS, configurar fallback a `index.html` y un proxy de mismo origen para `/api`. Google Fonts proporciona DM Sans y Manrope, con fuentes de sistema como respaldo.
 
@@ -77,7 +84,7 @@ Playwright usa Microsoft Edge instalado (canal `msedge`), levanta el servidor au
 
 La regresión del proxy también consulta `/api/identidad/yo` sin credenciales a través del servidor real de Angular: no realiza escrituras y admite que el backend esté detenido. Verifica que esa ruta no termine entregando el HTML del frontend. Se comprueban además HTML inesperado, JSON inválido y errores de proxy en la pantalla de ingreso.
 
-Pruebas: búsqueda/filtros, navegación, creación/publicación, separación de datos ficticios/reales, CSRF, errores de acceso y desbordamiento móvil. `pruebas/gestion.spec.ts` agrega filtros/detalle/edición administrativa, errores 409 sin perder datos, confirmación de estados, búsqueda estudiantil exacta con correos que contienen `+`, prevención de duplicados, edición de espacios y administración móvil. `pruebas/ingreso.spec.ts` comprueba acceso inicial, validación sin solicitudes inválidas, visibilidad de contraseña, navegación por rol, cierre e historial, recarga sin credenciales, prevención de doble envío y diseño móvil/escritorio. Capturas generadas en `capturas/`, excluidas de Git. La compilación valida tipos y plantillas. Estas pruebas no sustituyen una integración contra Spring/MySQL real.
+Pruebas: búsqueda/filtros, navegación, creación/publicación, separación de datos ficticios/reales, Bearer, errores de acceso y desbordamiento móvil. `pruebas/gestion.spec.ts` agrega filtros/detalle/edición administrativa, errores 409 sin perder datos, confirmación de estados, búsqueda estudiantil exacta con correos que contienen `+`, prevención de duplicados, edición de espacios y administración móvil. `pruebas/ingreso.spec.ts` comprueba acceso inicial, validación sin solicitudes inválidas, visibilidad de contraseña, navegación por rol, cierre e historial, recarga sin credenciales, prevención de doble envío y diseño móvil/escritorio. Capturas generadas en `capturas/`, excluidas de Git. La compilación valida tipos y plantillas. Estas pruebas no sustituyen una integración contra Spring/MySQL real.
 
 El presupuesto CSS del componente principal es de 24/30 kB (advertencia/error) porque reúne el diseño completo y sus adaptaciones; el presupuesto inicial total sigue en 500 kB/1 MB.
 

@@ -5,6 +5,9 @@ edicion y archivado de casos, convocatorias iniciales y reglas de inicio de sesi
 
 Proyecto dividido en `backend/` y `frontend/`.
 
+La configuración local vive en `.env`. Copia `.env.example` antes de arrancar el
+backend y completa las credenciales y claves necesarias; `.env` está excluido de Git.
+
 El backend usa Java 21, Spring Boot 4.1.2 y Maven. Su estructura es un
 monolito modular con paquete base `com.psicoapp`.
 El frontend para docentes y administradores usa Angular 21. Incluye una demostración y conexión a la API existente. Consulta sus [comandos, funciones y límites](frontend/README.md).

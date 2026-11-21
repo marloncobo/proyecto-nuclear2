@@ -37,7 +37,7 @@ test('administración: roles, filtros, detalle, edición y errores sin perder el
     pagina.getByRole('heading', { name: 'Detalle de Docente actualizado' }),
   ).toBeVisible();
   const escritura = estado.solicitudes.filter((solicitud) => solicitud.metodo === 'PUT').at(-1)!;
-  expect(escritura.csrf).toBe('csrf-gestion');
+  expect(escritura.autorizacion).toBe('Bearer token-ficticio');
   expect(escritura.datos).toEqual({
     nombre: 'Docente actualizado',
     correo: 'actualizado@example.test',
@@ -46,7 +46,9 @@ test('administración: roles, filtros, detalle, edición y errores sin perder el
     estado.solicitudes.some((solicitud) => solicitud.ruta.includes('/academico/')),
   ).toBeFalsy();
   expect(
-    estado.solicitudes.some((solicitud) => solicitud.metodo === 'PUT' && solicitud.ruta.includes('/creacion-casos')),
+    estado.solicitudes.some(
+      (solicitud) => solicitud.metodo === 'PUT' && solicitud.ruta.includes('/creacion-casos'),
+    ),
   ).toBeFalsy();
   await pagina.getByRole('button', { name: 'Volver al listado' }).click();
   await expect(pagina.getByRole('dialog')).toHaveCount(0);
@@ -108,7 +110,7 @@ test('administración: confirmación de estado y reactivación', async ({ page: 
   expect(
     estado.solicitudes
       .filter((solicitud) => solicitud.metodo === 'PUT')
-      .every((solicitud) => solicitud.csrf === 'csrf-gestion'),
+      .every((solicitud) => solicitud.autorizacion === 'Bearer token-ficticio'),
   ).toBeTruthy();
   await pagina.getByRole('button', { name: 'Retirar permiso de creación' }).click();
   await pagina.getByRole('button', { name: 'Confirmar permiso' }).click();
@@ -135,7 +137,7 @@ test('docente: editar espacio y conservar valores ante conflicto 409', async ({ 
   await expect(pagina.getByRole('dialog')).toHaveCount(0);
   await expect(pagina.getByRole('heading', { name: 'Psicología comunitaria' })).toBeVisible();
   const escritura = estado.solicitudes.filter((solicitud) => solicitud.metodo === 'PUT').at(-1)!;
-  expect(escritura.csrf).toBe('csrf-gestion');
+  expect(escritura.autorizacion).toBe('Bearer token-ficticio');
   expect(escritura.datos).toEqual({ nombre: 'Psicología comunitaria', periodo: '2027-1' });
   await pagina.getByRole('button', { name: 'Editar espacio Psicología comunitaria' }).click();
   await pagina.keyboard.press('Escape');
@@ -273,7 +275,9 @@ test('administración: registrar docente valida contraseña y conserva datos ant
   await pagina.getByLabel('Contraseña inicial', { exact: true }).fill('🔐'.repeat(20));
   await guardar.click();
   await expect(pagina.getByRole('alert')).toContainText('72 bytes');
-  expect(estado.solicitudes.filter((s) => s.metodo === 'POST')).toHaveLength(0);
+  expect(
+    estado.solicitudes.filter((s) => s.metodo === 'POST' && s.ruta === '/api/identidad/docentes'),
+  ).toHaveLength(0);
   await pagina.getByLabel('Contraseña inicial', { exact: true }).fill('clave-ficticia');
   estado.conflictoRegistro = true;
   await guardar.click();
@@ -285,7 +289,7 @@ test('administración: registrar docente valida contraseña y conserva datos ant
   await expect(pagina.getByRole('heading', { name: 'Docente nuevo', exact: true })).toBeVisible();
   const solicitud = estado.solicitudes.filter((s) => s.metodo === 'POST').at(-1)!;
   expect(solicitud.ruta).toBe('/api/identidad/docentes');
-  expect(solicitud.csrf).toBe('csrf-gestion');
+  expect(solicitud.autorizacion).toBe('Bearer token-ficticio');
   expect(solicitud.datos).toEqual({
     nombre: 'Docente nuevo',
     correo: 'nuevo@example.test',
@@ -324,7 +328,7 @@ test('administración: confirma cambio de rol y respeta el filtro actual', async
   await expect(pagina.getByRole('button', { name: 'Actualizar lista' })).toBeFocused();
   const solicitud = estado.solicitudes.find((s) => s.ruta.endsWith('/docente/rol'))!;
   expect(solicitud.datos).toEqual({ rol: 'ADMINISTRADOR' });
-  expect(solicitud.csrf).toBe('csrf-gestion');
+  expect(solicitud.autorizacion).toBe('Bearer token-ficticio');
   expect(
     estado.solicitudes.some(
       (s) => s.metodo === 'GET' && s.ruta === '/api/identidad/usuarios/docente',
@@ -379,14 +383,20 @@ test('administración: conserva el rol guardado si falla la recarga del detalle'
   await pagina.getByRole('button', { name: 'Revisar cambio' }).click();
   estado.falloDetalle = true;
   await pagina.getByRole('button', { name: 'Confirmar cambio de rol' }).click();
-  await expect(pagina.getByRole('dialog').getByText('Administrador', { exact: true })).toBeVisible();
+  await expect(
+    pagina.getByRole('dialog').getByText('Administrador', { exact: true }),
+  ).toBeVisible();
   await expect(pagina.getByText(/Rol actualizado\. No se pudo recargar el detalle/)).toBeVisible();
   await expect(pagina.getByRole('button', { name: 'Cambiar rol', exact: true })).toBeVisible();
   expect(estado.solicitudes.filter((s) => s.ruta.endsWith('/rol'))).toHaveLength(1);
   estado.falloDetalle = false;
   await pagina.getByRole('button', { name: 'Reintentar consulta' }).click();
-  await expect(pagina.getByText('El cambio se guardó, pero el detalle no pudo recargarse.')).toHaveCount(0);
-  await expect(pagina.getByRole('dialog').getByText('Administrador', { exact: true })).toBeVisible();
+  await expect(
+    pagina.getByText('El cambio se guardó, pero el detalle no pudo recargarse.'),
+  ).toHaveCount(0);
+  await expect(
+    pagina.getByRole('dialog').getByText('Administrador', { exact: true }),
+  ).toBeVisible();
   expect(estado.solicitudes.filter((s) => s.ruta.endsWith('/rol'))).toHaveLength(1);
 });
 
@@ -537,12 +547,29 @@ test('el código de convocatoria abre la simulación sin entrar al panel del per
 }) => {
   await simularApi(pagina, 'ESTUDIANTE');
   await pagina.route('**/api/participaciones/ingreso', async (ruta) => {
-    expect(ruta.request().postDataJSON()).toEqual({ idSesion: 'sesion-prueba', codigoAcceso: '123456' });
+    expect(ruta.request().postDataJSON()).toEqual({
+      idSesion: 'sesion-prueba',
+      codigoAcceso: '123456',
+    });
     await ruta.fulfill({
       json: {
         nombre: 'Simulación de prueba',
-        intento: { id: 'intento', limite: '2026-11-30T12:00:00Z', estado: 'EN_PROGRESO', preguntaActual: 'p1', respuestas: {} },
-        preguntas: [{ id: 'p1', escenario: 'Escenario', contexto: 'Contexto', enunciado: '¿Qué harías?', opciones: [] }],
+        intento: {
+          id: 'intento',
+          limite: '2026-11-30T12:00:00Z',
+          estado: 'EN_PROGRESO',
+          preguntaActual: 'p1',
+          respuestas: {},
+        },
+        preguntas: [
+          {
+            id: 'p1',
+            escenario: 'Escenario',
+            contexto: 'Contexto',
+            enunciado: '¿Qué harías?',
+            opciones: [],
+          },
+        ],
       },
     });
   });

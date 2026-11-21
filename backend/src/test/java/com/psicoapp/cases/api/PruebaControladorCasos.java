@@ -38,11 +38,8 @@ class PruebaControladorCasos {
         when(casos.bloquearPorId(caso.id())).thenReturn(Optional.of(caso));
         mvc.perform(put("/api/casos/{id}", caso.id()).with(user(docente.toString()).roles("DOCENTE"))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Editado\",\"escenarios\":[]}"))
-                .andExpect(status().isForbidden());
-        mvc.perform(put("/api/casos/{id}", caso.id()).with(csrf()).with(user(docente.toString()).roles("DOCENTE"))
-                .contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Editado\",\"escenarios\":[]}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.nombre").value("Editado"));
-        mvc.perform(put("/api/casos/{id}", caso.id()).with(csrf()).with(user(docente.toString()).roles("DOCENTE"))
+        mvc.perform(put("/api/casos/{id}", caso.id()).with(user(docente.toString()).roles("DOCENTE"))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"tiempoEstimadoMin\":0,\"escenarios\":[]}"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail").value("El tiempo estimado debe ser positivo"));
         mvc.perform(get("/api/casos/no-es-uuid").with(user(docente.toString()).roles("DOCENTE")))
@@ -66,15 +63,11 @@ class PruebaControladorCasos {
     }
 
     @Test
-    @DisplayName("RF-02: crear caso exige CSRF y permiso especifico CREAR_CASOS")
-    void exigeCsrfYPermiso() throws Exception {
+    @DisplayName("RF-02: crear caso exige permiso especifico CREAR_CASOS")
+    void exigePermiso() throws Exception {
         UUID docente = UUID.randomUUID();
-        mvc.perform(post("/api/casos").with(user(docente.toString()).roles("DOCENTE"))
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"escenarios\":[]}"))
-                .andExpect(status().isForbidden());
-        verifyNoInteractions(identidades);
         doThrow(new AccesoDenegado("Sin permiso")).when(identidades).exigirCreacionCasos(docente);
-        mvc.perform(post("/api/casos").with(user(docente.toString()).roles("DOCENTE")).with(csrf())
+        mvc.perform(post("/api/casos").with(user(docente.toString()).roles("DOCENTE"))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"escenarios\":[]}"))
                 .andExpect(status().isForbidden());
         verifyNoInteractions(casos);
@@ -84,7 +77,7 @@ class PruebaControladorCasos {
     @DisplayName("RF-05/09: crea borrador con actor autenticado e ignora estado enviado")
     void creaConIdentidadAutenticada() throws Exception {
         UUID docente = UUID.randomUUID();
-        mvc.perform(post("/api/casos").with(user(docente.toString()).roles("DOCENTE")).with(csrf())
+        mvc.perform(post("/api/casos").with(user(docente.toString()).roles("DOCENTE"))
                         .contentType(MediaType.APPLICATION_JSON).content("""
                                 {"nombre":"Caso","tiempoEstimadoMin":40,"escenarios":[],
                                  "idDocente":"00000000-0000-0000-0000-000000000001","estado":"PUBLICADO"}
@@ -103,7 +96,7 @@ class PruebaControladorCasos {
                 "{\"escenarios\":[{\"id\":null,\"orden\":1,\"preguntas\":[]}]}",
                 "{\"escenarios\":[null]}",
                 "{\"escenarios\":null}"}) {
-            mvc.perform(post("/api/casos").with(user(docente.toString()).roles("DOCENTE")).with(csrf())
+            mvc.perform(post("/api/casos").with(user(docente.toString()).roles("DOCENTE"))
                             .contentType(MediaType.APPLICATION_JSON).content(contenido))
                     .andExpect(status().isBadRequest());
         }
