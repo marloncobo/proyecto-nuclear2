@@ -36,6 +36,24 @@ export class Aplicacion {
   readonly casos = signal<Caso[]>(this.casosEjemplo());
   readonly sesiones = signal<Sesion[]>(this.sesionesEjemplo());
   readonly espacios = signal<Espacio[]>(this.espaciosEjemplo());
+  readonly busquedaEspacios = signal('');
+  readonly periodoEspacios = signal('');
+  readonly periodosEspacios = computed(() =>
+    [...new Set(this.espacios().map((espacio) => espacio.periodo))].sort((a, b) =>
+      b.localeCompare(a, 'es'),
+    ),
+  );
+  readonly espaciosVisibles = computed(() => {
+    const consulta = this.busquedaEspacios().trim().toLocaleLowerCase('es');
+    const periodo = this.periodoEspacios();
+    return this.espacios().filter(
+      (espacio) =>
+        (!consulta ||
+          espacio.nombre.toLocaleLowerCase('es').includes(consulta) ||
+          espacio.id.toLocaleLowerCase('es').includes(consulta)) &&
+        (!periodo || espacio.periodo === periodo),
+    );
+  });
   readonly busqueda = signal('');
   readonly filtro = signal('TODOS');
   readonly casosVisibles = computed(() =>
@@ -363,6 +381,10 @@ export class Aplicacion {
     this.espacioEditado.set(espacio);
     this.nombreEspacio = espacio.nombre;
     this.periodo = espacio.periodo;
+  }
+  limpiarFiltrosEspacios() {
+    this.busquedaEspacios.set('');
+    this.periodoEspacios.set('');
   }
   async cargarEstudiantes() {
     if (this.cargandoEstudiantes()) return;

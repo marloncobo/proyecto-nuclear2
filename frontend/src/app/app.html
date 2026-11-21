@@ -393,35 +393,118 @@
             </section>
           }
           @if (vista() === 'espacios') {
-            <div class="encabezado-pagina">
+            <div class="encabezado-pagina encabezado-espacios">
               <div>
-                <p class="sobretitulo">TU COMUNIDAD ACADÉMICA</p>
                 <h1>Espacios para <em>crecer.</em></h1>
                 <p class="subtitulo">Un lugar para cada grupo, un propósito compartido.</p>
               </div>
               <button class="boton primario" (click)="abrir('espacio')">＋ Nuevo espacio</button>
             </div>
-            <section class="rejilla-casos">
-              @for (espacio of espacios(); track espacio.id) {
-                <article class="tarjeta-espacio">
-                  <span class="icono-espacio" aria-hidden="true">◇</span>
-                  <p class="sobretitulo">PERIODO {{ espacio.periodo }}</p>
-                  <h2>{{ espacio.nombre }}</h2>
-                  <p class="identificador">ID: {{ espacio.id }}</p>
-                  <button
-                    class="boton-texto"
-                    (click)="programacion.idEspacio = espacio.id; abrir('programar')"
-                  >
-                    Programar un encuentro ↗
-                  </button>
-                  <button class="boton-texto" (click)="editarEspacio(espacio)">
-                    Editar espacio {{ espacio.nombre }}
-                  </button>
-                </article>
-              } @empty {
-                <p class="vacio">Crea tu primer espacio académico para organizar las sesiones.</p>
+            <form class="filtros-espacios" (ngSubmit)="$event.preventDefault()">
+              <label class="busqueda-espacios"
+                >Buscar espacios<input
+                  type="search"
+                  name="busquedaEspacios"
+                  placeholder="Nombre o identificador"
+                  maxlength="180"
+                  [ngModel]="busquedaEspacios()"
+                  (ngModelChange)="busquedaEspacios.set($event)"
+              /></label>
+              <label
+                >Filtrar por periodo<select
+                  name="periodoEspacios"
+                  [ngModel]="periodoEspacios()"
+                  (ngModelChange)="periodoEspacios.set($event)"
+                >
+                  <option value="">Todos los periodos</option>
+                  @for (periodo of periodosEspacios(); track periodo) {
+                    <option [value]="periodo">{{ periodo }}</option>
+                  }
+                </select></label
+              >
+              <button
+                type="button"
+                class="boton-limpiar-espacios"
+                [disabled]="!busquedaEspacios() && !periodoEspacios()"
+                (click)="limpiarFiltrosEspacios()"
+              >
+                Limpiar filtros
+              </button>
+            </form>
+            <div class="resumen-espacios" role="status" aria-live="polite">
+              <p>
+                <strong>{{ espaciosVisibles().length }}</strong>
+                {{
+                  espaciosVisibles().length === 1 ? 'espacio encontrado' : 'espacios encontrados'
+                }}
+              </p>
+              @if (busquedaEspacios() || periodoEspacios()) {
+                <span>Resultados de la consulta actual</span>
               }
-            </section>
+            </div>
+            <div class="listado-espacios" aria-label="Espacios académicos encontrados">
+              <table class="tabla-espacios">
+                <caption class="solo-lectores">
+                  Espacios académicos disponibles y acciones para cada grupo.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Espacio académico</th>
+                    <th scope="col">Periodo</th>
+                    <th scope="col">Identificador</th>
+                    <th scope="col">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (espacio of espaciosVisibles(); track espacio.id) {
+                    <tr class="fila-espacio">
+                      <th scope="row" class="celda-nombre-espacio">
+                        <span class="icono-listado-espacio" aria-hidden="true">◇</span>
+                        <div>
+                          <h2>{{ espacio.nombre }}</h2>
+                          <span>Grupo académico</span>
+                        </div>
+                      </th>
+                      <td class="celda-periodo" data-etiqueta="Periodo">
+                        <span class="periodo-espacio">{{ espacio.periodo }}</span>
+                      </td>
+                      <td class="celda-identificador" data-etiqueta="Identificador">
+                        <span>{{ espacio.id }}</span>
+                      </td>
+                      <td class="celda-acciones-espacio">
+                        <div class="acciones-espacio">
+                          <button
+                            class="boton primario"
+                            (click)="programacion.idEspacio = espacio.id; abrir('programar')"
+                          >
+                            Programar un encuentro <span aria-hidden="true">↗</span>
+                          </button>
+                          <button
+                            class="boton secundario"
+                            [attr.aria-label]="'Editar espacio ' + espacio.nombre"
+                            (click)="editarEspacio(espacio)"
+                          >
+                            Editar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td class="espacios-vacios" colspan="4">
+                        @if (espacios().length) {
+                          <strong>No encontramos coincidencias.</strong>
+                          <p>Prueba otro nombre, identificador o periodo.</p>
+                        } @else {
+                          <strong>Aún no hay espacios académicos.</strong>
+                          <p>Crea el primero para organizar tus sesiones.</p>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
           }
           @if (vista() === 'resultados') {
             <div class="encabezado-pagina">

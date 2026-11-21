@@ -144,6 +144,35 @@ test('docente: editar espacio y conservar valores ante conflicto 409', async ({ 
   ).toBeFocused();
 });
 
+test('docente: consulta espacios por nombre y periodo en escritorio y móvil', async ({
+  page: pagina,
+}) => {
+  await simularApi(pagina, 'DOCENTE');
+  await ingresar(pagina, 'docente@example.test');
+  await pagina.getByRole('button', { name: 'Espacios académicos', exact: true }).click();
+
+  await expect(pagina.getByRole('columnheader', { name: 'Espacio académico' })).toBeVisible();
+  await expect(pagina.locator('.resumen-espacios')).toContainText('1 espacio encontrado');
+  await pagina.getByLabel('Buscar espacios').fill('sin coincidencias');
+  await expect(pagina.getByText('No encontramos coincidencias.')).toBeVisible();
+  await pagina.getByRole('button', { name: 'Limpiar filtros' }).click();
+  await expect(pagina.getByRole('heading', { name: 'Psicología social' })).toBeVisible();
+  await pagina.getByLabel('Filtrar por periodo').selectOption('2026-2');
+  await expect(pagina.locator('.resumen-espacios')).toContainText('1 espacio encontrado');
+
+  await pagina.setViewportSize({ width: 390, height: 844 });
+  await expect(pagina.locator('.fila-espacio')).toHaveCount(1);
+  expect(
+    await pagina
+      .locator('.fila-espacio')
+      .first()
+      .evaluate((elemento) => getComputedStyle(elemento).display),
+  ).toBe('grid');
+  expect(await pagina.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+    390,
+  );
+});
+
 test('docente: buscar correo exacto, agregar sin duplicados y limpiar resultado al fallar', async ({
   page: pagina,
 }) => {
