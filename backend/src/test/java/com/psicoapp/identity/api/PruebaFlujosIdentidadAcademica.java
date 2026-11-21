@@ -12,7 +12,6 @@ import com.psicoapp.identity.domain.Rol;
 import com.psicoapp.identity.domain.Usuario;
 import com.psicoapp.identity.infrastructure.ConfiguracionIdentidad;
 import com.psicoapp.identity.infrastructure.ProveedorAutenticacionIdentidad;
-import jakarta.servlet.http.Cookie;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -35,20 +34,22 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import static com.psicoapp.AutenticacionPruebas.portador;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /** Flujos HTTP con servicios reales y dobles de almacenamiento; no comprueba JDBC/MySQL. */
-@WebMvcTest(controllers = {ControladorIdentidad.class, ControladorEspaciosAcademicos.class}, properties = {
+@WebMvcTest(controllers = {ControladorAutenticacion.class, ControladorIdentidad.class,
+        ControladorEspaciosAcademicos.class}, properties = {
         "psicoapp.identidad.correo-administrador=", "psicoapp.identidad.clave-administrador=",
         "psicoapp.identidad.dominios-institucionales=universidad.example"
 })
 @Import({ConfiguracionIdentidad.class, ProveedorAutenticacionIdentidad.class,
+        com.psicoapp.identity.infrastructure.AutenticacionJwt.class,
         ServicioUsuarios.class, FachadaAdministracion.class})
 class PruebaFlujosIdentidadAcademica {
     private static final String CLAVE = "ClaveFicticia2026!";
@@ -231,7 +232,8 @@ class PruebaFlujosIdentidadAcademica {
                 .andExpect(jsonPath("$.rol").value(usuario.rol().name()))
                 .andExpect(jsonPath("$.puedeCrearCasos").value(false))
                 .andExpect(jsonPath("$.clave").doesNotExist()).andExpect(jsonPath("$.hashClave").doesNotExist());
-        mvc.perform(get("/api/identidad/yo").with(httpBasic(correo, "incorrecta")))
+        mvc.perform(post("/api/identidad/ingreso").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"correo\":\"" + correo + "\",\"clave\":\"incorrecta\"}"))
                 .andExpect(status().isUnauthorized());
         mvc.perform(get("/api/identidad/yo")).andExpect(status().isUnauthorized());
     }
@@ -280,22 +282,22 @@ class PruebaFlujosIdentidadAcademica {
     }
 
     @Test
-    @DisplayName("CP-ID-013: alta docente sin CSRF es 403; cookie y token reales permiten el alta")
-    void altaDocenteRequiereCsrf() throws Exception {
+    @DisplayName("CP-ID-013: JWT permite alta sin cookies")
+    void altaDocenteConJwtNoRequiereCookies() throws Exception {
         String datos = datosDocente("nuevo@universidad.example", "Nuevo", CLAVE);
-        mvc.perform(post("/api/identidad/docentes").with(httpBasic(ADMINISTRADOR, CLAVE))
+        mvc.perform(post("/api/identidad/docentes").with(portador(mvc, ADMINISTRADOR, CLAVE))
                         .contentType(MediaType.APPLICATION_JSON).content(datos))
-                .andExpect(status().isForbidden());
-        verify(usuarios, never()).guardar(any());
-        assertEquals(4, cuentas.size());
-        modificar(post("/api/identidad/docentes"), ADMINISTRADOR, datos).andExpect(status().isCreated());
+                .andExpect(status().isCreated());
+        verify(usuarios).guardar(any());
     }
 
     @Test
     @DisplayName("CP-ID-014: identidad estudiantil sin adaptador de convocatorias no autentica")
     void rechazaEstudianteSinAdaptadorPorHttp() throws Exception {
         var inicial = Map.copyOf(cuentas);
-        mvc.perform(get("/api/identidad/yo").with(httpBasic(ESTUDIANTE, "CodigoNoVerificable2026")))
+        mvc.perform(post("/api/identidad/ingreso").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"correo\":\"" + ESTUDIANTE
+                                + "\",\"clave\":\"CodigoNoVerificable2026\"}"))
                 .andExpect(status().isUnauthorized());
         assertEquals(inicial, cuentas);
     }
@@ -308,11 +310,11 @@ class PruebaFlujosIdentidadAcademica {
                 .andExpect(jsonPath("$.periodo").value("2026-2"))
                 .andReturn().getResponse().getContentAsString();
         String id = JsonPath.read(respuesta, "$.id");
-        mvc.perform(get(ESPACIOS + "/{id}", id).with(httpBasic(DOCENTE, CLAVE)))
+        mvc.perform(get(ESPACIOS + "/{id}", id).with(portador(mvc, DOCENTE, CLAVE)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(id))
                 .andExpect(jsonPath("$.nombre").value("Psicologia")).andExpect(jsonPath("$.periodo").value("2026-2"));
         var inicial = Map.copyOf(catalogo);
-        mvc.perform(get(ESPACIOS + "/{id}", UUID.randomUUID()).with(httpBasic(DOCENTE, CLAVE)))
+        mvc.perform(get(ESPACIOS + "/{id}", UUID.randomUUID()).with(portador(mvc, DOCENTE, CLAVE)))
                 .andExpect(status().isNotFound());
         assertEquals(inicial, catalogo);
     }
@@ -328,7 +330,7 @@ class PruebaFlujosIdentidadAcademica {
         var inicial = Map.copyOf(catalogo);
         modificar(post(ESPACIOS), DOCENTE, datos).andExpect(status().isBadRequest());
         assertEquals(inicial, catalogo);
-        mvc.perform(get(ESPACIOS).with(httpBasic(DOCENTE, CLAVE)))
+        mvc.perform(get(ESPACIOS).with(portador(mvc, DOCENTE, CLAVE)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value(inicial.keySet().iterator().next().toString()));
         verify(espacios, times(1)).guardar(any());
@@ -351,7 +353,7 @@ class PruebaFlujosIdentidadAcademica {
     @Test
     @DisplayName("CP-AC-004: catálogo vacío devuelve 200 y [] sin crear datos")
     void consultaCatalogoVacioPorHttp() throws Exception {
-        mvc.perform(get(ESPACIOS).with(httpBasic(DOCENTE, CLAVE)))
+        mvc.perform(get(ESPACIOS).with(portador(mvc, DOCENTE, CLAVE)))
                 .andExpect(status().isOk()).andExpect(content().json("[]"));
         assertTrue(catalogo.isEmpty());
         verify(espacios, never()).guardar(any());
@@ -366,7 +368,7 @@ class PruebaFlujosIdentidadAcademica {
         var inicial = Map.copyOf(catalogo);
         String primera = null;
         for (String correo : new String[]{DOCENTE, OTRO_DOCENTE}) {
-            String respuesta = mvc.perform(get(ESPACIOS).with(httpBasic(correo, CLAVE)))
+            String respuesta = mvc.perform(get(ESPACIOS).with(portador(mvc, correo, CLAVE)))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(3))
                     .andExpect(jsonPath("$[*].id", containsInAnyOrder(catalogo.keySet().stream().map(UUID::toString).toArray())))
                     .andReturn().getResponse().getContentAsString();
@@ -383,8 +385,8 @@ class PruebaFlujosIdentidadAcademica {
         UUID id = UUID.randomUUID();
         catalogo.put(id, new EspacioAcademico(id, "Existente", "2026-2"));
         var inicial = Map.copyOf(catalogo);
-        mvc.perform(get(ESPACIOS).with(httpBasic(ADMINISTRADOR, CLAVE))).andExpect(status().isForbidden());
-        mvc.perform(get(ESPACIOS + "/{id}", id).with(httpBasic(ADMINISTRADOR, CLAVE)))
+        mvc.perform(get(ESPACIOS).with(portador(mvc, ADMINISTRADOR, CLAVE))).andExpect(status().isForbidden());
+        mvc.perform(get(ESPACIOS + "/{id}", id).with(portador(mvc, ADMINISTRADOR, CLAVE)))
                 .andExpect(status().isForbidden());
         modificar(post(ESPACIOS), ADMINISTRADOR, datosEspacio("No autorizado", "2026-2"))
                 .andExpect(status().isForbidden());
@@ -404,18 +406,11 @@ class PruebaFlujosIdentidadAcademica {
     }
 
     private ResultActions consultarIdentidad(String correo) throws Exception {
-        return mvc.perform(get("/api/identidad/yo").with(httpBasic(correo, CLAVE)));
+        return mvc.perform(get("/api/identidad/yo").with(portador(mvc, correo, CLAVE)));
     }
 
-    /** Usa el endpoint CSRF real y conserva su cookie; no inyecta un token de prueba. */
     private ResultActions modificar(MockHttpServletRequestBuilder solicitud, String correo, String datos) throws Exception {
-        var respuesta = mvc.perform(get("/api/identidad/csrf").with(httpBasic(correo, CLAVE)))
-                .andExpect(status().isOk()).andReturn().getResponse();
-        Cookie cookie = respuesta.getCookie("XSRF-TOKEN");
-        assertNotNull(cookie);
-        String cabecera = JsonPath.read(respuesta.getContentAsString(), "$.nombreCabecera");
-        String token = JsonPath.read(respuesta.getContentAsString(), "$.token");
-        return mvc.perform(solicitud.with(httpBasic(correo, CLAVE)).cookie(cookie).header(cabecera, token)
+        return mvc.perform(solicitud.with(portador(mvc, correo, CLAVE))
                 .contentType(MediaType.APPLICATION_JSON).content(datos));
     }
 

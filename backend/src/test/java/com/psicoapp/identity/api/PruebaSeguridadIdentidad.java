@@ -47,24 +47,18 @@ class PruebaSeguridadIdentidad {
     }
 
     @Test
-    @DisplayName("RF-02: personal con credenciales validas consulta su propia identidad")
-    void autenticaCredencialesBasicasReales() throws Exception {
-        var docente = new Usuario(UUID.randomUUID(), "docente@uni.edu", "Docente", Rol.DOCENTE,
-                claves.encode("clave-ficticia"), true, Instant.now());
-        when(usuarios.buscarPorCorreo(docente.correo())).thenReturn(Optional.of(docente));
-        when(identidades.consultarIdentidad(docente.id())).thenReturn(new DatosUsuario(docente.id(), docente.correo(), "Docente", "DOCENTE", false));
-        mvc.perform(get("/api/identidad/yo").with(httpBasic(docente.correo(), "clave-ficticia")))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(docente.id().toString()))
-                .andExpect(jsonPath("$.hashClave").doesNotExist());
-        mvc.perform(get("/api/identidad/yo").with(httpBasic(docente.correo(), "incorrecta")))
+    @DisplayName("RF-02: HTTP Basic queda rechazado tras migrar a JWT")
+    void rechazaAutenticacionBasica() throws Exception {
+        mvc.perform(get("/api/identidad/yo").header("Authorization", "Basic ZmljdGljaW86ZmljdGljaWE="))
                 .andExpect(status().isUnauthorized());
+        verifyNoInteractions(identidades);
     }
 
     @Test
     @DisplayName("RN-10: docente no crea cuentas docentes aunque envie un identificador valido")
     void docenteNoRegistraOtroDocente() throws Exception {
         mvc.perform(post("/api/identidad/docentes").with(user(UUID.randomUUID().toString()).roles("DOCENTE"))
-                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"correo\":\"otro@uni.edu\",\"nombre\":\"Otro\",\"clave\":\"clave-ficticia\"}"))
                 .andExpect(status().isForbidden());
         verifyNoInteractions(identidades);
@@ -77,23 +71,26 @@ class PruebaSeguridadIdentidad {
         when(identidades.registrarDocente(eq(idAdministrador), anyString(), anyString(), anyString()))
                 .thenReturn(new DatosUsuario(UUID.randomUUID(), "otro@uni.edu", "Otro", "DOCENTE", false));
         mvc.perform(post("/api/identidad/docentes").with(user(idAdministrador.toString()).roles("ADMINISTRADOR"))
-                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"correo\":\"otro@uni.edu\",\"nombre\":\"Otro\",\"clave\":\"clave-ficticia\"}"))
                 .andExpect(status().isCreated());
         mvc.perform(post("/api/identidad/docentes").with(user(idAdministrador.toString()).roles("ADMINISTRADOR"))
-                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"correo\":\"invalido\",\"nombre\":\"\",\"clave\":\"corta\"}"))
                 .andExpect(status().isBadRequest());
         verify(identidades, times(1)).registrarDocente(eq(idAdministrador), anyString(), anyString(), anyString());
     }
 
     @Test
-    @DisplayName("RF-02: mutaciones autenticadas requieren token CSRF")
-    void rechazaModificacionSinCsrf() throws Exception {
-        mvc.perform(post("/api/academico/espacios").with(user(UUID.randomUUID().toString()).roles("DOCENTE"))
+    @DisplayName("RF-02: una mutacion Bearer no requiere cookies")
+    void permiteModificacionBearerSinCookies() throws Exception {
+        UUID docente = UUID.randomUUID();
+        when(academico.crearEspacio(docente, "Psicologia", "2026-2"))
+                .thenReturn(new FachadaAdministracion.DatosEspacioAcademico(UUID.randomUUID(), "Psicologia", "2026-2"));
+        mvc.perform(post("/api/academico/espacios").with(user(docente.toString()).roles("DOCENTE"))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Psicologia\",\"periodo\":\"2026-2\"}"))
-                .andExpect(status().isForbidden());
-        verifyNoInteractions(academico);
+                .andExpect(status().isCreated());
+        verify(academico).crearEspacio(docente, "Psicologia", "2026-2");
     }
 
     @Test
@@ -113,7 +110,7 @@ class PruebaSeguridadIdentidad {
         when(academico.crearEspacio(idDocente, "Psicologia", "2026-2")).thenReturn(espacio);
         when(academico.consultarEspacio(idDocente, idEspacio)).thenReturn(espacio);
         mvc.perform(post("/api/academico/espacios").with(user(idDocente.toString()).roles("DOCENTE"))
-                        .with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"nombre\":\"Psicologia\",\"periodo\":\"2026-2\"}"))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.nombre").value("Psicologia"))
                 .andExpect(jsonPath("$.periodo").value("2026-2"))
@@ -129,7 +126,7 @@ class PruebaSeguridadIdentidad {
         UUID idAdministrador = UUID.randomUUID();
         mvc.perform(put("/api/identidad/roles/DOCENTE/creacion-casos")
                         .with(user(idAdministrador.toString()).roles("ADMINISTRADOR"))
-                        .with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"habilitado\":true}"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"habilitado\":true}"))
                 .andExpect(status().isNoContent());
         verify(identidades).configurarCreacionCasos(idAdministrador, Rol.DOCENTE, true);
     }

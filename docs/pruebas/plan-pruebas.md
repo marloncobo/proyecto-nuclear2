@@ -64,8 +64,7 @@ Referencias de proyecto:
 | CP-ID / CP-AC | Identificador de caso de prueba de identidad / organización académica. |
 | Actor | Perfil que inicia el recorrido. Se obtiene de la autenticación; no se sustituye enviando un identificador en el cuerpo JSON. |
 | Escenario positivo / negativo / límite | Recorrido válido, rechazo esperado o evaluación en los bordes de un campo. Un rechazo esperado puede aprobar un caso negativo. |
-| HTTP Basic | Autenticación con correo y clave del personal; el estudiante utilizará correo y código cuando exista la integración. |
-| CSRF | Protección de solicitudes que modifican datos; requiere cookie y cabecera con token vigente. |
+| JWT Bearer | `POST /api/identidad/ingreso` valida correo y clave o código; el token devuelto se envía en `Authorization: Bearer`. |
 | UUID | Identificador de usuario o espacio, representado como CHAR(36) en MySQL. |
 | ER | Modelo entidad-relación del proyecto. |
 | Doble de prueba | Sustituto controlado de un colaborador usado en JUnit; no demuestra que la integración real esté construida. |
@@ -95,7 +94,7 @@ El administrador y el docente de prueba son actores del sistema, no responsables
 | Identidad | Evaluar CU-02/CU-03 y los aportes disponibles a CU-01/CU-13. Separar autenticación de autorización y verificar que las operaciones rechazadas no cambien datos. | [CP-ID-001 a CP-ID-016](casos-identidad.md#casos-planeados-y-trazabilidad). |
 | Organización académica | Evaluar la preparación del catálogo para CU-12, sus consultas, restricciones de actor y límites del ER. No confundir catálogo con programación. | [CP-AC-001 a CP-AC-008](casos-academicos.md#casos-planeados-y-trazabilidad). |
 
-Los casos negativos deben aislar el motivo de rechazo: por ejemplo, una prueba de rol requiere credenciales y CSRF válidos para que el rechazo no se deba a otro control. Cada variante de datos se ejecuta y registra por separado.
+Los casos negativos deben aislar el motivo de rechazo: por ejemplo, una prueba de rol requiere credenciales y JWT válidos para que el rechazo no se deba a otro control. Cada variante de datos se ejecuta y registra por separado.
 
 ### 5.2 Preparación común de la ejecución
 
@@ -104,7 +103,7 @@ Los casos negativos deben aislar el motivo de rechazo: por ejemplo, una prueba d
 3. Configurar `PSICOAPP_BD_URL`, `PSICOAPP_BD_USUARIO`, `PSICOAPP_BD_CLAVE`, `PSICOAPP_CORREO_ADMINISTRADOR`, `PSICOAPP_CLAVE_ADMINISTRADOR` y `PSICOAPP_DOMINIOS_INSTITUCIONALES=universidad.example` en el entorno local.
 4. Arrancar el backend. Confirmar que existe el administrador inicial y que la base contiene las tablas `usuario`, `rol`, `permiso`, `rol_permiso` y `espacio_academico`.
 5. Usar un cliente HTTP, ya que el frontend aún no está implementado. Todas las rutas de las fichas son relativas a esa URL base. Fuera de localhost, usar HTTPS.
-6. Autenticarse mediante HTTP Basic con la cuenta indicada. Para cada POST/PUT, salvo en un caso que compruebe su omisión, consultar primero `GET /api/identidad/csrf`, conservar la cookie y enviar el `token` en la cabecera indicada por `nombreCabecera`. No reutilizar el token después de perder o renovar la cookie.
+6. Autenticarse con `POST /api/identidad/ingreso` y enviar el token en `Authorization: Bearer` para cada ruta protegida. No se usan HTTP Basic, cookies de autenticación ni CSRF.
 7. Preparar docentes mediante CP-ID-001 y estudiantes mediante CP-ID-010 cuando lo requiera una ficha. Sustituir los UUID de ejemplo por identificadores realmente obtenidos.
 8. Registrar el estado inicial afectado. Usar correos distintos si un caso requiere una cuenta inexistente. Los datos del plan no deben coincidir con identidades reales.
 9. Restaurar roles y permisos después de cada prueba que los modifique. La concesión de CREAR_CASOS afecta a **todo el rol docente**, no solo a una cuenta.
@@ -140,7 +139,7 @@ Los informes se generan en `backend/target/surefire-reports/`; el archivo
 `com.psicoapp.identity.api.PruebaFlujosIdentidadAcademica.txt` identifica la suite
 nueva. Las fichas indican los métodos correspondientes.
 
-Esta ampliación integra HTTP, autenticación, CSRF y servicios reales usando
+Esta ampliación integra HTTP, autenticación JWT y servicios reales usando
 dobles de almacenamiento aislados por ejecución. No utiliza un adaptador de
 convocatorias. La [ampliación con MySQL real](cobertura-mysql.md) añade 27
 ejecuciones para comprobar persistencia y reinicio, restricciones, transacciones

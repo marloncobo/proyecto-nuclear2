@@ -19,7 +19,10 @@ sin versionarla y usando una clave distinta de la de notificaciones. Alternativa
 usar `psicoapp.identidad.jwt.clave` mediante configuración externa. Sin clave se genera
 una aleatoria por proceso: los tokens dejan de funcionar al reiniciar. Para despliegues
 persistentes o con varias instancias, proporcionar la misma clave mediante un gestor de
-secretos. Cambiarla invalida todos los tokens. `psicoapp.identidad.jwt.duracion-segundos`
+secretos. El perfil Spring `prod` o `production` impide automáticamente el arranque sin
+una clave persistente; `PSICOAPP_JWT_CLAVE_REQUERIDA=true` aplica la misma regla en
+cualquier otro perfil. Cambiarla invalida todos los tokens.
+`psicoapp.identidad.jwt.duracion-segundos`
 admite entre 1 y 3600 segundos (predeterminado: 900). Usar HTTPS fuera del entorno local.
 
 No hay renovación automática ni lista de revocación por token. Cerrar sesión elimina
@@ -27,10 +30,9 @@ el token del cliente; una copia sigue siendo válida hasta caducar o invalidar l
 el rol, la convocatoria o la clave de firma. La contraseña del personal se comprueba
 al emitir el token, no en cada petición.
 
-HTTP Basic y su protección CSRF se mantienen por compatibilidad con los clientes
-existentes y los ejemplos históricos de esta guía. Spring Security exime de CSRF las
-peticiones Bearer; el frontend conserva su consulta y envío de CSRF para compatibilidad.
-La API no crea sesiones HTTP. Las dependencias `spring-security-oauth2-resource-server`
+HTTP Basic está deshabilitado y la API no expone autenticación por cookies ni el endpoint
+`/api/identidad/csrf`. Todas las rutas protegidas aceptan exclusivamente Bearer; por ello
+CSRF está deshabilitado. La API no crea sesiones HTTP. Las dependencias `spring-security-oauth2-resource-server`
 y `spring-security-oauth2-jose` proporcionan el filtro Bearer y la firma/validación Nimbus,
 con versiones gestionadas por Spring Boot, siguiendo la
 [documentación de Spring Security](https://docs.spring.io/spring-security/reference/servlet/oauth2/resource-server/jwt.html).
@@ -57,7 +59,7 @@ opciones y rubrica. Reutiliza `DirectorioIdentidad` para exigir el permiso
 `CREAR_CASOS`; solo su docente responsable puede consultar el borrador.
 La persistencia JDBC agrega las siete tablas del contenido academico del ER.
 Las rutas incluyen `GET /api/casos` para listar casos del docente,
-`POST /api/casos` y `GET /api/casos/{id}`, con HTTP Basic y CSRF para escrituras.
+`POST /api/casos` y `GET /api/casos/{id}`, con JWT Bearer.
 `POST /api/casos/{id}/publicar` valida estructura, preguntas y rubrica con
 Template Method antes de cambiar BORRADOR a PUBLICADO. Devuelve 422 con errores
 acumulados si el contenido es invalido; exige permiso de creacion y propiedad.
@@ -78,7 +80,7 @@ incluidas sesiones nunca iniciadas. Las transiciones usan bloqueo transaccional.
 
 Rutas docentes: `GET /api/sesiones`, `POST /api/sesiones`, `GET /api/sesiones/{id}`,
 `POST /api/sesiones/{id}/iniciar` y `POST /api/sesiones/{id}/finalizar`.
-Usan HTTP Basic y CSRF en POST. Programar exige una lista no vacia de UUID
+Usan JWT Bearer. Programar exige una lista no vacia de UUID
 `estudiantes` institucionales existentes y devuelve codigos iniciales de convocatoria.
 La programacion registra correos pendientes en su misma transaccion.
 `PUT /api/sesiones/{id}/convocados` recibe listas `agregar` y `retirar`,
@@ -122,7 +124,7 @@ o cancelarlo. Los avisos de resultado/valoracion se conservan para su destinatar
 Un error del canal no revierte la operacion academica.
 
 Rutas estudiantiles: `GET /api/notificaciones?limite=20&desplazamiento=0`
-y `PUT /api/notificaciones/{id}/leida` (requiere CSRF). No se acepta un destinatario
+y `PUT /api/notificaciones/{id}/leida`. No se acepta un destinatario
 ajeno en el cuerpo. La autenticacion valida codigo no retirado aun despues del
 cierre de la sesion para permitir consultas; iniciar participacion conserva sus
 controles independientes de convocatoria, estado y ventana temporal.
@@ -136,8 +138,8 @@ El correo incluye el enlace de ingreso, la sesión y el código de convocatoria.
 ## Reportes — seguimiento docente
 
 `reports` implementa la consulta minima de RF-15 / CU-30 mediante Facade:
-`GET /api/reportes/casos/{idCaso}/estudiantes/{idEstudiante}`. Requiere HTTP
-Basic y rol DOCENTE; solo el responsable del caso puede consultar el historial.
+`GET /api/reportes/casos/{idCaso}/estudiantes/{idEstudiante}`. Requiere JWT Bearer
+y rol DOCENTE; solo el responsable del caso puede consultar el historial.
 Devuelve cada intento finalizado o vencido con sus respuestas y la evaluacion
 almacenada, si existe (`resultado: null` indica evaluacion pendiente).
 Consume contratos publicos de `participation` y `evaluation`, sin consultar
@@ -145,7 +147,7 @@ repositorios ajenos ni calcular notas. `GET /api/reportes/sesiones/{id}`
 consulta el estado de participación y las notas por sesión para exportar el CSV.
 La respuesta incluye `valoracionesGenerales` por intento. El docente responsable
 puede agregar una con `POST /api/reportes/participaciones/{idIntento}/valoraciones`,
-JSON `mensaje` y CSRF. Se reutiliza `GestionValoraciones` de evaluation: guarda
+JSON `mensaje`. Se reutiliza `GestionValoraciones` de evaluation: guarda
 la valoracion y solicita el aviso interno al estudiante una sola vez (RF-27,
 CU-32/33). Consultar el reporte no genera notificaciones.
 Consulta el [contrato, diseno y pruebas de reportes](../docs/pruebas/reportes.md).
@@ -317,14 +319,13 @@ modificar sus registros. El esquema no migra tablas preexistentes incompatibles.
 La ampliacion de gestion del 18-11-2026 agrega las consultas y ediciones de la
 tabla siguiente. No requiere migraciones: utiliza las tablas y columnas existentes.
 
-HTTP Basic utiliza el correo y la contraseña para administrador y docente.
+`POST /api/identidad/ingreso` utiliza el correo y la contraseña o código para emitir JWT.
 El identificador del actor siempre procede de la autenticación del backend.
 Para usarla fuera de localhost, servir la API mediante HTTPS.
 
 | Método y ruta | Actor / resultado |
 | --- | --- |
 | `GET /api/identidad/yo` | Usuario autenticado: identidad y permiso, sin hashes |
-| `GET /api/identidad/csrf` | Usuario autenticado: token y nombre de cabecera CSRF |
 | `POST /api/identidad/docentes` | Administrador: `{ "correo": "docente@universidad.edu.co", "nombre": "Docente", "clave": "clave-ficticia" }` |
 | `PUT /api/identidad/usuarios/{idUsuario}/rol` | Administrador: `{ "rol": "DOCENTE" }`; también `ADMINISTRADOR` o `ESTUDIANTE` |
 | `PUT /api/identidad/roles/DOCENTE/creacion-casos` | Administrador: `{ "habilitado": true }` concede; `false` retira |
@@ -355,10 +356,10 @@ bloquean la misma fila durante su transaccion; el adaptador de `sessions`
 implementa el puerto `ConsultaUsoEspacios` de `academic`, sin dependencia circular.
 La busqueda estudiantil no permite listar todo el directorio a los docentes.
 
-Antes de POST/PUT, consultar `/api/identidad/csrf`, conservar la cookie recibida
-y enviar el token devuelto en la cabecera indicada. Las peticiones incluyen
-también HTTP Basic. La API responde 400 por datos inválidos, 401 por credenciales
-inválidas, 403 por permisos/CSRF, 404 por registros inexistentes y 409 por conflictos.
+Después del ingreso, todas las peticiones protegidas envían `Authorization: Bearer <token>`.
+No se usan cookies de autenticación ni tokens CSRF. La API responde 400 por datos
+inválidos, 401 por token ausente o inválido, 403 por permisos, 404 por registros
+inexistentes y 409 por conflictos.
 
 `ServicioUsuarios.exigirCreacionCasos` expone la comprobación del permiso
 específico para futuros casos de uso de creación de casos. El rol docente solo
@@ -392,7 +393,7 @@ veredictos se completan al ejecutarlas.
 
 Desde `backend/`, ejecutar `./mvnw.cmd verify` (PowerShell) o `sh mvnw verify`.
 Las pruebas JUnit cubren reglas de usuarios y espacios, coordinación de la
-fachada, credenciales y controles HTTP de rol/CSRF. Los nombres de las pruebas
+fachada, credenciales y controles HTTP de JWT/rol. Los nombres de las pruebas
 enlazan RF/RN y el ER. Usan dobles de los puertos y no requieren MySQL.
 La prueba de contexto desactiva solo la inicialización SQL y el alta inicial
 del administrador; no verifica conectividad ni persistencia.
@@ -401,8 +402,8 @@ del administrador; no verifica conectividad ni persistencia.
 con los recorridos HTTP disponibles de CP-ID-001 a CP-ID-014 y CP-AC-001 a
 CP-AC-007. Usa controladores, autenticación, validación y servicios reales;
 solo sustituye los puertos de almacenamiento con dobles en memoria reiniciados
-antes de cada ejecución. Las modificaciones obtienen cookie y token del endpoint
-CSRF real. Comprueba también el estado posterior a los rechazos, la autorización
+antes de cada ejecución. Las modificaciones obtienen un JWT del endpoint real de
+ingreso. Comprueba también el estado posterior a los rechazos, la autorización
 después de cambiar un rol y los permisos compartidos entre dos docentes.
 Esta clase no verifica JDBC, transacciones, restricciones ni orden de MySQL, ni
 supervivencia de los datos al reiniciar; esas comprobaciones están en la suite

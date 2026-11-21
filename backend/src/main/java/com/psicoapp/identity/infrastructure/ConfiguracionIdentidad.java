@@ -6,14 +6,13 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 @Configuration
 @EnableWebSecurity
@@ -29,17 +28,15 @@ public class ConfiguracionIdentidad {
             ServicioJwt tokens) throws Exception {
         return http.authenticationProvider(proveedor)
                 .sessionManagement(sesion -> sesion.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .ignoringRequestMatchers(solicitud -> "POST".equals(solicitud.getMethod())
-                                && (solicitud.getContextPath() + "/api/identidad/ingreso").equals(solicitud.getRequestURI())))
+                .csrf(AbstractHttpConfigurer::disable)
                 .exceptionHandling(errores -> errores.accessDeniedHandler(
                         (solicitud, respuesta, excepcion) -> respuesta.setStatus(403)))
-                .httpBasic(Customizer.withDefaults())
+                .httpBasic(AbstractHttpConfigurer::disable)
                 .oauth2ResourceServer(recurso -> recurso.jwt(jwt -> jwt.decoder(tokens::decodificar)
                         .jwtAuthenticationConverter(tokens::autenticar)))
                 .authorizeHttpRequests(acceso -> acceso
                         .requestMatchers(HttpMethod.POST, "/api/identidad/ingreso").permitAll()
-                        .requestMatchers("/api/identidad/yo", "/api/identidad/csrf").authenticated()
+                        .requestMatchers("/api/identidad/yo").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/identidad/estudiantes").hasRole("DOCENTE")
                         .requestMatchers(HttpMethod.GET, "/api/identidad/estudiantes",
                                 "/api/identidad/estudiantes/listado").hasRole("DOCENTE")

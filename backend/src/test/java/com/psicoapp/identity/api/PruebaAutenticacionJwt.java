@@ -49,7 +49,7 @@ class PruebaAutenticacionJwt {
     }
 
     @Test
-    void ingresoSinCsrfEmiteBearerQueAutorizaSinCrearSesion() throws Exception {
+    void ingresoEmiteBearerQueAutorizaSinCrearSesion() throws Exception {
         String token = ingresar(docente.correo(), "clave-ficticia");
         assertEquals(3, token.split("\\.").length);
         var respuesta = mvc.perform(get("/api/identidad/yo").header("Authorization", "Bearer " + token))

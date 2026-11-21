@@ -12,7 +12,7 @@ Esta consulta no declara completos RF-16 ni CU-35.
 
 `GET /api/reportes/casos/{idCaso}/estudiantes/{idEstudiante}`
 
-Requiere HTTP Basic con rol DOCENTE y propiedad del caso. La identidad del
+Requiere JWT Bearer con rol DOCENTE y propiedad del caso. La identidad del
 docente proviene de la autenticacion. Los estudiantes, administradores y
 docentes ajenos no acceden al seguimiento. Un caso inexistente devuelve 404;
 un UUID invalido, 400. Los casos propios archivados conservan su historial.
@@ -44,7 +44,7 @@ agrega retroalimentacion. Por ello no se crea un evento de reporte consultado.
 `POST /api/reportes/participaciones/{idIntento}/valoraciones` permite registrar
 una valoracion desde seguimiento. Recibe `{"mensaje":"Valoracion formativa"}`
 y devuelve 201 con la valoracion guardada. Requiere docente responsable, intento
-finalizado o vencido y CSRF; aplica el mismo limite de 4000 caracteres de evaluation.
+finalizado o vencido y JWT; aplica el mismo limite de 4000 caracteres de evaluation.
 Un estudiante o docente ajeno recibe 403; un intento activo, 409; mensaje invalido, 400.
 
 La fachada delega en `GestionValoraciones`, contrato publico implementado por
@@ -120,7 +120,7 @@ del endpoint de reportes de extremo a extremo en MySQL.
 
 CP-NO-009 (RF-15/26/27; CU-30/32/33): registro HTTP desde reportes, consulta del
 historial, entrega de un solo aviso al estudiante, lecturas repetidas sin efectos,
-rollback atomico y controles de rol, propiedad, CSRF y finalizacion del intento.
+rollback atomico y controles de rol, propiedad, JWT y finalizacion del intento.
 Se verifica en `PruebaFlujosNotificaciones` (H2) y se hereda en su variante MySQL
 optativa. La fachada tiene pruebas de uso del contrato publico y aislamiento
 entre consulta y escritura. La API anterior de evaluation conserva su JSON.

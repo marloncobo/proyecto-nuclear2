@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import static com.psicoapp.AutenticacionPruebas.portador;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -64,11 +65,11 @@ class PruebaGestionIdentidadAcademica {
     }
 
     private MockHttpServletRequestBuilder comoAdministrador(MockHttpServletRequestBuilder solicitud) {
-        return solicitud.with(httpBasic(correoAdministrador, CLAVE));
+        return solicitud.with(portador(mvc, correoAdministrador, CLAVE));
     }
 
     private MockHttpServletRequestBuilder escribir(MockHttpServletRequestBuilder solicitud, String contenido) {
-        return comoAdministrador(solicitud).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(contenido);
+        return comoAdministrador(solicitud).contentType(MediaType.APPLICATION_JSON).content(contenido);
     }
 
     @Test
@@ -136,7 +137,7 @@ class PruebaGestionIdentidadAcademica {
                 .andExpect(status().isBadRequest());
         mvc.perform(get("/api/identidad/usuarios").param("busqueda", sufijo))
                 .andExpect(status().isUnauthorized());
-        mvc.perform(get("/api/identidad/usuarios").param("busqueda", sufijo).with(httpBasic(correoDocente, CLAVE)))
+        mvc.perform(get("/api/identidad/usuarios").param("busqueda", sufijo).with(portador(mvc, correoDocente, CLAVE)))
                 .andExpect(status().isForbidden());
     }
 
@@ -153,8 +154,10 @@ class PruebaGestionIdentidadAcademica {
         assertEquals(anterior.hashClave(), posterior.hashClave());
         assertEquals(anterior.fechaCreacion(), posterior.fechaCreacion());
         assertEquals(Rol.DOCENTE, posterior.rol());
-        mvc.perform(get("/api/identidad/yo").with(httpBasic(nuevoCorreo, CLAVE))).andExpect(status().isOk());
-        mvc.perform(get("/api/identidad/yo").with(httpBasic(correoDocente, CLAVE))).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/identidad/yo").with(portador(mvc, nuevoCorreo, CLAVE))).andExpect(status().isOk());
+        mvc.perform(post("/api/identidad/ingreso").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"correo\":\"" + correoDocente + "\",\"clave\":\"" + CLAVE + "\"}"))
+                .andExpect(status().isUnauthorized());
         mvc.perform(escribir(put("/api/identidad/docentes/{id}", docente),
                 "{\"correo\":\"%s\",\"nombre\":\"Duplicado\"}".formatted(correoAdministrador)))
                 .andExpect(status().isConflict());
@@ -174,13 +177,15 @@ class PruebaGestionIdentidadAcademica {
             mvc.perform(escribir(put("/api/identidad/usuarios/{id}/estado", docente), "{\"activo\":false}"))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.activo").value(false));
         }
-        mvc.perform(get("/api/identidad/yo").with(httpBasic(correoDocente, CLAVE))).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/identidad/ingreso").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"correo\":\"" + correoDocente + "\",\"clave\":\"" + CLAVE + "\"}"))
+                .andExpect(status().isUnauthorized());
         mvc.perform(comoAdministrador(get("/api/identidad/usuarios").param("rol", "DOCENTE").param("activo", "false")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[?(@.id == '%s')]".formatted(docente)).isNotEmpty());
         mvc.perform(escribir(put("/api/identidad/usuarios/{id}/estado", docente), "{\"activo\":true}"))
                 .andExpect(status().isOk());
         assertEquals(anterior, usuarios.buscarPorId(docente).orElseThrow());
-        mvc.perform(get("/api/identidad/yo").with(httpBasic(correoDocente, CLAVE))).andExpect(status().isOk());
+        mvc.perform(get("/api/identidad/yo").with(portador(mvc, correoDocente, CLAVE))).andExpect(status().isOk());
         mvc.perform(escribir(put("/api/identidad/usuarios/{id}/estado", administrador), "{\"activo\":false}"))
                 .andExpect(status().isConflict());
         mvc.perform(escribir(put("/api/identidad/usuarios/{id}/estado", docente), "{\"activo\":null}"))
@@ -203,33 +208,33 @@ class PruebaGestionIdentidadAcademica {
     @DisplayName("RF-04: busqueda exacta institucional no expone personal ni cuentas inactivas")
     void buscaEstudiantePorCorreo() throws Exception {
         mvc.perform(get("/api/identidad/estudiantes").param("correo", " " + correoEstudiante.toUpperCase(java.util.Locale.ROOT) + " ")
-                .with(httpBasic(correoDocente, CLAVE))).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(estudiante.toString()));
+                .with(portador(mvc, correoDocente, CLAVE))).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(estudiante.toString()));
         for (String correo : new String[] {correoDocente, "ausente@example.test"}) {
-            mvc.perform(get("/api/identidad/estudiantes").param("correo", correo).with(httpBasic(correoDocente, CLAVE)))
+            mvc.perform(get("/api/identidad/estudiantes").param("correo", correo).with(portador(mvc, correoDocente, CLAVE)))
                     .andExpect(status().isNotFound());
         }
-        mvc.perform(get("/api/identidad/estudiantes").param("correo", "externo@otro.test").with(httpBasic(correoDocente, CLAVE)))
+        mvc.perform(get("/api/identidad/estudiantes").param("correo", "externo@otro.test").with(portador(mvc, correoDocente, CLAVE)))
                 .andExpect(status().isBadRequest());
-        mvc.perform(get("/api/identidad/estudiantes").with(httpBasic(correoDocente, CLAVE))).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/identidad/estudiantes").with(portador(mvc, correoDocente, CLAVE))).andExpect(status().isBadRequest());
         identidades.cambiarEstado(administrador, estudiante, false);
-        mvc.perform(get("/api/identidad/estudiantes").param("correo", correoEstudiante).with(httpBasic(correoDocente, CLAVE)))
+        mvc.perform(get("/api/identidad/estudiantes").param("correo", correoEstudiante).with(portador(mvc, correoDocente, CLAVE)))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     @DisplayName("RF-02/03/04: seguridad HTTP y autorizacion de servicios")
-    void restringeRolesYExigeCsrf() throws Exception {
+    void restringeRolesYExigeJwt() throws Exception {
         for (String ruta : new String[] {"/api/identidad/usuarios", "/api/identidad/usuarios/" + docente,
                 "/api/identidad/roles", "/api/identidad/roles/DOCENTE/creacion-casos"}) {
             mvc.perform(get(ruta)).andExpect(status().isUnauthorized());
-            mvc.perform(get(ruta).with(httpBasic(correoDocente, CLAVE))).andExpect(status().isForbidden());
+            mvc.perform(get(ruta).with(portador(mvc, correoDocente, CLAVE))).andExpect(status().isForbidden());
             mvc.perform(get(ruta).with(user(estudiante.toString()).roles("ESTUDIANTE"))).andExpect(status().isForbidden());
         }
         for (String ruta : new String[] {"/api/identidad/docentes/" + docente, "/api/identidad/usuarios/" + docente + "/estado"}) {
-            mvc.perform(put(ruta).with(httpBasic(correoDocente, CLAVE)).with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{}"))
+            mvc.perform(put(ruta).with(portador(mvc, correoDocente, CLAVE)).contentType(MediaType.APPLICATION_JSON).content("{}"))
                     .andExpect(status().isForbidden());
             mvc.perform(comoAdministrador(put(ruta)).contentType(MediaType.APPLICATION_JSON).content("{}"))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isBadRequest());
         }
         mvc.perform(comoAdministrador(get("/api/identidad/estudiantes").param("correo", correoEstudiante)))
                 .andExpect(status().isForbidden());
@@ -239,21 +244,21 @@ class PruebaGestionIdentidadAcademica {
     }
 
     @Test
-    @DisplayName("RF-04: edicion valida, permisos, CSRF y espacio inexistente")
+    @DisplayName("RF-04: edicion valida, permisos JWT y espacio inexistente")
     void editaEspaciosDisponibles() throws Exception {
         UUID espacio = academico.crearEspacio(docente, "Original", "2026-2").id();
         String ruta = "/api/academico/espacios/" + espacio;
-        mvc.perform(put(ruta).with(httpBasic(correoDocente, CLAVE)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(put(ruta).with(portador(mvc, correoDocente, CLAVE)).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"nombre\":\" Editado \",\"periodo\":\" 2027-1 \"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.nombre").value("Editado"));
         assertEquals("2027-1", academico.consultarEspacio(docente, espacio).periodo());
-        mvc.perform(put(ruta).with(httpBasic(correoDocente, CLAVE)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(put(ruta).with(portador(mvc, correoDocente, CLAVE)).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"nombre\":\"\",\"periodo\":\"2027-1\"}")).andExpect(status().isBadRequest());
-        mvc.perform(put(ruta).with(httpBasic(correoDocente, CLAVE))).andExpect(status().isForbidden());
+        mvc.perform(put(ruta).with(portador(mvc, correoDocente, CLAVE))).andExpect(status().isBadRequest());
         mvc.perform(escribir(put(ruta), "{\"nombre\":\"Otro\",\"periodo\":\"2027-1\"}"))
                 .andExpect(status().isForbidden());
-        mvc.perform(put("/api/academico/espacios/{id}", UUID.randomUUID()).with(httpBasic(correoDocente, CLAVE))
-                .with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Otro\",\"periodo\":\"2027-1\"}"))
+        mvc.perform(put("/api/academico/espacios/{id}", UUID.randomUUID()).with(portador(mvc, correoDocente, CLAVE))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Otro\",\"periodo\":\"2027-1\"}"))
                 .andExpect(status().isNotFound());
     }
 
@@ -291,7 +296,7 @@ class PruebaGestionIdentidadAcademica {
             assertInstanceOf(Conflicto.class, excepcion.getCause());
         }
         assertEquals("Historico", academico.consultarEspacio(docente, espacio).nombre());
-        mvc.perform(put("/api/academico/espacios/{id}", espacio).with(httpBasic(correoDocente, CLAVE)).with(csrf())
+        mvc.perform(put("/api/academico/espacios/{id}", espacio).with(portador(mvc, correoDocente, CLAVE))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Cambio\",\"periodo\":\"2027-1\"}"))
                 .andExpect(status().isConflict());
     }

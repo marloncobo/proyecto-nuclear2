@@ -32,8 +32,8 @@ import org.springframework.http.MediaType;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import static com.psicoapp.AutenticacionPruebas.portador;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -127,7 +127,7 @@ class PruebaPersistenciaMysqlIT {
         modificar(post("/api/identidad/docentes"), ADMINISTRADOR, datos.replace("Nuevo", "Reemplazo"))
                 .andExpect(status().isConflict());
         assertEquals(anterior, cuentas());
-        mvc.perform(get("/api/identidad/yo").with(httpBasic("nuevo@universidad.example", CLAVE)))
+        mvc.perform(get("/api/identidad/yo").with(portador(mvc, "nuevo@universidad.example", CLAVE)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(id));
     }
 
@@ -164,7 +164,7 @@ class PruebaPersistenciaMysqlIT {
         for (String rol : new String[]{"ADMINISTRADOR", "DOCENTE"}) {
             modificar(put("/api/identidad/usuarios/{id}/rol", idDocente), ADMINISTRADOR,
                     "{\"rol\":\"" + rol + "\"}").andExpect(status().isOk());
-            mvc.perform(get("/api/identidad/yo").with(httpBasic(DOCENTE, CLAVE)))
+            mvc.perform(get("/api/identidad/yo").with(portador(mvc, DOCENTE, CLAVE)))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.rol").value(rol));
             assertEquals(rol, jdbc.sql("SELECT r.nombre FROM usuario u JOIN rol r ON r.id_rol=u.id_rol WHERE id_usuario=?")
                     .param(idDocente).query(String.class).single());
@@ -183,7 +183,7 @@ class PruebaPersistenciaMysqlIT {
                     "{\"habilitado\":" + habilitado + "}").andExpect(status().isNoContent());
             assertEquals(habilitado ? 1 : 0, jdbc.sql("SELECT COUNT(*) FROM rol_permiso").query(Integer.class).single());
             for (String correo : new String[]{DOCENTE, OTRO_DOCENTE}) {
-                mvc.perform(get("/api/identidad/yo").with(httpBasic(correo, CLAVE)))
+                mvc.perform(get("/api/identidad/yo").with(portador(mvc, correo, CLAVE)))
                         .andExpect(status().isOk()).andExpect(jsonPath("$.puedeCrearCasos").value(habilitado));
             }
         }
@@ -209,7 +209,8 @@ class PruebaPersistenciaMysqlIT {
         assertEquals(1, jdbc.sql("SELECT COUNT(*) FROM usuario WHERE correo=? AND contrasena_hash IS NULL")
                 .param("alumno@universidad.example").query(Integer.class).single());
         assertEquals(4, cuentas().size());
-        mvc.perform(get("/api/identidad/yo").with(httpBasic("alumno@universidad.example", "CodigoNoVerificable")))
+        mvc.perform(post("/api/identidad/ingreso").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"correo\":\"alumno@universidad.example\",\"clave\":\"CodigoNoVerificable\"}"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -236,13 +237,13 @@ class PruebaPersistenciaMysqlIT {
     }
 
     @Test
-    @DisplayName("CP-ID-004/013: alta por docente o sin CSRF no escribe en MySQL")
+    @DisplayName("CP-ID-004/013: alta por docente o con HTTP Basic no escribe en MySQL")
     void altasNoAutorizadasNoPersisten() throws Exception {
         var anterior = cuentas();
         String datos = "{\"correo\":\"nuevo@universidad.example\",\"nombre\":\"Nuevo\",\"clave\":\"" + CLAVE + "\"}";
         modificar(post("/api/identidad/docentes"), DOCENTE, datos).andExpect(status().isForbidden());
-        mvc.perform(post("/api/identidad/docentes").with(httpBasic(ADMINISTRADOR, CLAVE))
-                .contentType(MediaType.APPLICATION_JSON).content(datos)).andExpect(status().isForbidden());
+        mvc.perform(post("/api/identidad/docentes").header("Authorization", "Basic YWRtaW46Y2xhdmU=")
+                .contentType(MediaType.APPLICATION_JSON).content(datos)).andExpect(status().isUnauthorized());
         assertEquals(anterior, cuentas());
     }
 
@@ -254,7 +255,7 @@ class PruebaPersistenciaMysqlIT {
         String respuesta = modificar(post(ESPACIOS), DOCENTE, datosEspacio(nombre, periodo))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         String id = JsonPath.read(respuesta, "$.id");
-        mvc.perform(get(ESPACIOS + "/{id}", id).with(httpBasic(DOCENTE, CLAVE)))
+        mvc.perform(get(ESPACIOS + "/{id}", id).with(portador(mvc, DOCENTE, CLAVE)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.nombre").value(nombre))
                 .andExpect(jsonPath("$.periodo").value(periodo));
         assertEquals(150, jdbc.sql("SELECT CHAR_LENGTH(nombre) FROM espacio_academico WHERE id_espacio=?")
@@ -264,7 +265,7 @@ class PruebaPersistenciaMysqlIT {
         var anterior = catalogo();
         modificar(post(ESPACIOS), DOCENTE, datosEspacio(nombre + "A", periodo)).andExpect(status().isBadRequest());
         modificar(post(ESPACIOS), DOCENTE, datosEspacio(nombre, periodo + "B")).andExpect(status().isBadRequest());
-        mvc.perform(get(ESPACIOS + "/{id}", UUID.randomUUID()).with(httpBasic(DOCENTE, CLAVE)))
+        mvc.perform(get(ESPACIOS + "/{id}", UUID.randomUUID()).with(portador(mvc, DOCENTE, CLAVE)))
                 .andExpect(status().isNotFound());
         assertEquals(anterior, catalogo());
     }
@@ -284,7 +285,7 @@ class PruebaPersistenciaMysqlIT {
     @Test
     @DisplayName("CP-AC-004/005: catálogo vacío, compartido y ordenado por periodo, nombre e UUID en SQL")
     void catalogoCompartidoRespetaOrdenMysql() throws Exception {
-        mvc.perform(get(ESPACIOS).with(httpBasic(DOCENTE, CLAVE)))
+        mvc.perform(get(ESPACIOS).with(portador(mvc, DOCENTE, CLAVE)))
                 .andExpect(status().isOk()).andExpect(content().json("[]"));
         String[] identificadores = {"00000000-0000-0000-0000-000000000004", "00000000-0000-0000-0000-000000000003",
                 "00000000-0000-0000-0000-000000000002", "00000000-0000-0000-0000-000000000001"};
@@ -296,7 +297,7 @@ class PruebaPersistenciaMysqlIT {
         }
         var anterior = catalogo();
         for (String correo : new String[]{DOCENTE, OTRO_DOCENTE}) {
-            mvc.perform(get(ESPACIOS).with(httpBasic(correo, CLAVE))).andExpect(status().isOk())
+            mvc.perform(get(ESPACIOS).with(portador(mvc, correo, CLAVE))).andExpect(status().isOk())
                     .andExpect(jsonPath("$.length()").value(4))
                     .andExpect(jsonPath("$[0].id").value(identificadores[1]))
                     .andExpect(jsonPath("$[1].id").value(identificadores[3]))
@@ -312,8 +313,8 @@ class PruebaPersistenciaMysqlIT {
         String id = JsonPath.read(modificar(post(ESPACIOS), DOCENTE, datosEspacio("Existente", "2026-2"))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
         var anterior = catalogo();
-        mvc.perform(get(ESPACIOS).with(httpBasic(ADMINISTRADOR, CLAVE))).andExpect(status().isForbidden());
-        mvc.perform(get(ESPACIOS + "/{id}", id).with(httpBasic(ADMINISTRADOR, CLAVE))).andExpect(status().isForbidden());
+        mvc.perform(get(ESPACIOS).with(portador(mvc, ADMINISTRADOR, CLAVE))).andExpect(status().isForbidden());
+        mvc.perform(get(ESPACIOS + "/{id}", id).with(portador(mvc, ADMINISTRADOR, CLAVE))).andExpect(status().isForbidden());
         modificar(post(ESPACIOS), ADMINISTRADOR, datosEspacio("Prohibido", "2026-2")).andExpect(status().isForbidden());
         mvc.perform(get(ESPACIOS)).andExpect(status().isUnauthorized());
         assertEquals(anterior, catalogo());
@@ -382,13 +383,7 @@ class PruebaPersistenciaMysqlIT {
     }
 
     private ResultActions modificar(MockHttpServletRequestBuilder solicitud, String correo, String datos) throws Exception {
-        var respuesta = mvc.perform(get("/api/identidad/csrf").with(httpBasic(correo, CLAVE)))
-                .andExpect(status().isOk()).andReturn().getResponse();
-        var cookie = respuesta.getCookie("XSRF-TOKEN");
-        assertNotNull(cookie);
-        String cabecera = JsonPath.read(respuesta.getContentAsString(), "$.nombreCabecera");
-        String token = JsonPath.read(respuesta.getContentAsString(), "$.token");
-        return mvc.perform(solicitud.with(httpBasic(correo, CLAVE)).cookie(cookie).header(cabecera, token)
+        return mvc.perform(solicitud.with(portador(mvc, correo, CLAVE))
                 .contentType(MediaType.APPLICATION_JSON).content(datos));
     }
 

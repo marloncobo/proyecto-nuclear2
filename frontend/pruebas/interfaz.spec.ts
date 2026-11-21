@@ -44,10 +44,10 @@ test('creación de borrador y transición a publicado en demostración', async (
   await expect(pagina.getByRole('dialog').getByText('Publicado', { exact: true })).toBeVisible();
 });
 
-test('API: autenticación, separación de datos ficticios y CSRF al crear un espacio', async ({
+test('API: autenticación Bearer y separación de datos ficticios al crear un espacio', async ({
   page: pagina,
 }) => {
-  let cabecera = '';
+  let autorizacion = '';
   let cuerpo: unknown;
   await pagina.route('**/api/**', async (ruta) => {
     const url = new URL(ruta.request().url());
@@ -64,10 +64,9 @@ test('API: autenticación, separación de datos ficticios y CSRF al crear un esp
           puedeCrearCasos: true,
         },
       });
-    if (url.pathname.endsWith('/csrf'))
-      return ruta.fulfill({ json: { nombreCabecera: 'X-CSRF-TOKEN', token: 'token-prueba' } });
     if (ruta.request().method() === 'POST') {
-      cabecera = ruta.request().headers()['x-csrf-token'];
+      autorizacion = ruta.request().headers()['authorization'];
+      expect(ruta.request().headers()['x-csrf-token']).toBeUndefined();
       cuerpo = ruta.request().postDataJSON();
       return ruta.fulfill({ json: { id: 'espacio-real', ...(cuerpo as object) } });
     }
@@ -84,7 +83,7 @@ test('API: autenticación, separación de datos ficticios y CSRF al crear un esp
   await pagina.getByLabel('Nombre', { exact: true }).fill('Psicología comunitaria');
   await pagina.getByRole('button', { name: 'Crear espacio' }).click();
   await expect(pagina.getByRole('heading', { name: 'Psicología comunitaria' })).toBeVisible();
-  expect(cabecera).toBe('token-prueba');
+  expect(autorizacion).toBe('Bearer token-ficticio');
   expect(cuerpo).toEqual({ nombre: 'Psicología comunitaria', periodo: '2026-2' });
   expect(await pagina.evaluate(() => localStorage.length)).toBe(0);
 });

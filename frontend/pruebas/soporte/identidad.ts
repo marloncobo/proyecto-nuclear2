@@ -37,7 +37,12 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
     desactivarDuranteCambioRol: false,
     falloListado: false,
     falloDetalle: false,
-    solicitudes: [] as { ruta: string; metodo: string; datos: any; csrf: string | undefined }[],
+    solicitudes: [] as {
+      ruta: string;
+      metodo: string;
+      datos: any;
+      autorizacion: string | undefined;
+    }[],
   };
   await pagina.route('**/api/**', async (ruta) => {
     const solicitud = ruta.request();
@@ -48,7 +53,7 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
       ruta: url.pathname + url.search,
       metodo,
       datos,
-      csrf: solicitud.headers()['x-csrf-token'],
+      autorizacion: solicitud.headers()['authorization'],
     });
     if (url.pathname.endsWith('/ingreso'))
       return ruta.fulfill({ json: { token: 'token-ficticio', tipo: 'Bearer' } });
@@ -61,8 +66,6 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
               ? docente
               : estudiante,
       });
-    if (url.pathname.endsWith('/csrf'))
-      return ruta.fulfill({ json: { nombreCabecera: 'X-CSRF-TOKEN', token: 'csrf-gestion' } });
     if (url.pathname === '/api/identidad/usuarios') {
       if (estado.falloListado)
         return ruta.fulfill({ status: 503, json: { detail: 'No se pudo consultar el listado' } });

@@ -35,16 +35,14 @@ class PruebaControladorPublicacionCasos {
     @MockitoBean RepositorioCasos casos;
 
     @Test
-    @DisplayName("RF-02/09: publicacion requiere autenticacion, docente y CSRF")
-    void exigeAutenticacionRolYCsrf() throws Exception {
+    @DisplayName("RF-02/09: publicacion requiere autenticacion JWT y rol docente")
+    void exigeAutenticacionYRol() throws Exception {
         UUID id = UUID.randomUUID();
-        mvc.perform(post("/api/casos/{id}/publicar", id).with(csrf())).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/casos/{id}/publicar", id)).andExpect(status().isUnauthorized());
         for (String rol : new String[]{"ESTUDIANTE", "ADMINISTRADOR"}) {
-            mvc.perform(post("/api/casos/{id}/publicar", id).with(csrf())
+            mvc.perform(post("/api/casos/{id}/publicar", id)
                             .with(user(UUID.randomUUID().toString()).roles(rol))).andExpect(status().isForbidden());
         }
-        mvc.perform(post("/api/casos/{id}/publicar", id)
-                        .with(user(UUID.randomUUID().toString()).roles("DOCENTE"))).andExpect(status().isForbidden());
         verifyNoInteractions(casos, identidades);
     }
 
@@ -55,7 +53,7 @@ class PruebaControladorPublicacionCasos {
         var caso = DatosPruebaCasos.completo(docente);
         when(casos.bloquearPorId(caso.id())).thenReturn(Optional.of(caso));
         when(casos.publicar(caso.id(), docente)).thenReturn(true);
-        mvc.perform(post("/api/casos/{id}/publicar", caso.id()).with(csrf())
+        mvc.perform(post("/api/casos/{id}/publicar", caso.id())
                         .with(user(docente.toString()).roles("DOCENTE")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(caso.id().toString()))
                 .andExpect(jsonPath("$.estado").value("PUBLICADO"));
@@ -73,7 +71,7 @@ class PruebaControladorPublicacionCasos {
         UUID docente = UUID.randomUUID();
         var caso = new ConstructorCasoAcademico(UUID.randomUUID(), docente).construir();
         when(casos.bloquearPorId(caso.id())).thenReturn(Optional.of(caso));
-        mvc.perform(post("/api/casos/{id}/publicar", caso.id()).with(csrf())
+        mvc.perform(post("/api/casos/{id}/publicar", caso.id())
                         .with(user(docente.toString()).roles("DOCENTE")))
                 .andExpect(status().isUnprocessableContent()).andExpect(jsonPath("$.errores.length()").value(6))
                 .andExpect(jsonPath("$.errores[0].codigo").value("TEXTO_REQUERIDO"))
@@ -88,10 +86,10 @@ class PruebaControladorPublicacionCasos {
         UUID docente = UUID.randomUUID();
         var ajeno = DatosPruebaCasos.completo(UUID.randomUUID());
         when(casos.bloquearPorId(ajeno.id())).thenReturn(Optional.of(ajeno));
-        mvc.perform(post("/api/casos/{id}/publicar", ajeno.id()).with(csrf())
+        mvc.perform(post("/api/casos/{id}/publicar", ajeno.id())
                         .with(user(docente.toString()).roles("DOCENTE"))).andExpect(status().isForbidden());
         doThrow(new AccesoDenegado("Sin permiso")).when(identidades).exigirCreacionCasos(docente);
-        mvc.perform(post("/api/casos/{id}/publicar", UUID.randomUUID()).with(csrf())
+        mvc.perform(post("/api/casos/{id}/publicar", UUID.randomUUID())
                         .with(user(docente.toString()).roles("DOCENTE"))).andExpect(status().isForbidden());
         verify(casos, never()).publicar(any(), any());
     }
@@ -100,11 +98,11 @@ class PruebaControladorPublicacionCasos {
     @DisplayName("RF-09: caso inexistente y actualizacion concurrente tienen respuestas 404 y 409")
     void informaAusenciaYConflicto() throws Exception {
         UUID docente = UUID.randomUUID();
-        mvc.perform(post("/api/casos/{id}/publicar", UUID.randomUUID()).with(csrf())
+        mvc.perform(post("/api/casos/{id}/publicar", UUID.randomUUID())
                         .with(user(docente.toString()).roles("DOCENTE"))).andExpect(status().isNotFound());
         var caso = DatosPruebaCasos.completo(docente);
         when(casos.bloquearPorId(caso.id())).thenReturn(Optional.of(caso));
-        mvc.perform(post("/api/casos/{id}/publicar", caso.id()).with(csrf())
+        mvc.perform(post("/api/casos/{id}/publicar", caso.id())
                         .with(user(docente.toString()).roles("DOCENTE"))).andExpect(status().isConflict());
     }
 }

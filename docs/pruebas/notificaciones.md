@@ -81,7 +81,7 @@ puede repetir el envio. Los eventos y avisos internos si se deduplican en la BD.
 ## API
 
 Todas las rutas usan el actor autenticado, sin aceptar id de destinatario.
-Las mutaciones requieren CSRF como las otras APIs del proyecto.
+Las mutaciones requieren JWT como las otras APIs del proyecto.
 
 | Metodo / ruta | Actor / contenido |
 | --- | --- |
@@ -148,7 +148,7 @@ entre reinicios. Los avisos internos se consultan por API; no se implemento fron
 | CP-NO-004 | RF-21/27 | Evento repetido y dos trabajadores concurrentes sin doble entrega confirmada. |
 | CP-NO-005 | CU-14/33 | SMTP falla sin revertir convocatoria; error saneado y reintento con espera. |
 | CP-NO-006 | RN-08/09; CU-24/27 | Evaluacion automatica voluntaria/por vencimiento, cero sin respuestas y sin aviso anticipado. |
-| CP-NO-007 | RF-02/27 | Propietario, rol, CSRF, lectura idempotente y consulta posterior al cierre. |
+| CP-NO-007 | RF-02/27 | Propietario, rol, JWT, lectura idempotente y consulta posterior al cierre. |
 | CP-NO-008 | RF-21/27 | Repositorio reconstruido recupera pendientes; rollback de sesion, finalizacion y valoracion no deja avisos. |
 
 Clases: `PruebaEventosNotificacion`, `PruebaFlujosNotificaciones`,

@@ -85,7 +85,6 @@ export class ServicioApi {
         '/identidad/ingreso',
         'POST',
         { correo, clave },
-        { Authorization: '' },
       );
       if (this.generacionSesion !== generacionIngreso)
         throw new Error('La cuenta cambió. Vuelve a intentar la operación.');
@@ -178,11 +177,7 @@ export class ServicioApi {
     return this.enviar<Espacio>(`/academico/espacios/${encodeURIComponent(id)}`, datos, 'PUT');
   }
   async enviar<T>(ruta: string, datos: unknown, metodo = 'POST'): Promise<T> {
-    const autorizacion = this.autorizacion;
-    const csrf = await this.consultar<{ nombreCabecera: string; token: string }>('/identidad/csrf');
-    if (autorizacion !== this.autorizacion)
-      throw new Error('La cuenta cambió. Vuelve a intentar la operación.');
-    return this.peticion<T>(ruta, metodo, datos, { [csrf.nombreCabecera]: csrf.token });
+    return this.peticion<T>(ruta, metodo, datos);
   }
   private async peticion<T>(
     ruta: string,
@@ -196,11 +191,11 @@ export class ServicioApi {
     try {
       respuesta = await fetch('/api' + ruta, {
         method: metodo,
-        credentials: 'same-origin',
+        credentials: 'omit',
         signal: AbortSignal.timeout(15000),
         headers: {
           Accept: 'application/json',
-          Authorization: autorizacion,
+          ...(autorizacion ? { Authorization: autorizacion } : {}),
           ...(datos !== undefined ? { 'Content-Type': 'application/json' } : {}),
           ...cabeceras,
         },

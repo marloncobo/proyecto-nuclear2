@@ -16,6 +16,7 @@ import java.util.UUID;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -36,17 +37,23 @@ public class ServicioJwt {
     private final ObjectProvider<VerificadorAccesoEstudiante> accesoEstudiantil;
     private final Duration duracion;
 
-    public ServicioJwt(RepositorioUsuarios usuarios,
+    public ServicioJwt(Environment entorno, RepositorioUsuarios usuarios,
             ObjectProvider<VerificadorAccesoEstudiante> accesoEstudiantil,
             @Value("${psicoapp.identidad.jwt.clave:${PSICOAPP_JWT_CLAVE:}}") String clave,
-            @Value("${psicoapp.identidad.jwt.duracion-segundos:900}") long duracionSegundos) {
+            @Value("${psicoapp.identidad.jwt.duracion-segundos:900}") long duracionSegundos,
+            @Value("${psicoapp.identidad.jwt.clave-requerida:false}") boolean claveRequerida) {
         this.usuarios = usuarios;
         this.accesoEstudiantil = accesoEstudiantil;
         if (duracionSegundos < 1 || duracionSegundos > 3600)
             throw new IllegalArgumentException("La duracion JWT debe estar entre 1 y 3600 segundos");
         duracion = Duration.ofSeconds(duracionSegundos);
         byte[] bytes;
+        boolean perfilProduccion = java.util.Arrays.stream(entorno.getActiveProfiles())
+                .anyMatch(perfil -> perfil.equalsIgnoreCase("prod") || perfil.equalsIgnoreCase("production"));
         if (clave.isBlank()) {
+            if (claveRequerida || perfilProduccion) {
+                throw new IllegalArgumentException("La clave JWT persistente es obligatoria en este entorno");
+            }
             bytes = new byte[32];
             new SecureRandom().nextBytes(bytes);
         } else {

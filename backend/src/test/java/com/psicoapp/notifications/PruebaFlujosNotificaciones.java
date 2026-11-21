@@ -26,6 +26,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import static com.psicoapp.AutenticacionPruebas.portador;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
@@ -219,7 +220,7 @@ class PruebaFlujosNotificaciones {
         assertEquals(1, avisos.listar(estudiante, 20, 0).size());
     }
 
-    // CP-NO-007: propietario, roles, CSRF y consulta despues del cierre de sesion.
+    // CP-NO-007: propietario, roles, JWT y consulta despues del cierre de sesion.
     @Test
     void valoracionSeNotificaYApiAislaAvisosDespuesDeCerrarSesion() throws Exception {
         sesiones.iniciar(docente, sesion);
@@ -230,21 +231,19 @@ class PruebaFlujosNotificaciones {
         despachar();
         assertEquals(2, avisos.listar(estudiante, 20, 0).size());
         UUID aviso = avisos.listar(estudiante, 20, 0).getFirst().id();
-        mvc.perform(get("/api/notificaciones").with(httpBasic(correoEstudiante, codigo)))
+        mvc.perform(get("/api/notificaciones").with(portador(mvc, correoEstudiante, codigo)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2));
         mvc.perform(get("/api/notificaciones")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/notificaciones").with(user(docente.toString()).roles("DOCENTE"))).andExpect(status().isForbidden());
         UUID otro = UUID.randomUUID();
         mvc.perform(get("/api/notificaciones").with(user(otro.toString()).roles("ESTUDIANTE")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
-        mvc.perform(put("/api/notificaciones/{id}/leida", aviso).with(csrf()).with(user(otro.toString()).roles("ESTUDIANTE")))
+        mvc.perform(put("/api/notificaciones/{id}/leida", aviso).with(user(otro.toString()).roles("ESTUDIANTE")))
                 .andExpect(status().isNotFound());
-        mvc.perform(put("/api/notificaciones/{id}/leida", aviso).with(user(estudiante.toString()).roles("ESTUDIANTE")))
-                .andExpect(status().isForbidden());
         for (int vez = 0; vez < 2; vez++) mvc.perform(put("/api/notificaciones/{id}/leida", aviso)
-                .with(csrf()).with(user(estudiante.toString()).roles("ESTUDIANTE"))).andExpect(status().isNoContent());
+                .with(user(estudiante.toString()).roles("ESTUDIANTE"))).andExpect(status().isNoContent());
         assertTrue(avisos.listar(estudiante, 20, 0).stream().filter(a -> a.id().equals(aviso)).findFirst().orElseThrow().leida());
-        mvc.perform(get("/api/evaluaciones/{id}/valoraciones", intento.id()).with(httpBasic(correoEstudiante, codigo)))
+        mvc.perform(get("/api/evaluaciones/{id}/valoraciones", intento.id()).with(portador(mvc, correoEstudiante, codigo)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].mensaje").value("Sugerencia formativa"));
     }
 
@@ -280,27 +279,22 @@ class PruebaFlujosNotificaciones {
     }
 
     @Test
-    void apiDeCambiosYValoracionesExigeRolCsrfYResponsable() throws Exception {
+    void apiDeCambiosYValoracionesExigeRolYResponsable() throws Exception {
         var nuevo = identidades.registrarEstudiante(docente, "nuevo-" + UUID.randomUUID() + "@universidad.example", "Nuevo");
         String cambio = "{\"agregar\":[\"" + nuevo.id() + "\"],\"retirar\":[]}";
+        mvc.perform(put("/api/sesiones/{id}/convocados", sesion).with(user(estudiante.toString()).roles("ESTUDIANTE"))
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(cambio)).andExpect(status().isForbidden());
         mvc.perform(put("/api/sesiones/{id}/convocados", sesion).with(user(docente.toString()).roles("DOCENTE"))
-                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(cambio)).andExpect(status().isForbidden());
-        mvc.perform(put("/api/sesiones/{id}/convocados", sesion).with(csrf()).with(user(estudiante.toString()).roles("ESTUDIANTE"))
-                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(cambio)).andExpect(status().isForbidden());
-        mvc.perform(put("/api/sesiones/{id}/convocados", sesion).with(csrf()).with(user(docente.toString()).roles("DOCENTE"))
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(cambio)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.convocatorias[0].autorizada").value(true));
         sesiones.iniciar(docente, sesion);
         var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
         participacion.finalizar(estudiante, intento.id());
         String mensaje = "{\"mensaje\":\"Valoracion formativa\"}";
-        mvc.perform(post("/api/evaluaciones/{id}/valoraciones", intento.id()).with(csrf())
+        mvc.perform(post("/api/evaluaciones/{id}/valoraciones", intento.id())
                 .with(user(estudiante.toString()).roles("ESTUDIANTE"))
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(mensaje)).andExpect(status().isForbidden());
         mvc.perform(post("/api/evaluaciones/{id}/valoraciones", intento.id())
-                .with(user(docente.toString()).roles("DOCENTE"))
-                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(mensaje)).andExpect(status().isForbidden());
-        mvc.perform(post("/api/evaluaciones/{id}/valoraciones", intento.id()).with(csrf())
                 .with(user(docente.toString()).roles("DOCENTE"))
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(mensaje)).andExpect(status().isCreated());
     }
@@ -312,7 +306,7 @@ class PruebaFlujosNotificaciones {
         var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
         participacion.finalizar(estudiante, intento.id());
         int antes = cantidad(sesion);
-        mvc.perform(post("/api/reportes/participaciones/{id}/valoraciones", intento.id()).with(csrf())
+        mvc.perform(post("/api/reportes/participaciones/{id}/valoraciones", intento.id())
                 .with(user(docente.toString()).roles("DOCENTE"))
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                 .content("{\"mensaje\":\"Revisa las perspectivas del grupo\"}"))
@@ -330,7 +324,7 @@ class PruebaFlujosNotificaciones {
         var recibidos = avisos.listar(estudiante, 20, 0);
         assertEquals(1, recibidos.stream().filter(a -> "VALORACION".equals(a.tipo())).count());
         assertEquals(1, recibidos.stream().filter(a -> "RESULTADO".equals(a.tipo())).count());
-        mvc.perform(get("/api/evaluaciones/{id}/valoraciones", intento.id()).with(httpBasic(correoEstudiante, codigo)))
+        mvc.perform(get("/api/evaluaciones/{id}/valoraciones", intento.id()).with(portador(mvc, correoEstudiante, codigo)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].mensaje").value("Revisa las perspectivas del grupo"));
     }
 
@@ -350,18 +344,16 @@ class PruebaFlujosNotificaciones {
     }
 
     @Test
-    void reporteSoloPermiteValorarAlDocenteResponsableConCsrfEIntentoFinalizado() throws Exception {
+    void reporteSoloPermiteValorarAlDocenteResponsableEIntentoFinalizado() throws Exception {
         sesiones.iniciar(docente, sesion);
         var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
         String ruta = "/api/reportes/participaciones/" + intento.id() + "/valoraciones";
         String contenido = "{\"mensaje\":\"Valoracion formativa\"}";
-        mvc.perform(post(ruta).with(csrf()).contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(contenido))
+        mvc.perform(post(ruta).contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(contenido))
                 .andExpect(status().isUnauthorized());
-        mvc.perform(post(ruta).with(csrf()).with(user(estudiante.toString()).roles("ESTUDIANTE"))
+        mvc.perform(post(ruta).with(user(estudiante.toString()).roles("ESTUDIANTE"))
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(contenido)).andExpect(status().isForbidden());
         mvc.perform(post(ruta).with(user(docente.toString()).roles("DOCENTE"))
-                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(contenido)).andExpect(status().isForbidden());
-        mvc.perform(post(ruta).with(csrf()).with(user(docente.toString()).roles("DOCENTE"))
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(contenido)).andExpect(status().isConflict());
         participacion.finalizar(estudiante, intento.id());
         String correoAdmin = "admin-control-" + UUID.randomUUID() + "@universidad.example";
@@ -370,9 +362,9 @@ class PruebaFlujosNotificaciones {
         UUID otroDocente = identidades.registrarDocente(administrador, "otro-" + UUID.randomUUID() + "@universidad.example",
                 "Otro docente", "clave-ficticia").id();
         int antes = cantidad(sesion);
-        mvc.perform(post(ruta).with(csrf()).with(user(otroDocente.toString()).roles("DOCENTE"))
+        mvc.perform(post(ruta).with(user(otroDocente.toString()).roles("DOCENTE"))
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(contenido)).andExpect(status().isForbidden());
-        mvc.perform(post(ruta).with(csrf()).with(user(docente.toString()).roles("DOCENTE"))
+        mvc.perform(post(ruta).with(user(docente.toString()).roles("DOCENTE"))
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{\"mensaje\":\" \"}"))
                 .andExpect(status().isBadRequest());
         assertEquals(antes, cantidad(sesion));
