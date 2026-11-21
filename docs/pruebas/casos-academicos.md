@@ -10,7 +10,7 @@
 | Escenario | Resultado esperado | Prueba automatizada |
 | --- | --- | --- |
 | Docente edita espacio sin sesiones | 200, conserva UUID y normaliza nombre/periodo; cambios persistidos | `editaEspaciosDisponibles` |
-| Datos invalidos, espacio ausente, rol incorrecto o falta CSRF | 400, 404 y 403 respectivamente; sin cambios | `editaEspaciosDisponibles` |
+| Datos invalidos, espacio ausente, rol incorrecto o JWT ausente | 400, 404, 403 y 401 respectivamente; sin cambios | `editaEspaciosDisponibles` |
 | Programacion concurrente con edicion | La edicion espera al bloqueo de programacion y devuelve 409 tras confirmar la sesion | `serializaProgramacionYEdicion` |
 | Espacio asociado a sesion finalizada | 409 y conserva los datos originales | `serializaProgramacionYEdicion` |
 
@@ -63,7 +63,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 
 | Paso | Acción | Datos de entrada — campo y valor | Tipo de escenario | Respuesta esperada de la aplicación | Coincide: sí | Coincide: no | Respuesta del sistema |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Enviar POST /api/academico/espacios con CSRF vigente. | nombre=" Psicología social "; periodo=" 2026-2 " | Positivo | HTTP 201; devuelve id, nombre=Psicología social y periodo=2026-2 sin espacios externos; no devuelve campos name o period. | — | — | Pendiente |
+| 1 | Enviar POST /api/academico/espacios con JWT vigente. | nombre=" Psicología social "; periodo=" 2026-2 " | Positivo | HTTP 201; devuelve id, nombre=Psicología social y periodo=2026-2 sin espacios externos; no devuelve campos name o period. | — | — | Pendiente |
 | 2 | Consultar GET /api/academico/espacios/{id} con el UUID recibido. | UUID del espacio creado. | Positivo | HTTP 200 con los mismos datos. | — | — | Pendiente |
 | 3 | Reiniciar únicamente la aplicación usando la misma base de pruebas y consultar de nuevo el UUID. | Misma configuración MySQL y credenciales docentes. | Persistencia | HTTP 200; el espacio se conserva. | — | — | Pendiente |
 
@@ -305,7 +305,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 
 ### Caso de prueba
 
-**Precondiciones:** Administrador activo; un espacio existente; para POST del administrador usar CSRF válido para aislar el control de rol. Se aplican las condiciones comunes del [plan](plan-pruebas.md#52-preparación-común-de-la-ejecución).
+**Precondiciones:** Administrador activo; un espacio existente; para POST del administrador usar JWT válido para aislar el control de rol. Se aplican las condiciones comunes del [plan](plan-pruebas.md#52-preparación-común-de-la-ejecución).
 
 | Paso | Acción | Datos de entrada — campo y valor | Tipo de escenario | Respuesta esperada de la aplicación | Coincide: sí | Coincide: no | Respuesta del sistema |
 | --- | --- | --- | --- | --- | --- | --- | --- |

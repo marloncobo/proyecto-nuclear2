@@ -64,12 +64,12 @@ La validacion completa para publicar corresponde a la segunda entrega.
 
 ## API
 
-Requiere el mismo HTTP Basic y token CSRF que identidad y espacios academicos.
+Requiere el mismo JWT Bearer y token JWT que identidad y espacios academicos.
 
 - `POST /api/casos`: docente con permiso, responde 201 con el borrador creado.
 - `GET /api/casos/{id}`: docente responsable, responde 200.
 - 400: datos invalidos; 401: sin autenticacion; 403: rol, permiso, propiedad
-  o CSRF; 404: caso inexistente; 409: conflicto de integridad.
+  o JWT; 404: caso inexistente; 409: conflicto de integridad.
 
 El actor se toma del principal autenticado. No se aceptan del cliente el
 identificador del caso, el propietario ni el estado del caso. Los UUID del
@@ -130,7 +130,7 @@ sin incidencias. Mensaje propuesto para el primer commit, pendiente de revision:
 | --- | --- |
 | `PruebaConstructorCasoAcademico` | RF-05/06/07/08/17; RN-02/11: construccion, orden, aislamiento, duplicados, referencias y rangos |
 | `PruebaServicioCreacionCaso` | RF-02/05: autorizacion antes de guardar, identidad del creador y consulta protegida |
-| `PruebaControladorCasos` | RF-02/05/09: HTTP, rol, CSRF, propietario autenticado, errores y estado BORRADOR |
+| `PruebaControladorCasos` | RF-02/05/09: HTTP, rol, JWT, propietario autenticado, errores y estado BORRADOR |
 | `PruebaRepositorioCasosJdbc` | RF-05/06/07/08/17: agregado completo, tiempo omitido y rollback por fallo de un hijo |
 
 Las pruebas JDBC ejecutan `schema.sql` sobre H2 en modo MySQL (dependencia

@@ -110,8 +110,7 @@ programacion. No se atribuye a State la resolucion de esa futura integracion.
 
 ## API docente
 
-Requiere HTTP Basic. POST requiere tambien cookie y cabecera CSRF obtenidas
-mediante `GET /api/identidad/csrf`, igual que los modulos existentes.
+Requiere JWT Bearer tanto para consultas como para escrituras; no usa cookies ni CSRF.
 
 | Metodo | Ruta | Resultado |
 | --- | --- | --- |
@@ -139,7 +138,7 @@ Los valores de id del ejemplo deben sustituirse por UUID reales del entorno.
 El caso del ejemplo debe tener tiempo estimado de al menos 30 minutos.
 Inicio y finalizacion no requieren cuerpo.
 
-400: datos invalidos; 401: sin autenticar; 403: rol, propiedad o CSRF;
+400: datos invalidos; 401: sin autenticar; 403: rol, propiedad o JWT;
 404: caso/espacio/sesion inexistente; 409: caso no programable o transicion
 prohibida. No se aceptan del cliente el estado ni el docente responsable.
 
@@ -149,7 +148,7 @@ prohibida. No se aceptan del cliente el estado ni el docente responsable.
 | --- | --- |
 | PruebaSesion | Transiciones, inmutabilidad, idempotencia, limite exacto, vencimiento y programacion |
 | PruebaServicioGestionSesiones | Contratos entre modulos, permisos, propietario, bloqueo y barrido |
-| PruebaControladorSesiones | Rol, CSRF, actor autenticado, ISO con offset, rutas y errores |
+| PruebaControladorSesiones | Rol, JWT, actor autenticado, ISO con offset, rutas y errores |
 | PruebaRepositorioSesionesJdbc | Persistencia, reconstruccion State, vencidas, rollback y bloqueo concurrente real con dos conexiones |
 | PruebaPlanificadorCierreSesiones | Delegacion al caso de uso con reloj fijo |
 | PruebaServicioConsultaCasos | Publicado propio permitido, borrador/archivado/ajeno rechazado |

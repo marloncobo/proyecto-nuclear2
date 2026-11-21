@@ -17,7 +17,7 @@
 | Desactivar y reactivar | 200 idempotente; 401 al autenticar cuenta inactiva; conserva credenciales; 409 desactivacion propia | `desactivaYReactivaConProteccionPropia` |
 | Consultar roles y permiso | Tres roles; `habilitado` refleja permiso docente y es falso para otros roles | `consultaRolesYPermisos` |
 | Buscar estudiante por correo institucional exacto | 200 activo; 404 ausente, personal o inactivo; 400 externo o parametro ausente | `buscaEstudiantePorCorreo` |
-| Autorizacion y CSRF | 401 sin autenticar, 403 rol incorrecto o escritura sin CSRF; servicios tambien verifican actor | `restringeRolesYExigeCsrf` |
+| Autorizacion JWT | 401 sin Bearer, 403 con rol incorrecto; los servicios también verifican al actor | `restringeRolesYExigeJwt` |
 
 Las respuestas y cuerpos de los endpoints se describen en la
 [tabla de API](../../backend/README.md#api-mínima). Las pruebas son evidencia
@@ -46,7 +46,7 @@ Este archivo desarrolla las fichas de la sección 6 del [plan de pruebas](plan-p
 | [CP-ID-010](#cp-id-010) | Soporte de CU-13 — Registrar y reutilizar identidad estudiantil | CU-13 (preparación de identidad; convocatoria pendiente) | Disponible |
 | [CP-ID-011](#cp-id-011) | Soporte de CU-13 — Rechazar correo externo o perteneciente al personal | CU-13 (preparación de identidad) | Disponible |
 | [CP-ID-012](#cp-id-012) | CU-03 — Rechazar promoción de estudiante sin contraseña | CU-03 | Disponible |
-| [CP-ID-013](#cp-id-013) | CU-02 — Rechazar modificación sin protección CSRF | CU-02 (control transversal) | Disponible |
+| [CP-ID-013](#cp-id-013) | CU-02 — Rechazar autenticación HTTP Basic heredada | CU-02 (control transversal) | Disponible |
 | [CP-ID-014](#cp-id-014) | CU-01 — Denegar acceso estudiantil sin adaptador de convocatorias | CU-01 | Disponible |
 | [CP-ID-015](#cp-id-015) | CU-01 — Autenticar estudiante con código válido | CU-01 | Bloqueado |
 | [CP-ID-016](#cp-id-016) | CU-01 — Rechazar código ajeno, incorrecto o estudiante no convocado | CU-01; CU-22 como límite de autorización | Bloqueado |
@@ -77,7 +77,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 
 | Paso | Acción | Datos de entrada — campo y valor | Tipo de escenario | Respuesta esperada de la aplicación | Coincide: sí | Coincide: no | Respuesta del sistema |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Enviar POST /api/identidad/docentes con autenticación de administrador y CSRF vigente. | correo=docente.nuevo@universidad.example; nombre=Docente de prueba; clave=ClaveFicticia2026! | Positivo | HTTP 201; UUID generado, correo normalizado, rol DOCENTE; la respuesta no incluye clave ni hashClave. | — | — | Pendiente |
+| 1 | Enviar POST /api/identidad/docentes con autenticación de administrador y JWT vigente. | correo=docente.nuevo@universidad.example; nombre=Docente de prueba; clave=ClaveFicticia2026! | Positivo | HTTP 201; UUID generado, correo normalizado, rol DOCENTE; la respuesta no incluye clave ni hashClave. | — | — | Pendiente |
 | 2 | Consultar GET /api/identidad/yo con las credenciales del nuevo docente. | Correo y clave del docente recién registrado. | Positivo | HTTP 200; el UUID coincide con el del alta y el rol es DOCENTE. | — | — | Pendiente |
 
 **Postcondiciones:** Existe una sola cuenta docente activa. La clave almacenada debe ser un hash BCrypt; comprobarlo mediante consulta controlada de usuario sin registrar su valor en evidencias.
@@ -196,7 +196,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 
 ### Caso de prueba
 
-**Precondiciones:** Docente activo autenticado; solicitud válida y token CSRF vigente. Se aplican las condiciones comunes del [plan](plan-pruebas.md#52-preparación-común-de-la-ejecución).
+**Precondiciones:** Docente activo autenticado; solicitud válida y token JWT vigente. Se aplican las condiciones comunes del [plan](plan-pruebas.md#52-preparación-común-de-la-ejecución).
 
 | Paso | Acción | Datos de entrada — campo y valor | Tipo de escenario | Respuesta esperada de la aplicación | Coincide: sí | Coincide: no | Respuesta del sistema |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -214,7 +214,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.docenteNoAdministraIdentidadesNiPermisos. Verifica HTTP 403 con credenciales y CSRF reales, sin guardar cuentas. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
+| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.docenteNoAdministraIdentidadesNiPermisos. Verifica HTTP 403 con credenciales y JWT reales, sin guardar cuentas. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
 
 <a id="cp-id-005"></a>
 
@@ -399,7 +399,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Requisitos / reglas | RF-02; RN-10 |
 | Actor | Administrador o docente |
 | Disponibilidad | Disponible para ejecutar |
-| Descripción del caso de prueba | Comprobar autenticación HTTP Basic y rechazo uniforme de credenciales incorrectas. |
+| Descripción del caso de prueba | Comprobar autenticación JWT Bearer y rechazo uniforme de credenciales incorrectas. |
 
 ### Caso de prueba
 
@@ -549,7 +549,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 
 <a id="cp-id-013"></a>
 
-## CP-ID-013 — CU-02 — Rechazar modificación sin protección CSRF
+## CP-ID-013 — CU-02 — Rechazar autenticación HTTP Basic heredada
 
 ### Información global del caso de prueba
 
@@ -563,7 +563,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Requisitos / reglas | RF-02, RF-03; RN-10 |
 | Actor | Administrador |
 | Disponibilidad | Disponible para ejecutar |
-| Descripción del caso de prueba | Verificar que autenticarse no permite omitir el control CSRF en un alta. |
+| Descripción del caso de prueba | Verificar que las rutas protegidas no aceptan HTTP Basic después de migrar a JWT. |
 
 ### Caso de prueba
 
@@ -571,9 +571,9 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 
 | Paso | Acción | Datos de entrada — campo y valor | Tipo de escenario | Respuesta esperada de la aplicación | Coincide: sí | Coincide: no | Respuesta del sistema |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Enviar POST /api/identidad/docentes con HTTP Basic, omitiendo cookie y cabecera CSRF. | correo=sin.csrf@universidad.example; nombre=Prueba; clave=ClaveFicticia2026! | Negativo / seguridad | HTTP 403; no se registra la cuenta. | — | — | Pendiente |
+| 1 | Enviar POST /api/identidad/docentes con cabecera `Authorization: Basic ...`. | correo=sin.basic@universidad.example; nombre=Prueba; clave=ClaveFicticia2026! | Negativo / seguridad | HTTP 401; no se registra la cuenta. | — | — | Pendiente |
 
-**Postcondiciones:** No existe sin.csrf@universidad.example.
+**Postcondiciones:** No existe sin.basic@universidad.example.
 
 **Evidencias:** pendientes. Adjuntar captura o transcripción saneada de cada paso y de la postcondición. No adjuntar credenciales, cabeceras de autorización, códigos reales ni hashes.
 
@@ -585,7 +585,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Veredicto | No ejecutado |
 | Observaciones | Registrar resultados de cada variante; si alguna falla, el caso no puede declararse «Pasado». |
 | Probador | Por asignar |
-| Apoyo automatizado existente | PruebaFlujosIdentidadAcademica.altaDocenteRequiereCsrf. El alta sin CSRF devuelve 403 sin escritura; el mismo registro funciona con cookie y token obtenidos del endpoint real. Usa dobles de almacenamiento, no MySQL. Complemento con JDBC real: [cobertura MySQL](cobertura-mysql.md). |
+| Apoyo automatizado existente | `PruebaSeguridadIdentidad.rechazaAutenticacionBasica` y `PruebaPersistenciaMysqlIT.altasNoAutorizadasNoPersisten` verifican HTTP 401 para Basic. `PruebaFlujosIdentidadAcademica.altaDocenteConJwtNoRequiereCookies` comprueba la escritura Bearer sin cookie. |
 
 <a id="cp-id-014"></a>
 
@@ -611,7 +611,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 
 | Paso | Acción | Datos de entrada — campo y valor | Tipo de escenario | Respuesta esperada de la aplicación | Coincide: sí | Coincide: no | Respuesta del sistema |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Consultar GET /api/identidad/yo mediante HTTP Basic del estudiante. | Correo registrado; código ficticio CodigoNoVerificable2026. | Negativo / integración ausente | HTTP 401; tener una identidad estudiantil no basta para autenticarse. | — | — | Pendiente |
+| 1 | Consultar GET /api/identidad/yo mediante JWT Bearer del estudiante. | Correo registrado; código ficticio CodigoNoVerificable2026. | Negativo / integración ausente | HTTP 401; tener una identidad estudiantil no basta para autenticarse. | — | — | Pendiente |
 
 **Postcondiciones:** No hay autenticación exitosa ni acceso a participación. Este rechazo no demuestra que se valide una convocatoria real.
 

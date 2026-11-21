@@ -81,8 +81,7 @@ la condicion de estado por si sola no protege futuras modificaciones de hijos.
 ## API
 
 `POST /api/casos/{id}/publicar`, sin cuerpo.
-Usa el mismo HTTP Basic, cookie y cabecera CSRF de identidad.
-El docente primero consulta `GET /api/identidad/csrf` y conserva la cookie.
+Usa el mismo JWT Bearer de identidad; no requiere cookies ni CSRF.
 
 Respuesta 200:
 
@@ -106,7 +105,7 @@ Respuesta 422 (ProblemDetail) si el contenido es incompleto:
 La respuesta real incluye todos los errores encontrados. No modifica el estado.
 
 Otros codigos: 400 UUID invalido; 401 sin autenticar; 403 rol, permiso,
-propiedad o CSRF; 404 caso inexistente; 409 estado distinto de BORRADOR
+propiedad o JWT; 404 caso inexistente; 409 estado distinto de BORRADOR
 o publicacion concurrente. La consulta GET del caso sigue limitada a su
 docente responsable, tambien despues de publicar; no se habilita acceso
 estudiantil a justificaciones ni opciones correctas.
@@ -117,7 +116,7 @@ estudiantil a justificaciones ni opciones correctas.
 | --- | --- |
 | `PruebaValidacionCasoAcademico` | Orden del Template Method, acumulacion de errores, validacion completa, fracciones y cobertura |
 | `PruebaServicioPublicacionCaso` | Permiso, propietario, existencia, estado previo, conservacion del borrador y conflicto de actualizacion |
-| `PruebaControladorPublicacionCasos` | Rol/CSRF, publicacion HTTP, consulta posterior, errores 422 y rechazos 403/404/409 |
+| `PruebaControladorPublicacionCasos` | Rol/JWT, publicacion HTTP, consulta posterior, errores 422 y rechazos 403/404/409 |
 | `PruebaRepositorioCasosJdbc` | Publicacion condicional, contenido intacto, lectura posterior y rollback transaccional |
 
 Ejecutar desde `backend/`: `.\mvnw.cmd verify`.

@@ -44,13 +44,16 @@ test('creación de borrador y transición a publicado en demostración', async (
   await expect(pagina.getByRole('dialog').getByText('Publicado', { exact: true })).toBeVisible();
 });
 
-test('API: autenticación, separación de datos ficticios y CSRF al crear un espacio', async ({
+test('API: autenticación Bearer y separación de datos ficticios al crear un espacio', async ({
   page: pagina,
 }) => {
-  let cabecera = '';
+  let autorizacion = '';
   let cuerpo: unknown;
   await pagina.route('**/api/**', async (ruta) => {
     const url = new URL(ruta.request().url());
+    if (url.pathname.endsWith('/ingreso'))
+      return ruta.fulfill({ json: { token: 'token-ficticio', tipo: 'Bearer' } });
+    expect(ruta.request().headers()['authorization']).toBe('Bearer token-ficticio');
     if (url.pathname.endsWith('/yo'))
       return ruta.fulfill({
         json: {
@@ -61,10 +64,9 @@ test('API: autenticación, separación de datos ficticios y CSRF al crear un esp
           puedeCrearCasos: true,
         },
       });
-    if (url.pathname.endsWith('/csrf'))
-      return ruta.fulfill({ json: { nombreCabecera: 'X-CSRF-TOKEN', token: 'token-prueba' } });
     if (ruta.request().method() === 'POST') {
-      cabecera = ruta.request().headers()['x-csrf-token'];
+      autorizacion = ruta.request().headers()['authorization'];
+      expect(ruta.request().headers()['x-csrf-token']).toBeUndefined();
       cuerpo = ruta.request().postDataJSON();
       return ruta.fulfill({ json: { id: 'espacio-real', ...(cuerpo as object) } });
     }
@@ -81,13 +83,13 @@ test('API: autenticación, separación de datos ficticios y CSRF al crear un esp
   await pagina.getByLabel('Nombre', { exact: true }).fill('Psicología comunitaria');
   await pagina.getByRole('button', { name: 'Crear espacio' }).click();
   await expect(pagina.getByRole('heading', { name: 'Psicología comunitaria' })).toBeVisible();
-  expect(cabecera).toBe('token-prueba');
+  expect(autorizacion).toBe('Bearer token-ficticio');
   expect(cuerpo).toEqual({ nombre: 'Psicología comunitaria', periodo: '2026-2' });
   expect(await pagina.evaluate(() => localStorage.length)).toBe(0);
 });
 
 test('error de acceso visible sin abandonar el login', async ({ page: pagina }) => {
-  await pagina.route('**/api/identidad/yo', (ruta) => ruta.fulfill({ status: 401, json: {} }));
+  await pagina.route('**/api/identidad/ingreso', (ruta) => ruta.fulfill({ status: 401, json: {} }));
   await pagina.goto('/');
   await pagina.getByLabel('Correo institucional').fill('docente@ejemplo.edu');
   await pagina.getByLabel('Contraseña', { exact: true }).fill('incorrecta');
@@ -116,6 +118,8 @@ test('reporte: evaluación pendiente y ausencia de intentos sin inventar notas',
   let conIntento = true;
   await pagina.route('**/api/**', async (ruta) => {
     const direccion = new URL(ruta.request().url());
+    if (direccion.pathname.endsWith('/ingreso'))
+      return ruta.fulfill({ json: { token: 'token-ficticio', tipo: 'Bearer' } });
     if (direccion.pathname.endsWith('/yo'))
       return ruta.fulfill({
         json: {

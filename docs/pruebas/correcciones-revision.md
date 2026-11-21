@@ -108,14 +108,14 @@ Resultado del 01-11-2026: mvnw verify completo; 133 pruebas descubiertas,
 132 aprobadas, cero fallos/errores y una omitida (PruebaFlujoMySql por no
 configurar conexion). JAR generado y git diff --check sin incidencias.
 
-PruebaFlujoReal usa Spring Boot, filtros de seguridad, HTTP Basic con claves
+PruebaFlujoReal usa Spring Boot, filtros de seguridad, JWT Bearer con claves
 reales BCrypt, repositorios JDBC y H2. Solo se sustituye el reloj.
 Recorre administrador, docente y estudiante; edita y publica caso; programa
 convocatorias, autentica con codigo, impide acceso a soluciones, archiva sin
 romper sesiones y recupera multiples cierres tras reconstruir el servicio.
 
 Las pruebas de regresion incluyen sustitucion sin huerfanos, rollback,
-propiedad, estados, HTTP 400 y CSRF, opciones correctas/incorrectas, limite
+propiedad, estados, HTTP 400 y JWT, opciones correctas/incorrectas, limite
 inicial, vinculacion del codigo al alumno/sesion y mitad del horario.
 
 PruebaFlujoMySql ejecuta el mismo recorrido contra MySQL si se configuran:
