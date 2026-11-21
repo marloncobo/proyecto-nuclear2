@@ -207,6 +207,28 @@ CREATE TABLE IF NOT EXISTS detalle_evaluacion (
     CHECK (puntos >= 0)
 );
 
+-- Reportes. Una ausencia es un resultado consolidado de sesion, no un intento incompleto.
+CREATE TABLE IF NOT EXISTS ausencia_reporte (
+    id_sesion CHAR(36) NOT NULL,
+    id_estudiante CHAR(36) NOT NULL,
+    fecha_consolidacion TIMESTAMP NOT NULL,
+    PRIMARY KEY (id_sesion, id_estudiante),
+    FOREIGN KEY (id_sesion) REFERENCES sesion(id_sesion),
+    FOREIGN KEY (id_estudiante) REFERENCES usuario(id_usuario)
+);
+
+CREATE TABLE IF NOT EXISTS detalle_ausencia_reporte (
+    id_sesion CHAR(36) NOT NULL,
+    id_estudiante CHAR(36) NOT NULL,
+    id_pregunta CHAR(36) NOT NULL,
+    puntos DECIMAL(8,2) NOT NULL,
+    valoracion VARCHAR(200) NOT NULL,
+    PRIMARY KEY (id_sesion, id_estudiante, id_pregunta),
+    FOREIGN KEY (id_sesion, id_estudiante) REFERENCES ausencia_reporte(id_sesion, id_estudiante),
+    FOREIGN KEY (id_pregunta) REFERENCES pregunta(id_pregunta),
+    CHECK (puntos = 0)
+);
+
 -- La misma tabla funciona como outbox durable de entregas y almacen de avisos internos.
 CREATE TABLE IF NOT EXISTS notificacion (
     id_notificacion CHAR(36) PRIMARY KEY,

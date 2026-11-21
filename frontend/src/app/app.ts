@@ -66,6 +66,7 @@ export class Aplicacion {
   readonly cargandoEstudiantes = signal(false);
   readonly reporteSesion = signal<FilaReporteSesion[] | null>(null);
   idSesionReporte = '';
+  nombreEstudianteReporte = '';
   valoraciones: Record<string, string> = {};
   altaEstudiante = { nombre: '', correo: '' };
   convocadosSeleccionados: string[] = [];
@@ -246,6 +247,7 @@ export class Aplicacion {
     this.estudiantes.set([]);
     this.reporteSesion.set(null);
     this.idSesionReporte = '';
+    this.nombreEstudianteReporte = '';
     this.valoraciones = {};
     this.altaEstudiante = { nombre: '', correo: '' };
     this.convocadosSeleccionados = [];
@@ -530,17 +532,34 @@ export class Aplicacion {
   async consultarReporteSesion() {
     await this.ejecutar(async () => {
       this.reporteSesion.set(null);
+      this.resultado.set(null);
+      this.nombreEstudianteReporte = '';
       this.reporteSesion.set(await this.api.consultar<FilaReporteSesion[]>(
         `/reportes/sesiones/${encodeURIComponent(this.idSesionReporte)}`,
       ));
     });
   }
 
+  async consultarResultados(fila: FilaReporteSesion) {
+    const sesion = this.sesiones().find((actual) => actual.id === this.idSesionReporte);
+    if (!sesion) {
+      this.error.set('No se encontró la sesión seleccionada. Actualiza la página e inténtalo de nuevo.');
+      return;
+    }
+    this.identificadorReporte = sesion.idCaso;
+    this.idEstudiante = fila.idEstudiante;
+    this.nombreEstudianteReporte = fila.nombreEstudiante;
+    await this.consultarReporte();
+  }
+
   descargarReporteSesion() {
     const filas = this.reporteSesion();
     if (!filas) return;
-    const csv = ['Estudiante,Intento,Estado,Calificación', ...filas.map((fila) =>
-      [fila.idEstudiante, fila.idIntento, fila.estado, fila.calificacion].join(','))].join('\r\n');
+    const escapar = (valor: unknown) => `"${String(valor ?? '').replaceAll('"', '""')}"`;
+    const csv = ['Estudiante,Correo,Identificador,Intento,Estado,Calificación,Preguntas ausentes',
+      ...filas.map((fila) => [fila.nombreEstudiante, fila.correoEstudiante, fila.idEstudiante,
+        fila.idIntento, fila.estado, fila.calificacion, fila.ausencia?.detalles.length ?? 0]
+        .map(escapar).join(','))].join('\r\n');
     const url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }));
     const enlace = document.createElement('a');
     enlace.href = url;

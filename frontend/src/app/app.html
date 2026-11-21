@@ -444,7 +444,7 @@
               } @else {
                 <form (ngSubmit)="consultarReporteSesion()">
                   <label>Sesión para exportar
-                    <select name="sesionReporte" [(ngModel)]="idSesionReporte" (ngModelChange)="reporteSesion.set(null)" required>
+                    <select name="sesionReporte" [(ngModel)]="idSesionReporte" (ngModelChange)="reporteSesion.set(null); resultado.set(null); nombreEstudianteReporte = ''" required>
                       <option value="">Selecciona una sesión</option>
                       @for (sesion of sesiones(); track sesion.id) {
                         <option [value]="sesion.id">{{ nombreCaso(sesion.idCaso) }} · {{ sesion.inicioPrevisto | date: 'short' }}</option>
@@ -455,26 +455,39 @@
                   @if (reporteSesion(); as filas) {
                     <p role="status">{{ filas.length }} filas listas para exportar.</p>
                     <button type="button" class="boton secundario" (click)="descargarReporteSesion()">Descargar CSV</button>
+                    <div class="lista-reporte-sesion">
+                      @for (fila of filas; track fila.idEstudiante + (fila.idIntento ?? 'ausencia')) {
+                        <article class="fila-reporte-sesion">
+                          <div>
+                            <strong>{{ fila.nombreEstudiante }}</strong>
+                            <small>{{ fila.correoEstudiante }}</small>
+                          </div>
+                          <span class="estado">{{ fila.estado }}</span>
+                          <p class="nota-calificacion compacta">{{ fila.calificacion ?? '—' }} <small>Calificación</small></p>
+                          @if (fila.ausencia; as ausencia) {
+                            <p class="detalle-ausencia">
+                              Ausencia consolidada · {{ ausencia.detalles.length }}
+                              {{ ausencia.detalles.length === 1 ? 'pregunta' : 'preguntas' }} con 0 puntos.
+                            </p>
+                          } @else if (fila.estado === 'FINALIZADO' || fila.estado === 'VENCIDO') {
+                            <button type="button" class="boton secundario" (click)="consultarResultados(fila)"
+                              [disabled]="ocupado()">
+                              Ver resultados de {{ fila.nombreEstudiante }}
+                            </button>
+                          }
+                        </article>
+                      } @empty {
+                        <p class="vacio">La sesión todavía no tiene participaciones para mostrar.</p>
+                      }
+                    </div>
                   }
-                </form>
-                <form (ngSubmit)="consultarReporte()">
-                  <label
-                    >Identificador del caso<input
-                      name="casoReporte"
-                      [(ngModel)]="identificadorReporte"
-                      required /></label
-                  ><label
-                    >Identificador del estudiante<input
-                      name="estudianteReporte"
-                      [(ngModel)]="idEstudiante"
-                      required /></label
-                  ><button class="boton primario" [disabled]="ocupado()">
-                    Consultar resultados ↗
-                  </button>
                 </form>
               }
               @if (resultado() !== null) {
-                <h3>Recorrido académico</h3>
+                <h3>
+                  Recorrido académico
+                  @if (nombreEstudianteReporte) { <span>· {{ nombreEstudianteReporte }}</span> }
+                </h3>
                 @for (reporte of resultado(); track reporte.participacion.idIntento) {
                   <article class="intento-reporte">
                     <div class="titulo-seccion">

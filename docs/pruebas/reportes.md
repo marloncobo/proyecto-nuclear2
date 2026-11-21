@@ -2,11 +2,11 @@
 
 Implementacion de RF-15 / CU-30, con historial independiente (RN-06) y
 retroalimentacion disponible solo al terminar el intento (RN-08/09).
-La descarga de reportes RF-16 / CU-31 sigue pospuesta segun
-[el alcance del MVP](../alcance.md). La valoracion general docente RF-26 se implementa en `evaluation` al integrar
+La descarga CSV del resumen de sesion reutiliza el contrato de consulta existente.
+La valoracion general docente RF-26 se implementa en `evaluation` al integrar
 notificaciones y ahora forma parte de la respuesta de reportes mediante
-`valoracionesGenerales`. Tambien puede registrarse desde el seguimiento docente. La consolidacion de ausencias CU-35 sigue pendiente.
-Esta consulta no declara completos RF-16 ni CU-35.
+`valoracionesGenerales`. Tambien puede registrarse desde el seguimiento docente.
+CU-35 consolida las ausencias al cerrar la sesion, sin crear intentos ficticios.
 
 ## Contrato HTTP
 
@@ -34,6 +34,22 @@ entrada. Una lista vacia significa que no hay intentos terminados para ese
 estudiante y caso. No representa ausencia ni calificacion de cero. Las preguntas
 sin responder siguen en `preguntas` y, si existe evaluacion, en su detalle.
 Consultar no calcula notas, modifica intentos ni envia notificaciones.
+
+## Resumen de sesion y ausencias — CU-35
+
+`GET /api/reportes/sesiones/{idSesion}` requiere docente responsable y devuelve
+una fila por estudiante e intento. Incluye `nombreEstudiante`, `correoEstudiante`,
+`idEstudiante`, `idIntento`, `estado`, `calificacion` y `ausencia`. El frontend
+usa estas filas para enlazar sesion → estudiante → historial de intentos, sin
+pedir UUID al docente, y permite exportar el mismo resumen en CSV.
+
+Al pasar una sesion a `FINALIZADO`, tanto manual como automaticamente, el puerto
+`ConsolidadorReporteSesion` registra en la misma transaccion a cada convocado
+autorizado que no tenga intento. La ausencia tiene nota cero y un detalle de cero
+puntos por cada pregunta del caso. Se persiste en `ausencia_reporte` y
+`detalle_ausencia_reporte`, separada de `intento`; repetir el cierre o la
+consolidacion no duplica filas. Un intento incompleto conserva su identificador y
+estado propios y nunca se representa como ausencia.
 
 ## Integracion con notificaciones — RF-26/27, CU-32/33
 
@@ -65,8 +81,8 @@ por consultar un reporte ni generacion/exportacion asincrona ajena al alcance.
 `ControladorReportes` delega en `FachadaConsultaParticipaciones`, conforme a
 [Facade en el diseno](../diseño/patrones-diseno.md#32-facade--coordinación-de-consultas-y-administración).
 La fachada depende de `ConsultaParticipaciones`, `ConsultaResultados` y `GestionValoraciones`,
-contratos publicos de aplicacion con DTO inmutables. No accede a repositorios
-ajenos ni requiere tablas o dependencias nuevas.
+contratos publicos de aplicacion con DTO inmutables. La persistencia propia de
+reports se limita a las ausencias consolidadas y sus detalles por pregunta.
 
 `ServicioConsultaParticipaciones` exige propiedad del caso antes de listar y
 propiedad de la sesion antes de entregar un intento individual. Consume los
@@ -78,13 +94,14 @@ adaptador reutiliza `RepositorioIntentosJdbc`.
 `ServicioConsultaResultados` comprueba autorizacion y finalizacion mediante
 participation antes de leer la evaluacion persistida. El calculo sigue siendo
 responsabilidad del flujo existente de evaluation. Las dependencias son
-`reports -> evaluation -> participation -> cases/sessions`, sin ciclos.
+`reports -> evaluation -> participation -> cases/sessions`, sin ciclos. Para el
+cierre, sessions define el puerto `ConsolidadorReporteSesion` y el adaptador de
+reports lo implementa; sessions no depende de detalles de persistencia de reports.
 El dominio de reports no necesita entidades para esta consulta.
 
 Esta separacion aplica responsabilidad unica, segregacion de interfaces e
-inversion de dependencias sin agregar estrategias o persistencia propias de
-reportes. La consulta por identificador de caso es la operacion minima de esta
-entrega; no agrega catalogos de navegacion ni exportaciones.
+inversion de dependencias. El resumen de sesion funciona como catalogo de
+navegacion y como fuente de la exportacion CSV del frontend.
 
 ## Verificacion JUnit
 
@@ -96,6 +113,8 @@ Desde `backend/`: `./mvnw.cmd verify` en PowerShell o `sh mvnw verify` en Unix.
 | `PruebaServicioConsultaParticipaciones` | RF-15 / RN-06/08: autoriza antes de consultar, conserva preguntas sin respuesta, rechaza intentos activos e inexistentes. |
 | `PruebaServicioConsultaResultados` | RF-15 / RN-08/09/16: devuelve nota y explicaciones almacenadas sin calcularlas; bloquea accesos ajenos o anticipados. |
 | `PruebaControladorReportes` | RF-15 / CU-30: autenticacion, roles, identidad del principal, JSON y errores 400/403/404. |
+| `PruebaControladorReporteSesion` | RF-15 / CU-35: identidad legible y detalle HTTP de ausencia, autenticacion y rol. |
+| `PruebaConsolidacionReporteSesionJdbc` | CU-35: ausencia durable, cero por pregunta, separacion de intentos e idempotencia. |
 | `PruebaRepositorioIntentosJdbc` | RF-15 / RN-06: consulta real con H2, filtros de estudiante/caso/estado, orden y respuestas. |
 | `PruebaServicioConsultaCasos` y `PruebaServicioGestionSesiones` | RF-15: rol, propiedad y existencia; seguimiento de casos archivados. |
 

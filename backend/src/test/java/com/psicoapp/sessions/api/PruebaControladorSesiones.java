@@ -43,6 +43,7 @@ class PruebaControladorSesiones {
     @MockitoBean CatalogoCasos casos;
     @MockitoBean FachadaAdministracion academico;
     @MockitoBean Clock reloj;
+    @MockitoBean ConsolidadorReporteSesion consolidadorReportes;
     private final UUID docente = UUID.randomUUID();
     private final Sesion sesion = DatosPruebaSesiones.programada(docente);
 
@@ -100,6 +101,7 @@ class PruebaControladorSesiones {
         mvc.perform(post("/api/sesiones/{id}/iniciar", sesion.id())
                         .with(user(docente.toString()).roles("DOCENTE"))).andExpect(status().isConflict());
         verify(sesiones, times(2)).actualizarEstado(any());
+        verify(consolidadorReportes).consolidar(sesion.id(), INICIO);
     }
 
     @Test

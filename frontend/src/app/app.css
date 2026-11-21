@@ -880,8 +880,53 @@ footer i {
   color: #7a8c86;
 }
 .panel-reporte form {
-  max-width: 500px;
+  max-width: 100%;
   margin-top: 25px;
+}
+.lista-reporte-sesion {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+.fila-reporte-sesion {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto;
+  align-items: center;
+  gap: 12px 20px;
+  padding: 18px;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+}
+.fila-reporte-sesion strong,
+.fila-reporte-sesion small {
+  display: block;
+}
+.fila-reporte-sesion small {
+  color: #70827c;
+  margin-top: 4px;
+}
+.fila-reporte-sesion .compacta {
+  font-size: 24px !important;
+  margin: 0;
+}
+.fila-reporte-sesion .detalle-ausencia,
+.fila-reporte-sesion .boton {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.fila-reporte-sesion .boton {
+  justify-self: start;
+}
+@media (max-width: 600px) {
+  .panel-reporte {
+    padding: 24px 18px;
+  }
+  .fila-reporte-sesion {
+    grid-template-columns: 1fr auto;
+  }
+  .fila-reporte-sesion .compacta {
+    grid-column: 1 / -1;
+  }
 }
 .nota {
   background: #eef2ec;
