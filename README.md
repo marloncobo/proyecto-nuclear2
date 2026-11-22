@@ -43,6 +43,27 @@ sh mvnw spring-boot:run
 El servidor usa el puerto `8080`. Los módulos `identity` y `academic` exponen
 la [API mínima protegida](backend/README.md#api-mínima) de usuarios y espacios académicos.
 
+### Ejecutar con Docker
+
+Docker Compose construye el backend con Java 21 y levanta una instancia MySQL 8.4
+con volumen persistente. No requiere tener Java, Maven ni MySQL instalados en el host.
+
+```powershell
+Copy-Item .env.example .env
+# Completa en .env el administrador y las claves que necesites.
+docker compose up --build -d
+docker compose logs -f backend
+```
+
+La API queda disponible en `http://localhost:8080`. Para detenerla sin borrar los
+datos use `docker compose down`. Para eliminar también la base local use
+`docker compose down --volumes`; esta última operación es destructiva.
+
+Las credenciales `PSICOAPP_DOCKER_*` de la plantilla son exclusivamente locales.
+En un despliegue real deben sustituirse y las claves JWT y de cifrado deben
+inyectarse desde un gestor de secretos. Consulte la
+[guía Docker del backend](backend/README.md#ejecución-con-docker).
+
 Para compilar, ejecutar las pruebas JUnit y de arranque y generar el JAR:
 
 ```powershell
