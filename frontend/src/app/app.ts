@@ -629,6 +629,19 @@ export class Aplicacion {
     });
   }
 
+  puedeAutorizarReintento(fila: FilaReporteSesion, filas: FilaReporteSesion[]) {
+    const sesion = this.sesiones().find((actual) => actual.id === this.idSesionReporte);
+    return sesion?.estado === 'EN_CURSO'
+      && filas.filter((actual) => actual.idEstudiante === fila.idEstudiante).at(-1) === fila;
+  }
+
+  async autorizarReintento(fila: FilaReporteSesion) {
+    await this.ejecutar(async () => {
+      await this.api.enviar<void>(`/sesiones/${this.idSesionReporte}/reintentos/${fila.idEstudiante}`, {}, 'PUT');
+      this.aviso.set(`Reintento autorizado para ${fila.nombreEstudiante}.`);
+    });
+  }
+
   async consultarResultados(fila: FilaReporteSesion) {
     const sesion = this.sesiones().find((actual) => actual.id === this.idSesionReporte);
     if (!sesion) {

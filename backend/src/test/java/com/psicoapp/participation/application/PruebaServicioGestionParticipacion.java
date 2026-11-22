@@ -42,7 +42,7 @@ class PruebaServicioGestionParticipacion {
         };
         ConsultaSesiones sesiones = idSesion -> new ConsultaSesiones.SesionEnCurso(sesion, UUID.randomUUID(),
                 AHORA.minusSeconds(60), AHORA.plusSeconds(3600), 30, ModoNavegacion.FLEXIBLE.name());
-        servicio = new ServicioGestionParticipacion(repositorio, autorizacion, sesiones,
+        servicio = new ServicioGestionParticipacion(repositorio, autorizacion, sesiones, (docente, sesion) -> { },
                 Clock.fixed(AHORA, ZoneOffset.UTC), org.mockito.Mockito.mock(com.psicoapp.shared.events.NotificacionSujeto.class));
     }
 
@@ -119,6 +119,18 @@ class PruebaServicioGestionParticipacion {
         @Override public boolean opcionDePregunta(UUID idPregunta, UUID idOpcion) {
             return pregunta.equals(idPregunta) && opcion.equals(idOpcion);
         }
+        @Override public void bloquearEstudiante(UUID estudiante) { }
+        @Override public boolean existeActivo(UUID estudiante) {
+            return intentos.values().stream().anyMatch(i -> i.idEstudiante().equals(estudiante)
+                    && i.estado() == EstadoIntento.EN_PROGRESO);
+        }
+        @Override public boolean tienePermisoReintento(UUID intento) { return permisos.contains(intento); }
+        @Override public void registrarPermisoReintento(UUID intento, UUID docente, Instant fecha) {
+            permisos.add(intento);
+        }
+        @Override public boolean retirarPermisoReintento(UUID intento) { return permisos.remove(intento); }
+        private final java.util.Set<UUID> permisos = new java.util.HashSet<>();
+
         @Override public void guardar(Intento intento) { intentos.put(intento.id(), intento); }
         @Override public Optional<Intento> buscarPorId(UUID id) { return Optional.ofNullable(intentos.get(id)); }
         @Override public Optional<Intento> buscarActivo(UUID idSesion, UUID idEstudiante) {

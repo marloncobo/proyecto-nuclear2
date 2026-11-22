@@ -3,6 +3,7 @@ package com.psicoapp.participation.application;
 import com.psicoapp.shared.events.*;
 import com.psicoapp.sessions.application.AutorizacionConvocatorias;
 import com.psicoapp.sessions.application.ConsultaSesiones;
+import com.psicoapp.sessions.application.ConsultaSesionesDocente;
 import com.psicoapp.participation.domain.Intento;
 import com.psicoapp.participation.domain.EstadoIntento;
 import com.psicoapp.shared.exceptions.AccesoDenegado;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -26,22 +28,30 @@ public class ServicioGestionParticipacion {
     private final RepositorioIntentos intentos;
     private final AutorizacionConvocatorias autorizacion;
     private final ConsultaSesiones sesiones;
+    private final ConsultaSesionesDocente sesionesDocente;
     private final Clock reloj;
 
     public ServicioGestionParticipacion(RepositorioIntentos intentos, AutorizacionConvocatorias autorizacion,
-            ConsultaSesiones sesiones, Clock reloj, NotificacionSujeto eventos) {
+            ConsultaSesiones sesiones, ConsultaSesionesDocente sesionesDocente, Clock reloj, NotificacionSujeto eventos) {
         this.eventos = eventos;
         this.intentos = intentos;
         this.autorizacion = autorizacion;
         this.sesiones = sesiones;
+        this.sesionesDocente = sesionesDocente;
         this.reloj = reloj;
     }
 
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public DatosIntento iniciar(UUID idEstudiante, UUID idSesion, String codigo) {
         autorizacion.exigirAcceso(idEstudiante, idSesion, codigo);
         ConsultaSesiones.SesionEnCurso sesion = sesiones.exigirEnCurso(idSesion);
-        if (intentos.buscarActivo(idSesion, idEstudiante).isPresent()) {
+        intentos.bloquearEstudiante(idEstudiante);
+        if (intentos.existeActivo(idEstudiante)) {
             throw new Conflicto("El estudiante ya tiene un intento en progreso");
+        }
+        var ultimo = intentos.buscarUltimo(idSesion, idEstudiante);
+        if (ultimo.isPresent() && !intentos.retirarPermisoReintento(ultimo.get().id())) {
+            throw new Conflicto("Se requiere autorizacion del docente para un reintento");
         }
         Intento intento = Intento.iniciar(UUID.randomUUID(), idSesion, idEstudiante, reloj.instant(),
                 sesion.duracionMaximaMin(), com.psicoapp.sessions.domain.ModoNavegacion.valueOf(sesion.modoNavegacion()),
@@ -50,9 +60,37 @@ public class ServicioGestionParticipacion {
         return representar(intento);
     }
 
-    @Transactional(readOnly = true)
-    public java.util.Optional<DatosIntento> consultarUltimo(UUID estudiante, UUID sesion) {
-        return intentos.buscarUltimo(sesion, estudiante).map(this::representar);
+    public DatosIntento entrar(UUID estudiante, UUID sesion, String codigo, boolean ventanaAbierta) {
+        var activo = intentos.buscarActivo(sesion, estudiante);
+        if (activo.isPresent()) return representar(activo.get());
+
+        var ultimo = intentos.buscarUltimo(sesion, estudiante);
+        if (ultimo.isPresent() && (!ventanaAbierta || !intentos.tienePermisoReintento(ultimo.get().id()))) {
+            return representar(ultimo.get());
+        }
+        return iniciar(estudiante, sesion, codigo);
+    }
+
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public void autorizarReintento(UUID docente, UUID sesion, UUID estudiante) {
+        sesionesDocente.exigirResponsable(docente, sesion);
+        autorizacion.exigirParticipacionVigente(estudiante, sesion);
+        var enCurso = sesiones.exigirEnCurso(sesion);
+        Instant inicio = enCurso.inicioPrevisto();
+        Instant limiteIngreso = inicio.plus(java.time.Duration.between(inicio, enCurso.finPrevisto()).dividedBy(2));
+        Instant ahora = reloj.instant();
+        if (ahora.isBefore(inicio) || ahora.isAfter(limiteIngreso)) {
+            throw new Conflicto("La ventana de ingreso ya no admite reintentos");
+        }
+        intentos.bloquearEstudiante(estudiante);
+        if (intentos.existeActivo(estudiante)) {
+            throw new Conflicto("El estudiante ya tiene un intento en progreso");
+        }
+        Intento anterior = intentos.buscarUltimo(sesion, estudiante)
+                .orElseThrow(() -> new Conflicto("El estudiante aun no ha realizado un intento"));
+        if (!intentos.tienePermisoReintento(anterior.id())) {
+            intentos.registrarPermisoReintento(anterior.id(), docente, ahora);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -126,6 +164,8 @@ public class ServicioGestionParticipacion {
         if (evento.tipoCambio() == ConvocatoriaModificada.TipoCambio.RETIRO) {
             intentos.buscarActivo(evento.idSesion(), evento.idEstudiante())
                     .ifPresent(intento -> cerrarPorConvocatoria(intento.id(), evento.instante()));
+            intentos.buscarUltimo(evento.idSesion(), evento.idEstudiante())
+                    .ifPresent(intento -> intentos.retirarPermisoReintento(intento.id()));
         }
     }
 

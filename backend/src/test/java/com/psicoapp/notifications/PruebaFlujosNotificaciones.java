@@ -285,6 +285,31 @@ class PruebaFlujosNotificaciones {
         assertThrows(AccesoDenegado.class, () -> participacion.reanudar(estudiante, intento.id()));
     }
 
+    @Test
+    void soloElResponsableAutorizaUnNuevoIntentoConHistorialIntacto() throws Exception {
+        sesiones.iniciar(docente, sesion);
+        var anterior = participacion.iniciar(estudiante, sesion, codigo);
+        assertThrows(Conflicto.class, () -> participacion.autorizarReintento(docente, sesion, estudiante));
+        participacion.responder(estudiante, anterior.id(), pregunta, opcion);
+        participacion.finalizar(estudiante, anterior.id());
+        assertThrows(Conflicto.class, () -> participacion.iniciar(estudiante, sesion, codigo));
+
+        String ruta = "/api/sesiones/{sesion}/reintentos/{estudiante}";
+        mvc.perform(put(ruta, sesion, estudiante).with(user(estudiante.toString()).roles("ESTUDIANTE")))
+                .andExpect(status().isForbidden());
+        mvc.perform(put(ruta, sesion, estudiante).with(user(docente.toString()).roles("DOCENTE")))
+                .andExpect(status().isNoContent());
+
+        when(reloj.instant()).thenReturn(AHORA.plusSeconds(10));
+        mvc.perform(post("/api/participaciones/ingreso").with(user(estudiante.toString()).roles("ESTUDIANTE"))
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"idSesion\":\"" + sesion + "\",\"codigoAcceso\":\"" + codigo + "\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.intento.estado").value("EN_PROGRESO"))
+                .andExpect(jsonPath("$.intento.id").value(org.hamcrest.Matchers.not(anterior.id().toString())));
+        assertEquals(opcion, participacion.consultar(estudiante, anterior.id()).respuestas().get(pregunta));
+        assertThrows(Conflicto.class, () -> participacion.iniciar(estudiante, sesion, codigo));
+    }
+
     // CP-NO-007: propietario, roles, JWT y consulta despues del cierre de sesion.
     @Test
     void valoracionSeNotificaYApiAislaAvisosDespuesDeCerrarSesion() throws Exception {

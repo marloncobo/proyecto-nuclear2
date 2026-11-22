@@ -567,6 +567,12 @@
                               [disabled]="ocupado()">
                               Ver resultados de {{ fila.nombreEstudiante }}
                             </button>
+                            @if (puedeAutorizarReintento(fila, filas)) {
+                              <button type="button" class="boton secundario" (click)="autorizarReintento(fila)"
+                                [disabled]="ocupado()">
+                                Autorizar reintento para {{ fila.nombreEstudiante }}
+                              </button>
+                            }
                           }
                         </article>
                       } @empty {

@@ -149,8 +149,8 @@ CREATE TABLE IF NOT EXISTS intento (
     id_intento CHAR(36) PRIMARY KEY,
     id_sesion CHAR(36) NOT NULL,
     id_estudiante CHAR(36) NOT NULL,
-    fecha_inicio TIMESTAMP NOT NULL,
-    fecha_limite TIMESTAMP NOT NULL,
+    fecha_inicio TIMESTAMP(6) NOT NULL,
+    fecha_limite TIMESTAMP(6) NOT NULL,
     posicion_actual INT NOT NULL,
     modo_navegacion VARCHAR(12) NOT NULL,
     estado VARCHAR(20) NOT NULL,
@@ -161,7 +161,16 @@ CREATE TABLE IF NOT EXISTS intento (
     CHECK (posicion_actual >= 0),
     CHECK (modo_navegacion IN ('FLEXIBLE','RESTRINGIDA')),
     CHECK (estado IN ('EN_PROGRESO','FINALIZADO','VENCIDO')),
-    INDEX indice_intento_activo (id_sesion, id_estudiante, estado)
+    INDEX indice_intento_activo (id_sesion, id_estudiante, estado),
+    INDEX indice_estudiante_intento_activo (id_estudiante, estado)
+);
+
+CREATE TABLE IF NOT EXISTS autorizacion_reintento (
+    id_intento CHAR(36) PRIMARY KEY,
+    id_docente CHAR(36) NOT NULL,
+    fecha_autorizacion TIMESTAMP NOT NULL,
+    FOREIGN KEY (id_intento) REFERENCES intento(id_intento),
+    FOREIGN KEY (id_docente) REFERENCES usuario(id_usuario)
 );
 
 CREATE TABLE IF NOT EXISTS intento_pregunta (

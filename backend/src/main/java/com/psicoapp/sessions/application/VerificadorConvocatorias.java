@@ -47,12 +47,16 @@ public class VerificadorConvocatorias implements VerificadorAccesoEstudiante, Au
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
     public void exigirAcceso(UUID estudiante, UUID idSesion, String codigo) {
         var sesion = exigirConvocatoria(estudiante, idSesion, codigo);
-        var ahora = reloj.instant();
-        var limite = sesion.inicioPrevisto().plus(Duration.between(sesion.inicioPrevisto(), sesion.finPrevisto()).dividedBy(2));
-        if (sesion.estado().codigo() != TipoEstadoSesion.EN_CURSO || sesion.estaVencida(ahora)
-                || ahora.isBefore(sesion.inicioPrevisto()) || ahora.isAfter(limite)) {
+        if (!permiteIngreso(sesion)) {
             throw new AccesoDenegado("El estado o la ventana de ingreso no permite iniciar participacion");
         }
+    }
+
+    public boolean permiteIngreso(Sesion sesion) {
+        var ahora = reloj.instant();
+        var limite = sesion.inicioPrevisto().plus(Duration.between(sesion.inicioPrevisto(), sesion.finPrevisto()).dividedBy(2));
+        return sesion.estado().codigo() == TipoEstadoSesion.EN_CURSO && !sesion.estaVencida(ahora)
+                && !ahora.isBefore(sesion.inicioPrevisto()) && !ahora.isAfter(limite);
     }
 
     @Override

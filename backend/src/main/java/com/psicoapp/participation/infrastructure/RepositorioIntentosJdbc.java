@@ -45,6 +45,37 @@ public class RepositorioIntentosJdbc implements RepositorioIntentos, Repositorio
     }
 
     @Override
+    public void bloquearEstudiante(UUID idEstudiante) {
+        jdbc.sql("SELECT id_usuario FROM usuario WHERE id_usuario = ? FOR UPDATE")
+                .param(idEstudiante.toString()).query(String.class).optional()
+                .orElseThrow(() -> new com.psicoapp.shared.exceptions.NoEncontrado("Estudiante no encontrado"));
+    }
+
+    @Override
+    public boolean existeActivo(UUID idEstudiante) {
+        return jdbc.sql("SELECT id_intento FROM intento WHERE id_estudiante = ? AND estado = 'EN_PROGRESO' LIMIT 1")
+                .param(idEstudiante.toString()).query(String.class).optional().isPresent();
+    }
+
+    @Override
+    public boolean tienePermisoReintento(UUID idIntento) {
+        return jdbc.sql("SELECT id_intento FROM autorizacion_reintento WHERE id_intento = ?")
+                .param(idIntento.toString()).query(String.class).optional().isPresent();
+    }
+
+    @Override
+    public void registrarPermisoReintento(UUID idIntento, UUID idDocente, Instant fecha) {
+        jdbc.sql("INSERT INTO autorizacion_reintento (id_intento,id_docente,fecha_autorizacion) VALUES (?,?,?)")
+                .params(idIntento.toString(), idDocente.toString(), Timestamp.from(fecha)).update();
+    }
+
+    @Override
+    public boolean retirarPermisoReintento(UUID idIntento) {
+        return jdbc.sql("DELETE FROM autorizacion_reintento WHERE id_intento = ?")
+                .param(idIntento.toString()).update() == 1;
+    }
+
+    @Override
     public void guardar(Intento intento) {
         jdbc.sql("""
                 INSERT INTO intento (id_intento,id_sesion,id_estudiante,fecha_inicio,fecha_limite,
@@ -92,7 +123,7 @@ public class RepositorioIntentosJdbc implements RepositorioIntentos, Repositorio
     public Optional<Intento> buscarUltimo(UUID idSesion, UUID idEstudiante) {
         return jdbc.sql("""
                 SELECT * FROM intento WHERE id_sesion = ? AND id_estudiante = ?
-                ORDER BY fecha_inicio DESC, id_intento DESC LIMIT 1
+                ORDER BY fecha_inicio DESC, fecha_fin DESC, id_intento DESC LIMIT 1
                 """).params(idSesion.toString(), idEstudiante.toString()).query(this::mapear).optional();
     }
 

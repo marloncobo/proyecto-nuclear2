@@ -331,7 +331,9 @@ modificar sus registros. El esquema no migra tablas preexistentes incompatibles.
 
 Antes de arrancar esta versión con una base creada sin `intento.fecha_fin`, aplica
 una vez [001-fecha-fin-intento.sql](migraciones/001-fecha-fin-intento.sql) en esa base.
-Las instalaciones nuevas ya incluyen la columna en `schema.sql`. Los intentos
+Aplica después [002-autorizacion-reintento.sql](migraciones/002-autorizacion-reintento.sql)
+si la base aún no tiene la tabla `autorizacion_reintento`. Las instalaciones
+nuevas ya incluyen ambos cambios en `schema.sql`. Los intentos
 cerrados antes del cambio conservan su fecha de fin como desconocida.
 
 ## API mínima
