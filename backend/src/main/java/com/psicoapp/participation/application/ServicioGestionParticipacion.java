@@ -35,7 +35,7 @@ public class ServicioGestionParticipacion {
         this.reloj = reloj;
     }
 
-    public DatosIntento iniciar(UUID idEstudiante, UUID idSesion, String codigo, List<UUID> preguntas) {
+    public DatosIntento iniciar(UUID idEstudiante, UUID idSesion, String codigo) {
         autorizacion.exigirAcceso(idEstudiante, idSesion, codigo);
         ConsultaSesiones.SesionEnCurso sesion = sesiones.exigirEnCurso(idSesion);
         if (intentos.buscarActivo(idSesion, idEstudiante).isPresent()) {
@@ -43,7 +43,7 @@ public class ServicioGestionParticipacion {
         }
         Intento intento = Intento.iniciar(UUID.randomUUID(), idSesion, idEstudiante, reloj.instant(),
                 sesion.duracionMaximaMin(), com.psicoapp.sessions.domain.ModoNavegacion.valueOf(sesion.modoNavegacion()),
-                preguntas);
+                intentos.preguntasDeSesion(idSesion));
         intentos.guardar(intento);
         return representar(intento);
     }
@@ -61,6 +61,9 @@ public class ServicioGestionParticipacion {
     public DatosIntento responder(UUID idEstudiante, UUID idIntento, UUID idPregunta, UUID idOpcion) {
         Intento intento = bloquearPropietario(idEstudiante, idIntento);
         Intento actualizado = intento.responder(idPregunta, idOpcion, reloj.instant());
+        if (!intentos.opcionDePregunta(idPregunta, idOpcion)) {
+            throw new IllegalArgumentException("La opcion no pertenece a la pregunta");
+        }
         intentos.actualizar(actualizado);
         return representar(actualizado);
     }

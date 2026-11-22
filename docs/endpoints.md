@@ -78,7 +78,7 @@ se conserva en los DTO de `ServicioCreacionCaso`.
 | Método y ruta | Acceso | Entrada | Resultado |
 | --- | --- | --- | --- |
 | `POST /api/participaciones/ingreso` | Estudiante convocado | `idSesion`, `codigoAcceso` | Caso visible sin claves de corrección e intento nuevo o recuperado. |
-| `POST /api/participaciones` | Estudiante convocado | `idSesion`, `codigoAcceso`, lista `preguntas` | Intento creado. |
+| `POST /api/participaciones` | Estudiante convocado | `idSesion`, `codigoAcceso` | Intento creado con las preguntas ordenadas del caso. |
 | `GET /api/participaciones/{id}` | Estudiante propietario | — | Estado y progreso del intento. |
 | `PUT /api/participaciones/{id}/respuestas` | Estudiante propietario | `idPregunta`, `idOpcion` | Intento con la respuesta guardada. |
 | `POST /api/participaciones/{id}/avanzar` | Estudiante propietario | — | Intento situado en la siguiente pregunta. |

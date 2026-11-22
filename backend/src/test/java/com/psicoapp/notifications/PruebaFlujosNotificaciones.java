@@ -110,7 +110,7 @@ class PruebaFlujosNotificaciones {
         var evaluada = sesiones.programar(docente, programacion);
         sesiones.iniciar(docente, evaluada.id());
         var intento = participacion.iniciar(estudiante, evaluada.id(),
-                evaluada.convocatorias().getFirst().codigoAcceso(), List.of(pregunta));
+                evaluada.convocatorias().getFirst().codigoAcceso());
         participacion.finalizar(estudiante, intento.id());
         sesiones.finalizar(docente, evaluada.id());
 
@@ -230,7 +230,7 @@ class PruebaFlujosNotificaciones {
     @Test
     void finalizarCalculaNotaYPublicaAvisoSinAnticiparJustificaciones() {
         sesiones.iniciar(docente, sesion);
-        var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
         assertTrue(avisos.listar(estudiante, 20, 0).isEmpty());
         participacion.responder(estudiante, intento.id(), pregunta, opcion);
         participacion.finalizar(estudiante, intento.id());
@@ -247,7 +247,7 @@ class PruebaFlujosNotificaciones {
     @Test
     void vencimientoCalculaCeroYGeneraAviso() {
         sesiones.iniciar(docente, sesion);
-        var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
         when(reloj.instant()).thenReturn(AHORA.plusSeconds(1800));
         assertEquals(1, participacion.finalizarVencidos(reloj.instant()));
         assertEquals(0, participacion.finalizarVencidos(reloj.instant()));
@@ -260,7 +260,7 @@ class PruebaFlujosNotificaciones {
     @Test
     void valoracionSeNotificaYApiAislaAvisosDespuesDeCerrarSesion() throws Exception {
         sesiones.iniciar(docente, sesion);
-        var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
         participacion.finalizar(estudiante, intento.id());
         valoraciones.registrar(docente, intento.id(), "Sugerencia formativa");
         sesiones.finalizar(docente, sesion);
@@ -287,7 +287,7 @@ class PruebaFlujosNotificaciones {
     @Test
     void soloResponsableValoraIntentoFinalizado() {
         sesiones.iniciar(docente, sesion);
-        var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
         assertThrows(Conflicto.class, () -> valoraciones.registrar(docente, intento.id(), "Aun no"));
         participacion.finalizar(estudiante, intento.id());
         assertThrows(AccesoDenegado.class, () -> valoraciones.registrar(estudiante, intento.id(), "No autorizado"));
@@ -297,7 +297,7 @@ class PruebaFlujosNotificaciones {
     @Test
     void rollbackDeFinalizacionYValoracionNoPublicaAvisos() {
         sesiones.iniciar(docente, sesion);
-        var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
         new TransactionTemplate(gestor).executeWithoutResult(estadoTransaccion -> {
             participacion.finalizar(estudiante, intento.id());
             assertEquals(2, cantidad(sesion));
@@ -325,7 +325,7 @@ class PruebaFlujosNotificaciones {
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(cambio)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.convocatorias[0].autorizada").value(true));
         sesiones.iniciar(docente, sesion);
-        var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
         participacion.finalizar(estudiante, intento.id());
         String mensaje = "{\"mensaje\":\"Valoracion formativa\"}";
         mvc.perform(post("/api/evaluaciones/{id}/valoraciones", intento.id())
@@ -340,7 +340,7 @@ class PruebaFlujosNotificaciones {
     @Test
     void valoracionDesdeReporteApareceEnHistorialYNotificaUnaSolaVez() throws Exception {
         sesiones.iniciar(docente, sesion);
-        var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
         participacion.finalizar(estudiante, intento.id());
         int antes = cantidad(sesion);
         mvc.perform(post("/api/reportes/participaciones/{id}/valoraciones", intento.id())
@@ -368,7 +368,7 @@ class PruebaFlujosNotificaciones {
     @Test
     void rollbackDesdeReportesRevierteValoracionYSolicitudDeAviso() {
         sesiones.iniciar(docente, sesion);
-        var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
         participacion.finalizar(estudiante, intento.id());
         int antes = cantidad(sesion);
         new TransactionTemplate(gestor).executeWithoutResult(estadoTransaccion -> {
@@ -383,7 +383,7 @@ class PruebaFlujosNotificaciones {
     @Test
     void reporteSoloPermiteValorarAlDocenteResponsableEIntentoFinalizado() throws Exception {
         sesiones.iniciar(docente, sesion);
-        var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
         String ruta = "/api/reportes/participaciones/" + intento.id() + "/valoraciones";
         String contenido = "{\"mensaje\":\"Valoracion formativa\"}";
         mvc.perform(post(ruta).contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(contenido))

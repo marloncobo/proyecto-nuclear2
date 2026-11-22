@@ -5,10 +5,8 @@ import com.psicoapp.participation.application.ServicioGestionParticipacion.Datos
 import com.psicoapp.participation.domain.TransicionIntentoInvalida;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import java.security.Principal;
-import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -17,8 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/participaciones")
 public class ControladorParticipacion {
-    public record SolicitudInicio(@NotNull UUID idSesion, @NotBlank String codigoAcceso,
-            @NotEmpty List<UUID> preguntas) { }
+    public record SolicitudInicio(@NotNull UUID idSesion, @NotBlank String codigoAcceso) { }
     public record SolicitudRespuesta(@NotNull UUID idPregunta, @NotNull UUID idOpcion) { }
 
     private final ServicioGestionParticipacion participaciones;
@@ -36,7 +33,7 @@ public class ControladorParticipacion {
     @ResponseStatus(HttpStatus.CREATED)
     public DatosIntento iniciar(Principal principal, @Valid @RequestBody SolicitudInicio solicitud) {
         return participaciones.iniciar(UUID.fromString(principal.getName()), solicitud.idSesion(),
-                solicitud.codigoAcceso(), solicitud.preguntas());
+                solicitud.codigoAcceso());
     }
 
     @GetMapping("/{id}")

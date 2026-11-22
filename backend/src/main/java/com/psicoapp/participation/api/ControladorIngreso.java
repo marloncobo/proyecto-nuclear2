@@ -45,8 +45,7 @@ public class ControladorIngreso {
                         escenario.contextoSituacional(), pregunta.enunciado(), pregunta.opciones().stream()
                         .map(opcion -> new OpcionVisible(opcion.id(), opcion.texto())).toList()))).toList();
         var intento = participaciones.consultarUltimo(estudiante, solicitud.idSesion()).orElseGet(() ->
-                participaciones.iniciar(estudiante, solicitud.idSesion(), solicitud.codigoAcceso(),
-                        preguntas.stream().map(PreguntaVisible::id).toList()));
+                participaciones.iniciar(estudiante, solicitud.idSesion(), solicitud.codigoAcceso()));
         return new Simulacion(caso.nombre(), preguntas, intento);
     }
 }
