@@ -69,6 +69,15 @@ export type Rol = 'ADMINISTRADOR' | 'DOCENTE' | 'ESTUDIANTE';
 export interface UsuarioAdministrado extends Usuario {
   activo: boolean;
 }
+export interface AvisoNotificacion {
+  id: string;
+  idSesion: string | null;
+  idIntento: string | null;
+  tipo: string;
+  mensaje: string;
+  fechaCreacion: string;
+  leida: boolean;
+}
 @Injectable({ providedIn: 'root' })
 export class ServicioApi {
   private readonly enrutador = inject(Router);
@@ -81,11 +90,10 @@ export class ServicioApi {
     const generacionIngreso = ++this.generacionSesion;
     const anterior = this.autorizacion;
     try {
-      const ingreso = await this.peticion<{ token: string }>(
-        '/identidad/ingreso',
-        'POST',
-        { correo, clave },
-      );
+      const ingreso = await this.peticion<{ token: string }>('/identidad/ingreso', 'POST', {
+        correo,
+        clave,
+      });
       if (this.generacionSesion !== generacionIngreso)
         throw new Error('La cuenta cambió. Vuelve a intentar la operación.');
       if (typeof ingreso.token !== 'string' || ingreso.token.trim() === '')
@@ -175,6 +183,19 @@ export class ServicioApi {
   }
   editarEspacio(id: string, datos: { nombre: string; periodo: string }) {
     return this.enviar<Espacio>(`/academico/espacios/${encodeURIComponent(id)}`, datos, 'PUT');
+  }
+  async listarNotificaciones(limite = 20, desplazamiento = 0) {
+    const parametros = new URLSearchParams({
+      limite: String(limite),
+      desplazamiento: String(desplazamiento),
+    });
+    const notificaciones = await this.consultar<AvisoNotificacion[]>(`/notificaciones?${parametros}`);
+    if (!Array.isArray(notificaciones))
+      throw new Error('El servicio devolvió una lista de notificaciones inválida.');
+    return notificaciones;
+  }
+  marcarNotificacionLeida(id: string) {
+    return this.enviar<void>(`/notificaciones/${encodeURIComponent(id)}/leida`, undefined, 'PUT');
   }
   async enviar<T>(ruta: string, datos: unknown, metodo = 'POST'): Promise<T> {
     return this.peticion<T>(ruta, metodo, datos);

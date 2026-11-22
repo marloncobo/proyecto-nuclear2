@@ -1,6 +1,58 @@
 import { test, expect } from '@playwright/test';
 import { simularApi, ingresar } from './soporte/identidad';
 
+test('docente: consulta las cinco notificaciones priorizadas y marca su lectura', async ({
+  page: pagina,
+}) => {
+  const estado = await simularApi(pagina, 'DOCENTE');
+  const tipos = [
+    ['recordatorio', 'RECORDATORIO_SESION', 'La sesión de Conflictos Sociales comenzará mañana.'],
+    ['finalizacion', 'FINALIZACION_SESION', 'La sesión de Influencia Grupal ha finalizado.'],
+    ['pendientes', 'ESTUDIANTES_PENDIENTES', '5 de 25 estudiantes no completaron la sesión.'],
+    ['evaluaciones', 'EVALUACIONES_DISPONIBLES', 'Los resultados de la sesión ya están disponibles.'],
+    ['reporte', 'REPORTE_DISPONIBLE', 'El reporte de desempeño está disponible.'],
+  ];
+  estado.notificaciones.push(...tipos.map(([id, tipo, mensaje], indice) => ({
+    id,
+    idSesion: 'sesion-' + indice,
+    idIntento: null,
+    tipo,
+    mensaje,
+    fechaCreacion: `2026-11-21T${15 + indice}:00:00Z`,
+    leida: false,
+  })));
+  const erroresNavegador: string[] = [];
+  pagina.on('console', (mensaje) => {
+    if (mensaje.type() === 'error') erroresNavegador.push(mensaje.text());
+  });
+  pagina.on('pageerror', (error) => erroresNavegador.push(error.message));
+
+  await ingresar(pagina, 'docente@example.test');
+  await pagina.getByRole('button', { name: /Notificaciones/ }).click();
+
+  await expect(pagina.getByRole('heading', { name: 'Notificaciones docentes.' })).toBeVisible();
+  await expect(pagina.getByRole('heading', { name: '5 notificaciones nuevas' })).toBeVisible();
+  for (const titulo of [
+    'Recordatorio de sesión próxima',
+    'Finalización de sesión',
+    'Estudiantes que no completaron la actividad',
+    'Evaluaciones disponibles',
+    'Reporte disponible',
+  ]) await expect(pagina.getByRole('heading', { name: titulo })).toBeVisible();
+
+  await pagina.getByRole('button', { name: 'Marcar como leída' }).first().click();
+  await expect(pagina.getByRole('heading', { name: '4 notificaciones nuevas' })).toBeVisible();
+  expect(estado.solicitudes).toContainEqual(expect.objectContaining({
+    ruta: '/api/notificaciones/recordatorio/leida',
+    metodo: 'PUT',
+  }));
+
+  await pagina.setViewportSize({ width: 390, height: 844 });
+  expect(await pagina.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await expect(pagina.getByRole('heading', { name: 'Notificaciones docentes.' })).toBeVisible();
+  expect(erroresNavegador).toEqual([]);
+});
+
 test('administración: roles, filtros, detalle, edición y errores sin perder el formulario', async ({
   page: pagina,
 }) => {

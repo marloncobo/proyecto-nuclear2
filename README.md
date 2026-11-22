@@ -40,8 +40,9 @@ cd backend
 sh mvnw spring-boot:run
 ```
 
-El servidor usa el puerto `8080`. Los módulos `identity` y `academic` exponen
-la [API mínima protegida](backend/README.md#api-mínima) de usuarios y espacios académicos.
+El servidor usa el puerto `8080`. Consulta la [referencia completa de endpoints](docs/endpoints.md)
+para conocer rutas, roles, entradas y respuestas. Los módulos `identity` y
+`academic` también se resumen en la [API mínima protegida](backend/README.md#api-mínima).
 
 Para compilar, ejecutar las pruebas JUnit y de arranque y generar el JAR:
 

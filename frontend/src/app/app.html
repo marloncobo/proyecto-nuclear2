@@ -47,6 +47,11 @@
             (click)="navegar(item.id)"
           >
             <span class="icono-menu" aria-hidden="true">{{ item.icono }}</span>{{ item.nombre }}
+            @if (item.id === 'notificaciones' && notificacionesNoLeidas()) {
+              <span class="contador-notificaciones" aria-label="Notificaciones sin leer">{{
+                notificacionesNoLeidas()
+              }}</span>
+            }
             @if (vista() === item.id) {
               <span class="punto"></span>
             }
@@ -91,7 +96,9 @@
                     ? 'Espacios académicos'
                     : vista() === 'sesiones'
                       ? 'Sesiones'
-                      : 'Resultados'
+                      : vista() === 'resultados'
+                        ? 'Resultados'
+                        : 'Notificaciones'
           }}</strong></span
         >
         <div class="acciones-cabecera">
@@ -623,6 +630,83 @@
                 } @empty {
                   <p class="vacio">No hay intentos finalizados para este estudiante y caso.</p>
                 }
+              }
+            </section>
+          }
+          @if (vista() === 'notificaciones') {
+            <div class="encabezado-pagina encabezado-notificaciones-docente">
+              <div>
+                <p class="sobretitulo">MANTENTE AL DÍA</p>
+                <h1>Notificaciones <em>docentes.</em></h1>
+                <p class="subtitulo">
+                  Recordatorios y novedades de tus sesiones, evaluaciones y reportes.
+                </p>
+              </div>
+              <button
+                class="boton secundario"
+                [disabled]="cargandoNotificaciones()"
+                (click)="cargarNotificaciones()"
+              >
+                {{ cargandoNotificaciones() ? 'Actualizando…' : 'Actualizar' }}
+              </button>
+            </div>
+            <section class="panel-notificaciones-docente" aria-labelledby="resumen-notificaciones">
+              <div class="resumen-notificaciones-docente">
+                <h2 id="resumen-notificaciones">
+                  {{ notificacionesNoLeidas() || 'Sin' }}
+                  {{ notificacionesNoLeidas() === 1 ? 'notificación nueva' : 'notificaciones nuevas' }}
+                </h2>
+                <p>Los avisos leídos permanecen disponibles como historial.</p>
+              </div>
+              @if (errorNotificaciones()) {
+                <div class="error" role="alert">{{ errorNotificaciones() }}</div>
+              }
+              @if (cargandoNotificaciones() && !notificaciones().length) {
+                <p class="vacio" role="status">Consultando tus notificaciones…</p>
+              } @else {
+                <div class="lista-notificaciones-docente">
+                  @for (notificacion of notificaciones(); track notificacion.id) {
+                    <article [class.no-leida]="!notificacion.leida">
+                      <span class="icono-notificacion-docente" aria-hidden="true">{{
+                        iconoNotificacion(notificacion.tipo)
+                      }}</span>
+                      <div class="contenido-notificacion-docente">
+                        <div>
+                          <h3>{{ tituloNotificacion(notificacion.tipo) }}</h3>
+                          @if (!notificacion.leida) {
+                            <span class="etiqueta-nueva">Nueva</span>
+                          }
+                        </div>
+                        <p>{{ notificacion.mensaje }}</p>
+                        <time [attr.datetime]="notificacion.fechaCreacion">{{
+                          notificacion.fechaCreacion | date: 'medium'
+                        }}</time>
+                      </div>
+                      @if (!notificacion.leida) {
+                        <button
+                          class="boton-texto"
+                          type="button"
+                          [disabled]="marcandoNotificacion() !== null"
+                          (click)="marcarNotificacionLeida(notificacion)"
+                        >
+                          {{
+                            marcandoNotificacion() === notificacion.id
+                              ? 'Marcando…'
+                              : 'Marcar como leída'
+                          }}
+                        </button>
+                      } @else {
+                        <span class="estado-notificacion-leida">Leída</span>
+                      }
+                    </article>
+                  } @empty {
+                    <div class="vacio vacio-notificaciones-docente">
+                      <span aria-hidden="true">✓</span>
+                      <h2>Todo está al día.</h2>
+                      <p>Aquí aparecerán las novedades de tus sesiones.</p>
+                    </div>
+                  }
+                </div>
               }
             </section>
           }

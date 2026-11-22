@@ -6,7 +6,7 @@ import { Ingreso } from './ingreso';
 import { EditorCaso } from './editor-caso';
 import { SelectorEstudiantes } from './selector-estudiantes';
 import { Administracion } from './administracion';
-import { ServicioApi, Caso, Sesion, Espacio, Reporte, Usuario, FilaReporteSesion } from './servicio-api';
+import { ServicioApi, Caso, Sesion, Espacio, Reporte, Usuario, FilaReporteSesion, AvisoNotificacion } from './servicio-api';
 import { nombreEtiqueta } from './etiqueta-usuario';
 @Component({
   selector: 'psico-raiz',
@@ -31,6 +31,7 @@ export class Aplicacion {
           { id: 'sesiones', nombre: 'Sesiones', icono: '◷' },
           { id: 'espacios', nombre: 'Espacios académicos', icono: '◇' },
           { id: 'resultados', nombre: 'Resultados', icono: '↗' },
+          { id: 'notificaciones', nombre: 'Notificaciones', icono: '◉' },
         ],
   );
   readonly casos = signal<Caso[]>(this.casosEjemplo());
@@ -83,6 +84,13 @@ export class Aplicacion {
   readonly estudiantes = signal<Usuario[]>([]);
   readonly cargandoEstudiantes = signal(false);
   readonly reporteSesion = signal<FilaReporteSesion[] | null>(null);
+  readonly notificaciones = signal<AvisoNotificacion[]>([]);
+  readonly cargandoNotificaciones = signal(false);
+  readonly errorNotificaciones = signal('');
+  readonly marcandoNotificacion = signal<string | null>(null);
+  readonly notificacionesNoLeidas = computed(
+    () => this.notificaciones().filter((notificacion) => !notificacion.leida).length,
+  );
   idSesionReporte = '';
   nombreEstudianteReporte = '';
   valoraciones: Record<string, string> = {};
@@ -148,6 +156,7 @@ export class Aplicacion {
       });
     this.busqueda.set('');
     this.error.set('');
+    if (vista === 'notificaciones' && this.api.conectado()) void this.cargarNotificaciones();
   }
   iniciarDemostracion() {
     this.reiniciarDatosDeCuenta();
@@ -263,6 +272,8 @@ export class Aplicacion {
     this.periodo = '2026-2';
     this.borrador = null;
     this.estudiantes.set([]);
+    this.notificaciones.set([]);
+    this.errorNotificaciones.set('');
     this.reporteSesion.set(null);
     this.idSesionReporte = '';
     this.nombreEstudianteReporte = '';
@@ -316,8 +327,64 @@ export class Aplicacion {
         this.espacios.set(espacios);
         this.casos.set(casos);
         this.sesiones.set(sesiones);
+        await this.cargarNotificaciones();
       }
     });
+  }
+
+  async cargarNotificaciones() {
+    if (this.cargandoNotificaciones() || !this.api.conectado()) return;
+    const usuario = this.api.usuario();
+    this.cargandoNotificaciones.set(true);
+    this.errorNotificaciones.set('');
+    try {
+      const notificaciones = await this.api.listarNotificaciones(100);
+      if (this.api.usuario() === usuario) this.notificaciones.set(notificaciones);
+    } catch (error) {
+      if (this.api.usuario() === usuario)
+        this.errorNotificaciones.set(
+          error instanceof Error ? error.message : 'No fue posible consultar las notificaciones.',
+        );
+    } finally {
+      this.cargandoNotificaciones.set(false);
+    }
+  }
+
+  async marcarNotificacionLeida(notificacion: AvisoNotificacion) {
+    if (notificacion.leida || this.marcandoNotificacion()) return;
+    this.marcandoNotificacion.set(notificacion.id);
+    this.errorNotificaciones.set('');
+    try {
+      await this.api.marcarNotificacionLeida(notificacion.id);
+      this.notificaciones.update((lista) => lista.map((actual) =>
+        actual.id === notificacion.id ? { ...actual, leida: true } : actual));
+    } catch (error) {
+      this.errorNotificaciones.set(
+        error instanceof Error ? error.message : 'No fue posible marcar la notificación.',
+      );
+    } finally {
+      this.marcandoNotificacion.set(null);
+    }
+  }
+
+  tituloNotificacion(tipo: string) {
+    return ({
+      RECORDATORIO_SESION: 'Recordatorio de sesión próxima',
+      FINALIZACION_SESION: 'Finalización de sesión',
+      ESTUDIANTES_PENDIENTES: 'Estudiantes que no completaron la actividad',
+      EVALUACIONES_DISPONIBLES: 'Evaluaciones disponibles',
+      REPORTE_DISPONIBLE: 'Reporte disponible',
+    } as Record<string, string>)[tipo] ?? tipo;
+  }
+
+  iconoNotificacion(tipo: string) {
+    return ({
+      RECORDATORIO_SESION: '◷',
+      FINALIZACION_SESION: '✓',
+      ESTUDIANTES_PENDIENTES: '♙',
+      EVALUACIONES_DISPONIBLES: '▣',
+      REPORTE_DISPONIBLE: '▤',
+    } as Record<string, string>)[tipo] ?? '◉';
   }
   salir() {
     if (this.ocupado()) return;
