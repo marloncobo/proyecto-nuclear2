@@ -11,6 +11,7 @@ import jakarta.validation.constraints.NotNull;
 import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,7 +36,7 @@ public class ControladorIngreso {
     }
 
     @PostMapping
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public Simulacion ingresar(Principal principal, @Valid @RequestBody Solicitud solicitud) {
         UUID estudiante = UUID.fromString(principal.getName());
         var sesion = acceso.exigirConvocatoria(estudiante, solicitud.idSesion(), solicitud.codigoAcceso());
@@ -44,9 +45,8 @@ public class ControladorIngreso {
                 .map(pregunta -> new PreguntaVisible(pregunta.id(), escenario.titulo(),
                         escenario.contextoSituacional(), pregunta.enunciado(), pregunta.opciones().stream()
                         .map(opcion -> new OpcionVisible(opcion.id(), opcion.texto())).toList()))).toList();
-        var intento = participaciones.consultarUltimo(estudiante, solicitud.idSesion()).orElseGet(() ->
-                participaciones.iniciar(estudiante, solicitud.idSesion(), solicitud.codigoAcceso(),
-                        preguntas.stream().map(PreguntaVisible::id).toList()));
+        var intento = participaciones.entrar(estudiante, solicitud.idSesion(), solicitud.codigoAcceso(),
+                acceso.permiteIngreso(sesion));
         return new Simulacion(caso.nombre(), preguntas, intento);
     }
 }

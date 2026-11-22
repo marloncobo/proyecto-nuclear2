@@ -47,11 +47,29 @@ public class VerificadorConvocatorias implements VerificadorAccesoEstudiante, Au
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
     public void exigirAcceso(UUID estudiante, UUID idSesion, String codigo) {
         var sesion = exigirConvocatoria(estudiante, idSesion, codigo);
+        if (!permiteIngreso(sesion)) {
+            throw new AccesoDenegado("El estado o la ventana de ingreso no permite iniciar participacion");
+        }
+    }
+
+    public boolean permiteIngreso(Sesion sesion) {
         var ahora = reloj.instant();
         var limite = sesion.inicioPrevisto().plus(Duration.between(sesion.inicioPrevisto(), sesion.finPrevisto()).dividedBy(2));
-        if (sesion.estado().codigo() != TipoEstadoSesion.EN_CURSO || sesion.estaVencida(ahora)
-                || ahora.isBefore(sesion.inicioPrevisto()) || ahora.isAfter(limite)) {
-            throw new AccesoDenegado("El estado o la ventana de ingreso no permite iniciar participacion");
+        return sesion.estado().codigo() == TipoEstadoSesion.EN_CURSO && !sesion.estaVencida(ahora)
+                && !ahora.isBefore(sesion.inicioPrevisto()) && !ahora.isAfter(limite);
+    }
+
+    @Override
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public void exigirParticipacionVigente(UUID estudiante, UUID idSesion) {
+        identidades.exigirEstudiante(estudiante);
+        var sesion = sesiones.bloquearPorId(idSesion).orElseThrow(() -> new NoEncontrado("Sesion no encontrada"));
+        if (sesion.estado().codigo() != TipoEstadoSesion.EN_CURSO || sesion.estaVencida(reloj.instant())) {
+            throw new AccesoDenegado("La sesion ya no permite continuar la participacion");
+        }
+        if (convocatorias.listarPorSesion(idSesion).stream()
+                .noneMatch(c -> c.idEstudiante().equals(estudiante) && c.autorizada())) {
+            throw new AccesoDenegado("La convocatoria ya no autoriza esta participacion");
         }
     }
 

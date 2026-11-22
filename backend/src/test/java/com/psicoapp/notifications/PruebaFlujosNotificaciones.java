@@ -41,6 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "psicoapp.notificaciones.clave-cifrado=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
     "psicoapp.notificaciones.url-acceso=https://universidad.example/ingreso",
     "psicoapp.notificaciones.despacho-habilitado=false",
+    "psicoapp.notificaciones.avisos-docente-habilitados=false",
     "psicoapp.sesiones.cierre-automatico-habilitado=false",
     "psicoapp.participacion.cierre-automatico-habilitado=false"
 })
@@ -61,6 +62,7 @@ class PruebaFlujosNotificaciones {
     @Autowired ServicioEntregaNotificaciones entrega;
     @Autowired RepositorioEntregas pendientes;
     @Autowired RepositorioAvisos avisos;
+    @Autowired GeneradorAvisosDocente avisosDocente;
     @Autowired JdbcClient jdbc;
     @Autowired PlatformTransactionManager gestor;
     @Autowired CifradorNotificaciones cifrador;
@@ -93,6 +95,40 @@ class PruebaFlujosNotificaciones {
                 30, ModoNavegacion.FLEXIBLE, "Aula 1", "Mensaje del docente", List.of(estudiante));
         var creada = sesiones.programar(docente, programacion);
         sesion = creada.id(); codigo = creada.convocatorias().getFirst().codigoAcceso();
+    }
+
+    @Test
+    void docenteRecibeLasCincoNotificacionesPriorizadasSinDuplicados() throws Exception {
+        var recordatorio = new ServicioGestionSesiones.DatosProgramacion(caso, espacio,
+                AHORA.plus(Duration.ofHours(12)), AHORA.plus(Duration.ofHours(13)), 30,
+                ModoNavegacion.FLEXIBLE, "Aula 2", "Recordatorio", List.of(estudiante));
+        sesiones.programar(docente, recordatorio);
+
+        sesiones.iniciar(docente, sesion);
+        sesiones.finalizar(docente, sesion);
+
+        var evaluada = sesiones.programar(docente, programacion);
+        sesiones.iniciar(docente, evaluada.id());
+        var intento = participacion.iniciar(estudiante, evaluada.id(),
+                evaluada.convocatorias().getFirst().codigoAcceso());
+        participacion.finalizar(estudiante, intento.id());
+        sesiones.finalizar(docente, evaluada.id());
+
+        avisosDocente.generar(AHORA, Duration.ofHours(24));
+        avisosDocente.generar(AHORA, Duration.ofHours(24));
+        for (UUID id : entrega.pendientes()) entrega.entregar(id);
+
+        var recibidos = avisos.listar(docente, 100, 0);
+        var tipos = recibidos.stream().map(RepositorioAvisos.Aviso::tipo).collect(java.util.stream.Collectors.toSet());
+        assertTrue(tipos.containsAll(Set.of("RECORDATORIO_SESION", "FINALIZACION_SESION",
+                "ESTUDIANTES_PENDIENTES", "EVALUACIONES_DISPONIBLES", "REPORTE_DISPONIBLE")), tipos::toString);
+        assertEquals(7, recibidos.size());
+
+        UUID aviso = recibidos.getFirst().id();
+        mvc.perform(get("/api/notificaciones").with(user(docente.toString()).roles("DOCENTE")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(recibidos.size()));
+        mvc.perform(put("/api/notificaciones/{id}/leida", aviso)
+                .with(user(docente.toString()).roles("DOCENTE"))).andExpect(status().isNoContent());
     }
 
     // CP-NO-001/004: RF-20/21, CU-14. Entrega real sustituida por puerto de correo.
@@ -194,7 +230,7 @@ class PruebaFlujosNotificaciones {
     @Test
     void finalizarCalculaNotaYPublicaAvisoSinAnticiparJustificaciones() {
         sesiones.iniciar(docente, sesion);
-        var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
         assertTrue(avisos.listar(estudiante, 20, 0).isEmpty());
         participacion.responder(estudiante, intento.id(), pregunta, opcion);
         participacion.finalizar(estudiante, intento.id());
@@ -211,7 +247,7 @@ class PruebaFlujosNotificaciones {
     @Test
     void vencimientoCalculaCeroYGeneraAviso() {
         sesiones.iniciar(docente, sesion);
-        var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
         when(reloj.instant()).thenReturn(AHORA.plusSeconds(1800));
         assertEquals(1, participacion.finalizarVencidos(reloj.instant()));
         assertEquals(0, participacion.finalizarVencidos(reloj.instant()));
@@ -220,11 +256,65 @@ class PruebaFlujosNotificaciones {
         assertEquals(1, avisos.listar(estudiante, 20, 0).size());
     }
 
+    @Test
+    void cerrarSesionCalificaIntentoActivoYConservaLaRespuesta() {
+        sesiones.iniciar(docente, sesion);
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
+        participacion.responder(estudiante, intento.id(), pregunta, opcion);
+
+        sesiones.finalizar(docente, sesion);
+
+        assertEquals("FINALIZADO", participacion.consultar(estudiante, intento.id()).estado());
+        assertEquals(opcion, participacion.consultar(estudiante, intento.id()).respuestas().get(pregunta));
+        assertEquals(0, evaluaciones.consultar(estudiante, intento.id()).resultado()
+                .calificacion().compareTo(new java.math.BigDecimal("5")));
+        assertThrows(AccesoDenegado.class,
+                () -> participacion.responder(estudiante, intento.id(), pregunta, opcion));
+    }
+
+    @Test
+    void retirarConvocatoriaCierraYCalificaElIntentoActivo() {
+        sesiones.iniciar(docente, sesion);
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
+
+        sesiones.modificarConvocados(docente, sesion,
+                new ServicioGestionSesiones.CambioConvocados(List.of(), List.of(estudiante)));
+
+        assertEquals("FINALIZADO", participacion.consultar(estudiante, intento.id()).estado());
+        assertEquals(0, evaluaciones.consultar(estudiante, intento.id()).resultado().calificacion().signum());
+        assertThrows(AccesoDenegado.class, () -> participacion.reanudar(estudiante, intento.id()));
+    }
+
+    @Test
+    void soloElResponsableAutorizaUnNuevoIntentoConHistorialIntacto() throws Exception {
+        sesiones.iniciar(docente, sesion);
+        var anterior = participacion.iniciar(estudiante, sesion, codigo);
+        assertThrows(Conflicto.class, () -> participacion.autorizarReintento(docente, sesion, estudiante));
+        participacion.responder(estudiante, anterior.id(), pregunta, opcion);
+        participacion.finalizar(estudiante, anterior.id());
+        assertThrows(Conflicto.class, () -> participacion.iniciar(estudiante, sesion, codigo));
+
+        String ruta = "/api/sesiones/{sesion}/reintentos/{estudiante}";
+        mvc.perform(put(ruta, sesion, estudiante).with(user(estudiante.toString()).roles("ESTUDIANTE")))
+                .andExpect(status().isForbidden());
+        mvc.perform(put(ruta, sesion, estudiante).with(user(docente.toString()).roles("DOCENTE")))
+                .andExpect(status().isNoContent());
+
+        when(reloj.instant()).thenReturn(AHORA.plusSeconds(10));
+        mvc.perform(post("/api/participaciones/ingreso").with(user(estudiante.toString()).roles("ESTUDIANTE"))
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"idSesion\":\"" + sesion + "\",\"codigoAcceso\":\"" + codigo + "\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.intento.estado").value("EN_PROGRESO"))
+                .andExpect(jsonPath("$.intento.id").value(org.hamcrest.Matchers.not(anterior.id().toString())));
+        assertEquals(opcion, participacion.consultar(estudiante, anterior.id()).respuestas().get(pregunta));
+        assertThrows(Conflicto.class, () -> participacion.iniciar(estudiante, sesion, codigo));
+    }
+
     // CP-NO-007: propietario, roles, JWT y consulta despues del cierre de sesion.
     @Test
     void valoracionSeNotificaYApiAislaAvisosDespuesDeCerrarSesion() throws Exception {
         sesiones.iniciar(docente, sesion);
-        var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
         participacion.finalizar(estudiante, intento.id());
         valoraciones.registrar(docente, intento.id(), "Sugerencia formativa");
         sesiones.finalizar(docente, sesion);
@@ -234,7 +324,8 @@ class PruebaFlujosNotificaciones {
         mvc.perform(get("/api/notificaciones").with(portador(mvc, correoEstudiante, codigo)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2));
         mvc.perform(get("/api/notificaciones")).andExpect(status().isUnauthorized());
-        mvc.perform(get("/api/notificaciones").with(user(docente.toString()).roles("DOCENTE"))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/notificaciones").with(user(docente.toString()).roles("DOCENTE")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
         UUID otro = UUID.randomUUID();
         mvc.perform(get("/api/notificaciones").with(user(otro.toString()).roles("ESTUDIANTE")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
@@ -250,7 +341,7 @@ class PruebaFlujosNotificaciones {
     @Test
     void soloResponsableValoraIntentoFinalizado() {
         sesiones.iniciar(docente, sesion);
-        var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
         assertThrows(Conflicto.class, () -> valoraciones.registrar(docente, intento.id(), "Aun no"));
         participacion.finalizar(estudiante, intento.id());
         assertThrows(AccesoDenegado.class, () -> valoraciones.registrar(estudiante, intento.id(), "No autorizado"));
@@ -260,7 +351,7 @@ class PruebaFlujosNotificaciones {
     @Test
     void rollbackDeFinalizacionYValoracionNoPublicaAvisos() {
         sesiones.iniciar(docente, sesion);
-        var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
         new TransactionTemplate(gestor).executeWithoutResult(estadoTransaccion -> {
             participacion.finalizar(estudiante, intento.id());
             assertEquals(2, cantidad(sesion));
@@ -288,7 +379,7 @@ class PruebaFlujosNotificaciones {
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(cambio)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.convocatorias[0].autorizada").value(true));
         sesiones.iniciar(docente, sesion);
-        var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
         participacion.finalizar(estudiante, intento.id());
         String mensaje = "{\"mensaje\":\"Valoracion formativa\"}";
         mvc.perform(post("/api/evaluaciones/{id}/valoraciones", intento.id())
@@ -303,7 +394,7 @@ class PruebaFlujosNotificaciones {
     @Test
     void valoracionDesdeReporteApareceEnHistorialYNotificaUnaSolaVez() throws Exception {
         sesiones.iniciar(docente, sesion);
-        var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
         participacion.finalizar(estudiante, intento.id());
         int antes = cantidad(sesion);
         mvc.perform(post("/api/reportes/participaciones/{id}/valoraciones", intento.id())
@@ -331,7 +422,7 @@ class PruebaFlujosNotificaciones {
     @Test
     void rollbackDesdeReportesRevierteValoracionYSolicitudDeAviso() {
         sesiones.iniciar(docente, sesion);
-        var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
         participacion.finalizar(estudiante, intento.id());
         int antes = cantidad(sesion);
         new TransactionTemplate(gestor).executeWithoutResult(estadoTransaccion -> {
@@ -346,7 +437,7 @@ class PruebaFlujosNotificaciones {
     @Test
     void reporteSoloPermiteValorarAlDocenteResponsableEIntentoFinalizado() throws Exception {
         sesiones.iniciar(docente, sesion);
-        var intento = participacion.iniciar(estudiante, sesion, codigo, List.of(pregunta));
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
         String ruta = "/api/reportes/participaciones/" + intento.id() + "/valoraciones";
         String contenido = "{\"mensaje\":\"Valoracion formativa\"}";
         mvc.perform(post(ruta).contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(contenido))

@@ -37,6 +37,15 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
     desactivarDuranteCambioRol: false,
     falloListado: false,
     falloDetalle: false,
+    notificaciones: [] as {
+      id: string;
+      idSesion: string | null;
+      idIntento: string | null;
+      tipo: string;
+      mensaje: string;
+      fechaCreacion: string;
+      leida: boolean;
+    }[],
     solicitudes: [] as {
       ruta: string;
       metodo: string;
@@ -82,6 +91,15 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
     }
     if (url.pathname === '/api/identidad/roles')
       return ruta.fulfill({ json: ['ADMINISTRADOR', 'DOCENTE', 'ESTUDIANTE'] });
+    if (url.pathname === '/api/notificaciones' && metodo === 'GET')
+      return ruta.fulfill({ json: estado.notificaciones });
+    if (url.pathname.startsWith('/api/notificaciones/') && url.pathname.endsWith('/leida')) {
+      const id = url.pathname.split('/')[3];
+      const notificacion = estado.notificaciones.find((actual) => actual.id === id);
+      if (!notificacion) return ruta.fulfill({ status: 404, json: {} });
+      notificacion.leida = true;
+      return ruta.fulfill({ status: 204 });
+    }
     if (url.pathname === '/api/identidad/roles/DOCENTE/creacion-casos') {
       if (metodo === 'PUT') {
         estado.permiso = datos.habilitado;

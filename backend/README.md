@@ -32,6 +32,9 @@ No deben reutilizarse en producción. Configure claves Base64 persistentes para 
 notificaciones, credenciales distintas y HTTPS en el entorno de despliegue. El puerto
 del host puede cambiarse mediante `PSICOAPP_BACKEND_PUERTO`.
 
+La [referencia completa de endpoints](../docs/endpoints.md) documenta las 47
+rutas implementadas, sus roles, entradas y resultados por módulo.
+
 ## Autenticación JWT
 
 `POST /api/identidad/ingreso` recibe `{"correo":"docente@example.test","clave":"contraseña-o-codigo"}`
@@ -155,7 +158,7 @@ Los correos se guardan cifrados con AES-256-GCM; el contenido se borra al entreg
 o cancelarlo. Los avisos de resultado/valoracion se conservan para su destinatario.
 Un error del canal no revierte la operacion academica.
 
-Rutas estudiantiles: `GET /api/notificaciones?limite=20&desplazamiento=0`
+Rutas para estudiantes y docentes: `GET /api/notificaciones?limite=20&desplazamiento=0`
 y `PUT /api/notificaciones/{id}/leida`. No se acepta un destinatario
 ajeno en el cuerpo. La autenticacion valida codigo no retirado aun despues del
 cierre de la sesion para permitir consultas; iniciar participacion conserva sus
@@ -166,6 +169,9 @@ La dependencia nueva `spring-boot-starter-mail` implementa el puerto SMTP.
 **Antes de convocar:** configurar clave AES persistente, URL de acceso y SMTP
 segun la [guia de notificaciones](../docs/pruebas/notificaciones.md).
 El correo incluye el enlace de ingreso, la sesión y el código de convocatoria.
+Los avisos docentes se reconstruyen de forma idempotente desde sesiones, intentos
+y evaluaciones persistidos: recordatorio próximo, finalización, estudiantes que no
+completaron, evaluaciones disponibles y reporte disponible.
 
 ## Reportes — seguimiento docente
 
@@ -176,7 +182,10 @@ Devuelve cada intento finalizado o vencido con sus respuestas y la evaluacion
 almacenada, si existe (`resultado: null` indica evaluacion pendiente).
 Consume contratos publicos de `participation` y `evaluation`, sin consultar
 repositorios ajenos ni calcular notas. `GET /api/reportes/sesiones/{id}`
-consulta el estado de participación y las notas por sesión para exportar el CSV.
+consulta el estado de participación y las notas por sesión, identifica a cada
+estudiante por nombre y correo y alimenta la exportacion CSV. Al cerrar manual o
+automaticamente una sesion, registra por separado las ausencias con nota cero y
+cero puntos por pregunta; no crea intentos ficticios (CU-35).
 La respuesta incluye `valoracionesGenerales` por intento. El docente responsable
 puede agregar una con `POST /api/reportes/participaciones/{idIntento}/valoraciones`,
 JSON `mensaje`. Se reutiliza `GestionValoraciones` de evaluation: guarda
@@ -338,6 +347,10 @@ Configura estas variables en `.env` (sin versionar secretos):
 | `PSICOAPP_DOMINIOS_INSTITUCIONALES` | Dominios institucionales exactos separados por comas |
 | `PSICOAPP_JWT_CLAVE` | Clave HS256 Base64 de 32 bytes o más; vacía genera una clave efímera |
 | `PSICOAPP_NOTIFICACIONES_CLAVE_CIFRADO` | Clave AES-256-GCM Base64 para cifrar notificaciones |
+| `PSICOAPP_NOTIFICACIONES_AVISOS_DOCENTE` | Habilita o pausa la generación de nuevos avisos docentes; predeterminado `true` |
+| `PSICOAPP_NOTIFICACIONES_RECORDATORIO_HORAS` | Anticipación del recordatorio de sesión, en horas; rango 1–168, predeterminado `24` |
+| `PSICOAPP_NOTIFICACIONES_AVISOS_DOCENTE_INTERVALO_MS` | Intervalo entre revisiones de avisos docentes, en milisegundos; predeterminado `60000` |
+| `PSICOAPP_NOTIFICACIONES_AVISOS_DOCENTE_DEMORA_INICIAL_MS` | Demora del primer barrido después del arranque, en milisegundos; predeterminado `1000` |
 
 El arranque crea las tablas de identidad, espacios, casos y sesiones si no existen e inserta los roles y el permiso
 sin duplicarlos. El administrador inicial se crea solo si no existe; no se
@@ -346,7 +359,16 @@ se crea una cuenta predeterminada. Sin dominios configurados no se admiten
 nuevos estudiantes. El usuario MySQL debe poder crear las tablas y consultar y
 modificar sus registros. El esquema no migra tablas preexistentes incompatibles.
 
-### API mínima
+### Actualizar una base existente
+
+Antes de arrancar esta versión con una base creada sin `intento.fecha_fin`, aplica
+una vez [001-fecha-fin-intento.sql](migraciones/001-fecha-fin-intento.sql) en esa base.
+Aplica después [002-autorizacion-reintento.sql](migraciones/002-autorizacion-reintento.sql)
+si la base aún no tiene la tabla `autorizacion_reintento`. Las instalaciones
+nuevas ya incluyen ambos cambios en `schema.sql`. Los intentos
+cerrados antes del cambio conservan su fecha de fin como desconocida.
+
+## API mínima
 
 La ampliacion de gestion del 18-11-2026 agrega las consultas y ediciones de la
 tabla siguiente. No requiere migraciones: utiliza las tablas y columnas existentes.

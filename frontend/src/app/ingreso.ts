@@ -1,12 +1,23 @@
-import { Component, computed, effect, input, ElementRef, inject, output, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  input,
+  ElementRef,
+  inject,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { DatePipe } from '@angular/common';
-import { Reporte, ServicioApi } from './servicio-api';
+import { AvisoNotificacion, Reporte, ServicioApi } from './servicio-api';
 
 interface Intento {
   id: string;
   limite: string;
   estado: string;
+  modoNavegacion?: 'FLEXIBLE' | 'RESTRINGIDA';
   preguntaActual: string;
   respuestas: Record<string, string>;
 }
@@ -28,19 +39,56 @@ interface Simulacion {
   imports: [FormsModule, DatePipe],
   templateUrl: './ingreso.html',
   styleUrl: './ingreso.css',
-  styles: [`
-    .ingreso-estudiante { max-width: 48rem; margin: 3rem auto; padding: clamp(1rem, 5vw, 3rem); background: white;
-      border: 1px solid var(--borde); border-radius: 1.25rem; }
-    .ingreso-estudiante img { width: 9rem; }
-    .ingreso-estudiante :is(form, label, fieldset) { display: grid; gap: .6rem; }
-    .ingreso-estudiante form { gap: 1rem; }
-    .ingreso-estudiante input:not([type=radio]) { padding: .7rem; border: 1px solid #82928d; border-radius: .45rem; }
-    .ingreso-estudiante fieldset label { display: flex; align-items: baseline; padding: .35rem; }
-    .ingreso-estudiante :is(button, a) { color: var(--azul); }
-    .ingreso-estudiante button { padding: .65rem 1rem; border: 1px solid var(--azul); border-radius: .45rem; background: var(--salvia); }
-    .ingreso-estudiante footer { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.5rem; }
-    .ingreso-estudiante [role=alert] { color: #a22126; }
-  `],
+  styles: [
+    `
+      .ingreso-estudiante {
+        max-width: 48rem;
+        margin: 3rem auto;
+        padding: clamp(1rem, 5vw, 3rem);
+        background: white;
+        border: 1px solid var(--borde);
+        border-radius: 1.25rem;
+      }
+      .ingreso-estudiante img {
+        width: 9rem;
+      }
+      .ingreso-estudiante :is(form, label, fieldset) {
+        display: grid;
+        gap: 0.6rem;
+      }
+      .ingreso-estudiante form {
+        gap: 1rem;
+      }
+      .ingreso-estudiante input:not([type='radio']) {
+        padding: 0.7rem;
+        border: 1px solid #82928d;
+        border-radius: 0.45rem;
+      }
+      .ingreso-estudiante fieldset label {
+        display: flex;
+        align-items: baseline;
+        padding: 0.35rem;
+      }
+      .ingreso-estudiante :is(button, a) {
+        color: var(--azul);
+      }
+      .ingreso-estudiante button {
+        padding: 0.65rem 1rem;
+        border: 1px solid var(--azul);
+        border-radius: 0.45rem;
+        background: var(--salvia);
+      }
+      .ingreso-estudiante footer {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+      }
+      .ingreso-estudiante [role='alert'] {
+        color: #a22126;
+      }
+    `,
+  ],
 })
 export class Ingreso {
   private readonly api = inject(ServicioApi);
@@ -61,15 +109,48 @@ export class Ingreso {
     effect(() => {
       this.idSesion = this.sesionEstudiante() ?? '';
     });
+    effect((alLimpiar) => {
+      const intento = this.intento();
+      if (intento?.estado !== 'EN_PROGRESO') return;
+
+      let segundos = 0;
+      const intervalo = setInterval(() => {
+        this.ahora.set(Date.now());
+        if (++segundos % 5 === 0) void this.actualizarIntento(intento.id);
+      }, 1000);
+      alLimpiar(() => clearInterval(intervalo));
+    });
   }
 
   readonly simulacion = signal<Simulacion | null>(null);
   readonly intento = signal<Intento | null>(null);
   readonly resultado = signal<Reporte['resultado']>(null);
   readonly valoraciones = signal<Reporte['valoracionesGenerales']>([]);
+  readonly notificaciones = signal<AvisoNotificacion[]>([]);
+  readonly cargandoNotificaciones = signal(false);
+  readonly errorNotificaciones = signal('');
+  readonly marcandoNotificacion = signal<string | null>(null);
+  readonly notificacionesNoLeidas = computed(
+    () => this.notificaciones().filter((notificacion) => !notificacion.leida).length,
+  );
   readonly confirmarEntrega = signal(false);
-  readonly indice = computed(() =>
-    this.simulacion()?.preguntas.findIndex((pregunta) => pregunta.id === this.intento()?.preguntaActual) ?? -1,
+  private readonly ahora = signal(Date.now());
+  private actualizandoIntento = false;
+  readonly segundosRestantes = computed(() =>
+    Math.max(0, Math.ceil((Date.parse(this.intento()?.limite ?? '') - this.ahora()) / 1000)),
+  );
+  readonly tiempoRestante = computed(() => {
+    const segundos = this.segundosRestantes();
+    return [Math.floor(segundos / 60), segundos % 60]
+      .map((parte) => String(parte).padStart(2, '0')).join(':');
+  });
+  readonly restringida = computed(() => this.intento()?.modoNavegacion === 'RESTRINGIDA');
+  readonly respondidas = computed(() => Object.keys(this.intento()?.respuestas ?? {}).length);
+  readonly indice = computed(
+    () =>
+      this.simulacion()?.preguntas.findIndex(
+        (pregunta) => pregunta.id === this.intento()?.preguntaActual,
+      ) ?? -1,
   );
   readonly pregunta = computed(() => this.simulacion()?.preguntas[this.indice()]);
   async iniciar() {
@@ -77,13 +158,52 @@ export class Ingreso {
       const codigoAcceso = this.codigo.trim();
       await this.api.ingresar(this.correo.trim(), codigoAcceso, true);
       const simulacion = await this.api.enviar<Simulacion>('/participaciones/ingreso', {
-        idSesion: this.idSesion.trim(), codigoAcceso,
+        idSesion: this.idSesion.trim(),
+        codigoAcceso,
       });
       this.codigo = '';
+      this.ahora.set(Date.now());
       this.simulacion.set(simulacion);
       this.intento.set(simulacion.intento);
-      if (simulacion.intento.estado !== 'EN_PROGRESO') await this.cargarResultado(simulacion.intento.id);
+      if (simulacion.intento.estado !== 'EN_PROGRESO')
+        await this.cargarResultado(simulacion.intento.id);
+      await this.cargarNotificaciones();
     });
+  }
+
+  async cargarNotificaciones() {
+    if (this.cargandoNotificaciones()) return;
+    this.cargandoNotificaciones.set(true);
+    this.errorNotificaciones.set('');
+    try {
+      this.notificaciones.set(await this.api.listarNotificaciones());
+    } catch (error) {
+      this.errorNotificaciones.set(
+        error instanceof Error ? error.message : 'No fue posible consultar las notificaciones.',
+      );
+    } finally {
+      this.cargandoNotificaciones.set(false);
+    }
+  }
+
+  async marcarNotificacionLeida(notificacion: AvisoNotificacion) {
+    if (notificacion.leida || this.marcandoNotificacion()) return;
+    this.marcandoNotificacion.set(notificacion.id);
+    this.errorNotificaciones.set('');
+    try {
+      await this.api.marcarNotificacionLeida(notificacion.id);
+      this.notificaciones.update((lista) =>
+        lista.map((actual) =>
+          actual.id === notificacion.id ? { ...actual, leida: true } : actual,
+        ),
+      );
+    } catch (error) {
+      this.errorNotificaciones.set(
+        error instanceof Error ? error.message : 'No fue posible marcar la notificación.',
+      );
+    } finally {
+      this.marcandoNotificacion.set(null);
+    }
   }
 
   async responder(idPregunta: string, idOpcion: string) {
@@ -94,14 +214,37 @@ export class Ingreso {
     await this.ejecutar(async () => {
       const intento = this.intento();
       if (!intento) return;
-      this.intento.set(await this.api.enviar<Intento>(
-        `/participaciones/${intento.id}/${accion}`, datos, metodo,
-      ));
+      this.intento.set(
+        await this.api.enviar<Intento>(`/participaciones/${intento.id}/${accion}`, datos, metodo),
+      );
       if (accion === 'finalizar') {
         this.confirmarEntrega.set(false);
         await this.cargarResultado(intento.id);
       }
     });
+  }
+
+  private async actualizarIntento(id: string) {
+    if (this.actualizandoIntento || this.ocupado() || this.intento()?.id !== id) return;
+    this.actualizandoIntento = true;
+    try {
+      const lectura = this.intento();
+      const intento = await this.api.consultar<Intento>(`/participaciones/${id}`);
+      if (this.ocupado() || this.intento() !== lectura || intento.estado === 'EN_PROGRESO') return;
+      await this.ejecutar(async () => {
+        this.intento.set(intento);
+        this.confirmarEntrega.set(false);
+        await this.cargarResultado(id);
+      });
+    } catch {
+      // La siguiente consulta vuelve a comprobar el estado del intento.
+    } finally {
+      this.actualizandoIntento = false;
+    }
+  }
+
+  enunciadoResultado(idPregunta: string) {
+    return this.simulacion()?.preguntas.find((pregunta) => pregunta.id === idPregunta)?.enunciado;
   }
 
   async consultarResultado() {
@@ -112,9 +255,15 @@ export class Ingreso {
   }
 
   private async cargarResultado(id: string) {
-    const evaluacion = await this.api.consultar<{ resultado: Reporte['resultado'] }>(`/evaluaciones/${id}`);
+    const evaluacion = await this.api.consultar<{ resultado: Reporte['resultado'] }>(
+      `/evaluaciones/${id}`,
+    );
     this.resultado.set(evaluacion.resultado);
-    this.valoraciones.set(await this.api.consultar<Reporte['valoracionesGenerales']>(`/evaluaciones/${id}/valoraciones`));
+    this.valoraciones.set(
+      await this.api.consultar<Reporte['valoracionesGenerales']>(
+        `/evaluaciones/${id}/valoraciones`,
+      ),
+    );
   }
 
   private async ejecutar(accion: () => Promise<void>) {

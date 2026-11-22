@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.function.Supplier;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,10 +46,13 @@ public class ServicioGestionSesiones implements ConsultaSesiones, AutorizacionDo
     private final FachadaAdministracion academico;
     private final Clock reloj;
     private final RepositorioConvocatorias convocatorias;
+    private final ConsolidadorReporteSesion consolidadorReportes;
+    private final ApplicationEventPublisher eventos;
 
     public ServicioGestionSesiones(RepositorioSesiones sesiones, DirectorioIdentidad identidades,
             CatalogoCasos casos, FachadaAdministracion academico, Clock reloj, RepositorioConvocatorias convocatorias,
-            NotificacionSujeto notificaciones,
+            NotificacionSujeto notificaciones, ConsolidadorReporteSesion consolidadorReportes,
+            ApplicationEventPublisher eventos,
             @Value("${psicoapp.notificaciones.url-acceso:http://localhost:3000/ingreso}") String urlAcceso) {
         this.notificaciones = notificaciones;
         this.urlAcceso = URI.create(urlAcceso);
@@ -58,6 +62,8 @@ public class ServicioGestionSesiones implements ConsultaSesiones, AutorizacionDo
         this.academico = academico;
         this.reloj = reloj;
         this.convocatorias = convocatorias;
+        this.consolidadorReportes = consolidadorReportes;
+        this.eventos = eventos;
     }
 
     public DatosSesion programar(UUID idDocente, DatosProgramacion datos) {
@@ -167,8 +173,13 @@ public class ServicioGestionSesiones implements ConsultaSesiones, AutorizacionDo
         identidades.exigirDocente(idDocente);
         Sesion sesion = bloquear(idSesion);
         exigirResponsable(idDocente, sesion);
-        Sesion cerrada = transicion(() -> sesion.finalizar(MotivoCierre.DOCENTE, reloj.instant()));
-        if (cerrada != sesion) sesiones.actualizarEstado(cerrada);
+        Instant fechaCierre = reloj.instant();
+        Sesion cerrada = transicion(() -> sesion.finalizar(MotivoCierre.DOCENTE, fechaCierre));
+        if (cerrada != sesion) {
+            sesiones.actualizarEstado(cerrada);
+            eventos.publishEvent(new SesionCerrada(cerrada.id(), fechaCierre));
+            consolidadorReportes.consolidar(cerrada.id(), fechaCierre);
+        }
         return representar(cerrada);
     }
 
@@ -181,6 +192,8 @@ public class ServicioGestionSesiones implements ConsultaSesiones, AutorizacionDo
             // Revalidar bajo bloqueo: otro proceso pudo finalizar desde la consulta inicial.
             if (sesion.estado().codigo() != TipoEstadoSesion.FINALIZADO && sesion.estaVencida(ahora)) {
                 sesiones.actualizarEstado(sesion.finalizar(MotivoCierre.AUTOMATICO, ahora));
+                eventos.publishEvent(new SesionCerrada(sesion.id(), ahora));
+                consolidadorReportes.consolidar(sesion.id(), ahora);
                 cerradas++;
             }
         }

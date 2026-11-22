@@ -163,8 +163,122 @@ test('la cuenta administrativa entra únicamente a administración', async ({ pa
   ).toHaveCount(0);
 });
 
+test('el estudiante consulta y marca sus notificaciones internas', async ({ page: pagina }) => {
+  const solicitudes: { ruta: string; metodo: string; autorizacion: string }[] = [];
+  const erroresNavegador: string[] = [];
+  pagina.on('console', (mensaje) => {
+    if (mensaje.type() === 'error') erroresNavegador.push(mensaje.text());
+  });
+  pagina.on('pageerror', (error) => erroresNavegador.push(error.message));
+  await pagina.route('**/api/**', async (ruta) => {
+    const solicitud = ruta.request();
+    const url = new URL(solicitud.url());
+    solicitudes.push({
+      ruta: url.pathname + url.search,
+      metodo: solicitud.method(),
+      autorizacion: solicitud.headers()['authorization'] ?? '',
+    });
+    if (url.pathname === '/api/identidad/ingreso')
+      return ruta.fulfill({ json: { token: 'token-estudiante', tipo: 'Bearer' } });
+    if (url.pathname === '/api/identidad/yo')
+      return ruta.fulfill({
+        json: {
+          id: 'estudiante',
+          nombre: 'Estudiante de prueba',
+          correo: 'estudiante@example.test',
+          rol: 'ESTUDIANTE',
+          puedeCrearCasos: false,
+        },
+      });
+    if (url.pathname === '/api/participaciones/ingreso')
+      return ruta.fulfill({
+        json: {
+          nombre: 'Caso de convivencia',
+          intento: {
+            id: 'intento-1',
+            limite: '2026-11-21T18:00:00Z',
+            estado: 'EN_PROGRESO',
+            preguntaActual: '',
+            respuestas: {},
+          },
+          preguntas: [],
+        },
+      });
+    if (url.pathname === '/api/notificaciones' && solicitud.method() === 'GET')
+      return ruta.fulfill({
+        json: [
+          {
+            id: 'aviso-nuevo',
+            idSesion: 'sesion-1',
+            idIntento: 'intento-1',
+            tipo: 'RESULTADO',
+            mensaje: 'Tu resultado ya está disponible.',
+            fechaCreacion: '2026-11-21T15:00:00Z',
+            leida: false,
+          },
+          {
+            id: 'aviso-leido',
+            idSesion: 'sesion-1',
+            idIntento: 'intento-1',
+            tipo: 'VALORACION',
+            mensaje: 'Tienes una nueva valoración docente.',
+            fechaCreacion: '2026-11-20T15:00:00Z',
+            leida: true,
+          },
+        ],
+      });
+    if (url.pathname === '/api/notificaciones/aviso-nuevo/leida' && solicitud.method() === 'PUT')
+      return ruta.fulfill({ status: 204 });
+    return ruta.fulfill({ status: 404, json: { detail: 'Ruta no simulada' } });
+  });
+
+  await pagina.goto('/ingreso?sesion=sesion-1');
+  await pagina.getByLabel('Correo institucional').fill('estudiante@example.test');
+  await pagina.getByLabel('Identificador de sesión').fill('sesion-1');
+  await pagina.getByLabel('Código de convocatoria').fill('codigo-ficticio');
+  await pagina.getByRole('button', { name: 'Entrar a la simulación' }).click();
+
+  await expect(pagina.getByRole('heading', { name: 'Notificaciones' })).toBeVisible();
+  await expect(pagina.getByText('1 sin leer')).toBeVisible();
+  await expect(pagina.getByText('Tu resultado ya está disponible.')).toBeVisible();
+  await pagina.getByRole('button', { name: 'Marcar como leída' }).click();
+  await expect(pagina.getByText('Estás al día')).toBeVisible();
+  await expect(pagina.getByText('Leída')).toHaveCount(2);
+
+  expect(solicitudes).toContainEqual({
+    ruta: '/api/notificaciones?limite=20&desplazamiento=0',
+    metodo: 'GET',
+    autorizacion: 'Bearer token-estudiante',
+  });
+  expect(solicitudes).toContainEqual({
+    ruta: '/api/notificaciones/aviso-nuevo/leida',
+    metodo: 'PUT',
+    autorizacion: 'Bearer token-estudiante',
+  });
+  expect(erroresNavegador).toEqual([]);
+});
+
 test('al cambiar de cuenta se reinician consultas y programación', async ({ page: pagina }) => {
   await simularCuenta(pagina);
+  await pagina.route('**/api/sesiones', (ruta) =>
+    ruta.fulfill({
+      json: [
+        {
+          id: 'sesion-cuenta',
+          idCaso: 'caso-cuenta',
+          idEspacio: 'espacio-cuenta',
+          inicioPrevisto: '2026-11-15T15:00:00Z',
+          finPrevisto: '2026-11-15T16:00:00Z',
+          duracionMaximaMin: 30,
+          estado: 'FINALIZADO',
+          modoNavegacion: 'FLEXIBLE',
+          lugar: '',
+          mensaje: '',
+          convocatorias: [],
+        },
+      ],
+    }),
+  );
   await pagina.goto('/ingreso');
   await completarFormulario(pagina);
   await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
@@ -177,8 +291,7 @@ test('al cambiar de cuenta se reinician consultas y programación', async ({ pag
   await pagina.getByLabel('Mensaje de convocatoria').fill('Mensaje privado de la primera cuenta');
   await pagina.keyboard.press('Escape');
   await pagina.getByRole('button', { name: 'Resultados', exact: true }).click();
-  await pagina.getByLabel('Identificador del caso').fill('caso-reporte-primera');
-  await pagina.getByLabel('Identificador del estudiante').fill('estudiante-primera');
+  await pagina.getByLabel('Sesión para exportar').selectOption('sesion-cuenta');
 
   await pagina.getByRole('button', { name: 'Mi cuenta' }).click();
   await pagina
@@ -197,8 +310,7 @@ test('al cambiar de cuenta se reinician consultas y programación', async ({ pag
   await expect(pagina.getByLabel('Mensaje de convocatoria')).toHaveValue('');
   await pagina.keyboard.press('Escape');
   await pagina.getByRole('button', { name: 'Resultados', exact: true }).click();
-  await expect(pagina.getByLabel('Identificador del caso')).toHaveValue('');
-  await expect(pagina.getByLabel('Identificador del estudiante')).toHaveValue('');
+  await expect(pagina.getByLabel('Sesión para exportar')).toHaveValue('');
 });
 
 test('un 401 de la cuenta activa cierra la sesión y un 403 no lo hace', async ({

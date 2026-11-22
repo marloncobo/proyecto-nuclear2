@@ -1,6 +1,9 @@
 # Participacion — alcance y plan de implementacion
 
 Este documento registra el alcance inicial de la rama `feat/participation`.
+El [contrato vigente](../endpoints.md#participación-estudiantil) describe el inicio con preguntas
+seleccionadas en el servidor, los cierres coordinados con la sesión y la
+autorización de reintentos.
 La funcionalidad se implementara en Java dentro de
 `backend/src/main/java/com/psicoapp/participation`, respetando las capas
 `api`, `application`, `domain` e `infrastructure`.

@@ -23,6 +23,10 @@ Revision local: 08-11-2026. Base: d2c27c6. Rama: notificaciones.
 | RN-06 | Asociar cada aviso al intento correcto, conservando historial. |
 | RF-02 | Solo el destinatario autenticado consulta sus avisos. |
 
+El seguimiento docente incorpora avisos operativos para recordar sesiones
+proximas, informar su cierre, senalar estudiantes pendientes y anunciar la
+disponibilidad de evaluaciones y reportes.
+
 ## Implementacion
 
 Observer implementado con `NotificacionSujeto` y `SpringNotificacionSujeto`.
@@ -74,6 +78,10 @@ puede repetir el envio. Los eventos y avisos internos si se deduplican en la BD.
   finalizado, autorizadas al docente responsable. Cada nueva valoracion emite aviso.
 - `notifications` crea avisos internos de nota/valoracion. No publica justificaciones
   durante la resolucion. Cada intento conserva su propia referencia (RN-06).
+- Un generador docente reconstruye avisos desde el estado durable. Crea recordatorios
+  hasta 24 horas antes; al finalizar una sesion informa cierre, pendientes y reporte;
+  anuncia evaluaciones cuando todos los intentos terminados tienen resultado. Los
+  identificadores deterministas evitan duplicados incluso despues de reiniciar.
 - Autenticacion y autorizacion de participacion quedan separadas: un codigo de
   convocatoria no retirada puede autenticar despues del cierre para consultar
   resultados/avisos; el ingreso nuevo conserva la validacion de sesion y horario.
@@ -85,8 +93,8 @@ Las mutaciones requieren JWT como las otras APIs del proyecto.
 
 | Metodo / ruta | Actor / contenido |
 | --- | --- |
-| GET `/api/notificaciones?limite=20&desplazamiento=0` | Estudiante; solo sus avisos internos entregados, ordenados del mas reciente al mas antiguo. Limite 1..100 y desplazamiento >=0. |
-| PUT `/api/notificaciones/{id}/leida` | Estudiante destinatario. Idempotente, 204; ajeno/inexistente 404. |
+| GET `/api/notificaciones?limite=20&desplazamiento=0` | Estudiante o docente; solo sus avisos internos entregados, ordenados del mas reciente al mas antiguo. Limite 1..100 y desplazamiento >=0. |
+| PUT `/api/notificaciones/{id}/leida` | Destinatario estudiante o docente. Idempotente, 204; ajeno/inexistente 404. |
 | PUT `/api/sesiones/{id}/convocados` | Docente responsable. JSON con listas `agregar` y `retirar` de UUID. Devuelve solo convocatorias afectadas y codigo nuevo solo para altas. |
 | POST `/api/evaluaciones/{idIntento}/valoraciones` | Docente responsable. JSON `mensaje`, entre 1 y 4000 caracteres; 201. |
 | GET `/api/evaluaciones/{idIntento}/valoraciones` | Estudiante propietario o docente responsable; historial. |
@@ -128,6 +136,20 @@ $env:PSICOAPP_NOTIFICACIONES_CLAVE_CIFRADO = [Convert]::ToBase64String($claveNot
 | PSICOAPP_CORREO_TLS | STARTTLS habilitado y requerido, por defecto true. |
 | PSICOAPP_NOTIFICACIONES_DESPACHO | Por defecto true. false pausa entregas, conservando solicitudes. |
 | PSICOAPP_NOTIFICACIONES_INTERVALO_MS | Por defecto 30000. |
+| PSICOAPP_NOTIFICACIONES_AVISOS_DOCENTE | Activa (`true`) o pausa (`false`) la generacion de nuevos avisos docentes. Pausarla no elimina el historial ni las solicitudes existentes. Por defecto `true`. |
+| PSICOAPP_NOTIFICACIONES_RECORDATORIO_HORAS | Ventana previa al inicio de una sesion en la que se crea el recordatorio docente. Se expresa en horas, admite de 1 a 168 y usa 24 por defecto. |
+| PSICOAPP_NOTIFICACIONES_AVISOS_DOCENTE_INTERVALO_MS | Frecuencia del barrido que revisa sesiones, intentos, evaluaciones y reportes para generar avisos. Se expresa en milisegundos y usa 60000 por defecto. |
+| PSICOAPP_NOTIFICACIONES_AVISOS_DOCENTE_DEMORA_INICIAL_MS | Espera entre el arranque del backend y el primer barrido docente. Se expresa en milisegundos y usa 1000 por defecto. |
+
+Los avisos docentes se revisan cada 60 segundos y el primer barrido ocurre un
+segundo despues del arranque. Las variables opcionales
+`PSICOAPP_NOTIFICACIONES_RECORDATORIO_HORAS`,
+`PSICOAPP_NOTIFICACIONES_AVISOS_DOCENTE_INTERVALO_MS`,
+`PSICOAPP_NOTIFICACIONES_AVISOS_DOCENTE_DEMORA_INICIAL_MS` y
+`PSICOAPP_NOTIFICACIONES_AVISOS_DOCENTE` permiten ajustar esos valores o pausar
+el generador sin borrar avisos existentes. Generar y entregar son operaciones
+distintas: si `PSICOAPP_NOTIFICACIONES_DESPACHO=false`, las solicitudes nuevas
+quedan en estado pendiente y todavia no aparecen como entregadas en el frontend.
 
 Timeouts SMTP de conexion, lectura y escritura: 5 segundos. Las variables SMTP
 pueden adaptarse al proveedor; para un capturador local sin autenticacion/TLS,
@@ -136,7 +158,9 @@ la convocatoria se guarda y el envio queda pendiente para reintentar.
 
 Al arrancar, `schema.sql` agrega las tablas nuevas de forma idempotente. No modifica
 ni elimina tablas existentes. La aplicacion debe conservar la misma clave y BD
-entre reinicios. Los avisos internos se consultan por API; no se implemento frontend.
+entre reinicios. Los avisos internos se consultan por API. El frontend incluye
+bandejas separadas para estudiantes y docentes, contador de no leidos,
+actualizacion manual e historial.
 
 ## Plan y evidencia de pruebas
 
@@ -176,11 +200,10 @@ de configuracion de pruebas. No se declara equivalencia entre H2 y MySQL.
 
 ## Limites conservados
 
-No se implementan frontend, reportes, reintentos academicos excepcionales ni
-consolidacion de ausencias sin intento (CU-35). Los eventos aqui corresponden
-a intentos efectivamente evaluados. No se modifica el catalogo oficial RF/RN/CU
-ni se inventa un catalogo RNF. La entrega atiende RF-21/RF-27 en backend, con
-integraciones de CU-34 y CU-32 necesarias para dispararlos.
+No se implementan notificaciones push/WebSocket ni reintentos academicos
+excepcionales. Los avisos se actualizan al ingresar, al abrir la bandeja o mediante
+el planificador del backend. No se modifica el catalogo oficial RF/RN/CU ni se
+inventa un catalogo RNF.
 
 ## Integracion de seguimiento docente — CP-NO-009
 

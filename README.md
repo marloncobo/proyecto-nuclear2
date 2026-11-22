@@ -10,7 +10,7 @@ backend y completa las credenciales y claves necesarias; `.env` está excluido d
 
 El backend usa Java 21, Spring Boot 4.1.2 y Maven. Su estructura es un
 monolito modular con paquete base `com.psicoapp`.
-El frontend para docentes y administradores usa Angular 21. Incluye una demostración y conexión a la API existente. Consulta sus [comandos, funciones y límites](frontend/README.md).
+El frontend para administradores, docentes y estudiantes usa Angular 21. Incluye un modo de demostración y recorridos conectados a la API. Consulta sus [comandos, funciones y límites](frontend/README.md).
 
 El backend tambien incluye construccion/publicacion de casos y programacion
 sesiones con State, participacion, evaluacion y notificaciones con Observer.
@@ -40,8 +40,9 @@ cd backend
 sh mvnw spring-boot:run
 ```
 
-El servidor usa el puerto `8080`. Los módulos `identity` y `academic` exponen
-la [API mínima protegida](backend/README.md#api-mínima) de usuarios y espacios académicos.
+El servidor usa el puerto `8080`. Consulta la [referencia completa de endpoints](docs/endpoints.md)
+para conocer rutas, roles, entradas y respuestas. Los módulos `identity` y
+`academic` también se resumen en la [API mínima protegida](backend/README.md#api-mínima).
 
 ### Ejecutar con Docker
 
@@ -73,3 +74,8 @@ java -jar target/psicoapp-0.0.1-SNAPSHOT.jar
 ```
 
 Consulta la [arquitectura del backend](backend/README.md) antes de añadir funcionalidades.
+La [actualización de bases existentes](backend/README.md#actualizar-una-base-existente)
+describe los cambios de esquema para el historial y los reintentos.
+
+El [registro de aceptación técnica](docs/pruebas/aceptacion-mvp.md) incluye el caso
+de demostración, el resultado observado y las decisiones pendientes.

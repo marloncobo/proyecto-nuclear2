@@ -36,18 +36,18 @@ El MVP es una **primera versión funcional verificable**, no una eliminación de
 
 **Condiciones transversales que no pueden omitirse en esta versión:** protección real del acceso en backend; validaciones antes de publicar y permitir participar; persistencia independiente de intentos; respeto del reloj de sesión y de intento; calificación por rúbrica; no permitir participación en sesión finalizada.
 
-## 5. Funcionalidades propuestas para fase posterior (pendientes de aprobación)
+## 5. Priorización original y estado de implementación
 
-Esta priorización **no altera** el catálogo vigente. Si el MVP se evalúa contra todos los RF, las siguientes funciones deberán implementarse antes de declarar cumplimiento total o documentarse como excepciones autorizadas:
+La tabla conserva la priorización de la propuesta y registra lo que ya se puede verificar en la aplicación. El catálogo de requisitos sigue siendo la referencia para la aceptación.
 
-| Función de la versión completa | RF / RN | Propuesta |
-| --- | --- | --- |
-| Descargar reporte académico exportable | RF-16 | Segunda iteración; el MVP mantiene consulta docente de resultados (RF-15). |
-| Autorizar un reintento excepcional de forma operativa | RF-25; RN-07 | Segunda iteración, manteniendo la regla de que no haya reintentos arbitrarios. El MVP no habilita nuevos intentos por defecto. |
-| Valoración general adicional del docente | RF-26 | Segunda iteración; se conserva retroalimentación por pregunta y resultado final. |
-| Agregar o retirar convocados después de programar | RF-21 y relaciones CU-34 | Segunda iteración; la convocatoria inicial sí funciona en el MVP. |
-| Notificaciones automáticas por correo de convocatoria y avisos de resultados/valoración | RF-21, RF-27 | **Decisión pendiente:** los RF las exigen. Posponer requiere aprobación explícita; alternativamente incluir envío mínimo por correo en el MVP. |
-| Archivado de casos | RF-09; CU-11 | Segunda iteración propuesta; mantener inicialmente BORRADOR/PUBLICADO sin programar casos no publicados. Validar autorización del recorte. |
+| Función de la versión completa | RF / RN | Propuesta original | Estado del código |
+| --- | --- | --- | --- |
+| Descargar reporte académico exportable | RF-16 | Segunda iteración; el MVP mantiene consulta docente de resultados (RF-15). | Descarga CSV por sesión con notas disponibles, avance y ausencias. |
+| Autorizar un reintento excepcional de forma operativa | RF-25; RN-07 | Segunda iteración, manteniendo la regla de que no haya reintentos arbitrarios. El MVP no habilita nuevos intentos por defecto. | Autorización de un uso desde el reporte docente, con un solo intento activo por estudiante. |
+| Valoración general adicional del docente | RF-26 | Segunda iteración; se conserva retroalimentación por pregunta y resultado final. | Valoraciones por intento y aviso interno al estudiante. |
+| Agregar o retirar convocados después de programar | RF-21 y relaciones CU-34 | Segunda iteración; la convocatoria inicial sí funciona en el MVP. | Altas y retiros disponibles, con autorización actualizada y correo en cola. |
+| Notificaciones automáticas por correo de convocatoria y avisos de resultados/valoración | RF-21, RF-27 | **Decisión pendiente:** los RF las exigen. Posponer requiere aprobación explícita; alternativamente incluir envío mínimo por correo en el MVP. | Convocatorias por SMTP, resultados y valoraciones por aviso interno. Falta la aceptación del proveedor institucional. |
+| Archivado de casos | RF-09; CU-11 | Segunda iteración propuesta; mantener inicialmente BORRADOR/PUBLICADO sin programar casos no publicados. Validar autorización del recorte. | Archivado disponible en la biblioteca docente. |
 
 ## 6. Exclusiones y límites
 

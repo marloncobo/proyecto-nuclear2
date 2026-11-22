@@ -127,6 +127,7 @@ class PruebaRepositorioIntentosJdbc {
         Intento recuperado = repositorio.buscarPorId(intento.id()).orElseThrow();
 
         assertEquals(EstadoIntento.FINALIZADO, recuperado.estado());
+        assertEquals(INICIO.plusSeconds(2), recuperado.fin());
         assertEquals(opcion, recuperado.respuestas().get(pregunta));
         assertEquals(1, JdbcClient.create(fuente).sql("SELECT COUNT(*) FROM respuesta WHERE id_intento=?")
                 .param(intento.id().toString()).query(Integer.class).single());

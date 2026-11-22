@@ -37,12 +37,13 @@ un 403 no cierra la sesión. No hay renovación automática. Consultar la
 - Creación, consulta y edición de espacios académicos. El backend impide editar espacios asociados a cualquier sesión; el formulario conserva los valores cuando hay conflicto.
 - Programación con caso publicado, espacio, fechas, duración, navegación y lugar. Los docentes pueden buscar por correo exacto o seleccionar estudiantes activos por nombre o correo, registrar estudiantes y editar convocados. El servidor gestiona las convocatorias.
 - Inicio y finalización de sesiones, con confirmación y validaciones del servidor.
-- Reportes por caso y estudiante con calificación, retroalimentación y publicación de valoraciones. Una evaluación pendiente se muestra como pendiente y la exportación CSV por sesión incluye intentos, notas y ausencias cuando la sesión está cerrada.
+- Reportes navegables desde la sesión y el nombre del estudiante, con calificación, respuestas, retroalimentación y publicación de valoraciones. Una evaluación pendiente se muestra como pendiente y la exportación CSV por sesión incluye identidades, intentos, notas y ausencias consolidadas cuando la sesión está cerrada.
 - Administración con navegación propia según rol: listado de usuarios con búsqueda por nombre/correo en el servidor y filtros combinables de rol/estado, detalle y edición de docentes en una ventana modal, y activación/desactivación confirmada. La ventana se cierra con Escape, la cruz, el fondo o «Volver al listado» y devuelve el foco al botón de origen; durante el guardado permanece abierta. Los errores de edición se muestran dentro de ella. La cuenta propia no se puede desactivar.
 - Registro de docentes en un modal con nombre, correo y contraseña inicial (8 caracteres como mínimo, hasta 72 bytes). No se almacena la contraseña en el navegador; el formulario se limpia al cancelar o completar el registro. Un error conserva los campos para corregirlos. El nuevo docente se incorpora al listado si coincide con los filtros actuales.
 - Cambio de rol desde el detalle, con revisión y confirmación dentro de la misma ventana. Se conserva el estado activo/inactivo y se respetan los filtros del listado. No se permite retirar el rol de la propia cuenta administrativa. El servidor valida el dominio al convertir a estudiante y rechaza cuentas estudiantiles sin contraseña al convertirlas a personal.
 - La activación y desactivación de usuarios se confirman en modales. La configuración global del permiso de creación de casos requiere confirmación y afecta a todo el rol docente.
-- El enlace «Ingresar con código de convocatoria» abre el acceso estudiantil en `/ingreso?sesion=`. El estudiante usa su correo institucional, identificador de sesión y código de convocatoria para responder, navegar, entregar y consultar su calificación y las valoraciones.
+- El enlace «Ingresar con código de convocatoria» abre el acceso estudiantil en `/ingreso?sesion=`. El estudiante usa su correo institucional, identificador de sesión y código de convocatoria para responder, navegar, entregar y consultar su calificación y las valoraciones. Durante el intento se muestran el tiempo restante y las preguntas respondidas. La navegación respeta la modalidad de la sesión y la vista consulta automáticamente el estado para mostrar la nota y las explicaciones después del cierre. La misma vista consulta sus avisos internos, diferencia los no leídos y permite marcarlos como leídos sin exponer datos de otros destinatarios.
+- El menú docente incluye «Notificaciones» con contador de no leídas e historial. Presenta recordatorios de sesiones próximas, cierres, estudiantes pendientes, evaluaciones disponibles y reportes listos; cada docente consulta y marca únicamente sus propios avisos.
 
 El acceso sin identificar dirige a `/ingreso`. La demostración se abre de forma explícita con «Explorar la demostración» y utiliza datos ficticios **solo en memoria**; los cambios desaparecen al recargar. El parámetro público `demostracion=1` permite recuperar esa navegación sin autenticar ni acceder a datos reales. Al ingresar con una cuenta se descartan esos datos: el docente carga sus espacios, casos y sesiones y el administrador carga usuarios y roles. La administración y la búsqueda estudiantil requieren conexión real. Los casos y sesiones reales consultados permanecen en memoria hasta recargar. El panel de encuentro muestra la primera sesión cargada; el resumen no representa totales globales del servidor.
 
@@ -52,16 +53,16 @@ El restablecimiento de contraseñas queda fuera del alcance de la interfaz. La a
 
 ### Contratos administrativos integrados
 
-| Operación                | Endpoint                                                           |
-| ------------------------ | ------------------------------------------------------------------ |
-| Ingreso e identidad      | `POST /api/identidad/ingreso`, `GET /api/identidad/yo`             |
-| Listado y filtros        | `GET /api/identidad/usuarios?rol=...&activo=...&busqueda=...`                   |
-| Detalle                  | `GET /api/identidad/usuarios/{id}`                                 |
-| Registrar docente        | `POST /api/identidad/docentes`                                     |
-| Editar docente           | `PUT /api/identidad/docentes/{id}`                                 |
-| Activar/desactivar       | `PUT /api/identidad/usuarios/{id}/estado`                          |
-| Permiso de creación     | `GET /api/identidad/roles/{rol}/creacion-casos`, `PUT /api/identidad/roles/DOCENTE/creacion-casos` |
-| Catálogo y cambio de rol | `GET /api/identidad/roles`, `PUT /api/identidad/usuarios/{id}/rol` |
+| Operación                | Endpoint                                                                                           |
+| ------------------------ | -------------------------------------------------------------------------------------------------- |
+| Ingreso e identidad      | `POST /api/identidad/ingreso`, `GET /api/identidad/yo`                                             |
+| Listado y filtros        | `GET /api/identidad/usuarios?rol=...&activo=...&busqueda=...`                                      |
+| Detalle                  | `GET /api/identidad/usuarios/{id}`                                                                 |
+| Registrar docente        | `POST /api/identidad/docentes`                                                                     |
+| Editar docente           | `PUT /api/identidad/docentes/{id}`                                                                 |
+| Activar/desactivar       | `PUT /api/identidad/usuarios/{id}/estado`                                                          |
+| Permiso de creación      | `GET /api/identidad/roles/{rol}/creacion-casos`, `PUT /api/identidad/roles/DOCENTE/creacion-casos` |
+| Catálogo y cambio de rol | `GET /api/identidad/roles`, `PUT /api/identidad/usuarios/{id}/rol`                                 |
 
 Las escrituras envían el JWT Bearer y solo actualizan los datos visibles tras una respuesta correcta. No hay endpoints administrativos de borrado o recuperación de contraseñas en este contrato.
 

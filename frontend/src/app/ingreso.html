@@ -1,190 +1,299 @@
 @if (sesionEstudiante() !== null) {
-<main class="ingreso-estudiante">
-  <a href="/ingreso"><img src="/logo-psicoapp.png" alt="Psicoapp, inicio" /></a>
-  @if (simulacion(); as caso) {
-    <h1>{{ caso.nombre }}</h1>
-    @if (intento()?.estado === 'EN_PROGRESO') {
-      <p>Hora límite {{ intento()?.limite | date: 'shortTime' }}</p>
-      @if (pregunta(); as actual) {
-        <p>Pregunta {{ indice() + 1 }} de {{ caso.preguntas.length }}</p>
-        <h2>{{ actual.escenario }}</h2>
-        <p>{{ actual.contexto }}</p>
-        <fieldset [disabled]="ocupado()">
-          <legend>{{ actual.enunciado }}</legend>
-          @for (opcion of actual.opciones; track opcion.id) {
-            <label>
-              <input type="radio" name="respuesta" [checked]="intento()?.respuestas?.[actual.id] === opcion.id"
-                (change)="responder(actual.id, opcion.id)" />
-              {{ opcion.texto }}
-            </label>
-          }
-        </fieldset>
-        <footer>
-          <button type="button" [disabled]="ocupado() || indice() === 0" (click)="operar('retroceder')">Anterior</button>
-          <button type="button" [disabled]="ocupado() || indice() === caso.preguntas.length - 1"
-            (click)="operar('avanzar')">Siguiente</button>
-          <button type="button" [disabled]="ocupado()" (click)="confirmarEntrega.set(true)">Entregar intento</button>
-        </footer>
-        @if (confirmarEntrega()) {
-          <p>¿Confirmas la entrega de tus respuestas?</p>
-          <button type="button" [disabled]="ocupado()" (click)="operar('finalizar')">Confirmar entrega</button>
-          <button type="button" [disabled]="ocupado()" (click)="confirmarEntrega.set(false)">Seguir respondiendo</button>
-        }
-      }
-    } @else if (resultado(); as nota) {
-      <h2>Calificación {{ nota.calificacion }}</h2>
-      <ul>
-        @for (detalle of nota.detalles; track detalle.idPregunta) {
-          <li>{{ detalle.retroalimentacion }}</li>
-        }
-      </ul>
-      @for (valoracion of valoraciones(); track valoracion.id) {
-        <blockquote>{{ valoracion.mensaje }}</blockquote>
-      }
-      <button type="button" [disabled]="ocupado()" (click)="consultarResultado()">Actualizar resultado</button>
-    } @else {
-      <p>Intento entregado.</p>
-      <button type="button" [disabled]="ocupado()" (click)="consultarResultado()">Consultar calificación</button>
-    }
-  } @else {
-    <h1>Ingreso a la sesión</h1>
-    <form #convocatoria="ngForm" (ngSubmit)="convocatoria.valid && iniciar()">
-      <label>Correo institucional <input type="email" name="correo" [(ngModel)]="correo" required email /></label>
-      <label>Identificador de sesión <input name="sesion" [(ngModel)]="idSesion" required /></label>
-      <label>Código de convocatoria <input type="password" name="codigo" [(ngModel)]="codigo" required /></label>
-      <button type="submit" [disabled]="ocupado() || convocatoria.invalid">Entrar a la simulación</button>
-    </form>
-  }
-  @if (error()) {
-    <p role="alert">{{ error() }}</p>
-  }
-</main>
-} @else {
-<main class="pagina-ingreso" id="principal">
-  <section class="presentacion" aria-label="Psicoapp, simulador académico">
-    <img class="logo-ingreso" src="logo-psicoapp.png" alt="Psicoapp" width="130" height="93" />
-    <div class="mensaje-ingreso">
-      <p class="antetitulo">PSICOLOGÍA EN ACCIÓN</p>
-      <h1>Una nueva forma<br />de mirar.<br /><em>Y de aprender.</em></h1>
-      <p>
-        Explora perspectivas, conecta ideas y transforma<br class="salto-escritorio" />
-        cada experiencia en aprendizaje.
-      </p>
-    </div>
-    <div class="ilustracion-ingreso" aria-hidden="true">
-      <div class="orbita"></div>
-      <div class="orbita segunda"></div>
-      <div class="figura salvia"></div>
-      <div class="figura azul"></div>
-      <div class="circulo"></div>
-      <span class="destello">✳</span>
-      <span class="leyenda">↔ &nbsp; Cada mirada cuenta.</span>
-    </div>
-    <p class="pie-presentacion"><span aria-hidden="true">✦</span> Aprender a comprender.</p>
-  </section>
-  <section class="zona-formulario" aria-labelledby="titulo-ingreso">
-    <span class="sello-campus">TU CAMPUS VIRTUAL <span aria-hidden="true">↗</span></span>
-    <div class="formulario-ingreso">
-      <p class="antetitulo">QUÉ BUENO VERTE AQUÍ</p>
-      <h2 id="titulo-ingreso">Tu próxima <em>perspectiva.</em></h2>
-      <p class="instruccion">Ingresa con tu cuenta institucional para continuar.</p>
-      @if (error()) {
-        <div #avisoError class="error-ingreso" role="alert" tabindex="-1">{{ error() }}</div>
-      }
-      <form
-        #formulario="ngForm"
-        (ngSubmit)="ingresar(formulario)"
-        novalidate
-        [attr.aria-busy]="ocupado()"
-      >
-        <div class="campo">
-          <label for="correo-ingreso">Correo institucional</label>
-          <input
-            id="correo-ingreso"
-            name="correo"
-            type="email"
-            autocomplete="username"
-            inputmode="email"
-            autocapitalize="none"
-            spellcheck="false"
-            placeholder="tu.nombre@institucion.edu.co"
-            [(ngModel)]="correo"
-            #campoCorreo="ngModel"
-            required
-            email
-            [readOnly]="ocupado()"
-            [attr.aria-invalid]="campoCorreo.invalid && campoCorreo.touched ? 'true' : null"
-            [attr.aria-describedby]="
-              campoCorreo.invalid && campoCorreo.touched ? 'error-correo' : null
-            "
-          />
-          @if (campoCorreo.invalid && campoCorreo.touched) {
-            <small id="error-correo" class="error-campo"
-              >Escribe un correo institucional válido.</small
-            >
-          }
+  <main class="ingreso-estudiante">
+    <a href="/ingreso"><img src="/logo-psicoapp.png" alt="Psicoapp, inicio" /></a>
+    @if (simulacion(); as caso) {
+      <h1>{{ caso.nombre }}</h1>
+      <section class="bandeja-notificaciones" aria-labelledby="titulo-notificaciones">
+        <div class="encabezado-notificaciones">
+          <div>
+            <p class="etiqueta-notificaciones">TU ACTIVIDAD</p>
+            <h2 id="titulo-notificaciones">Notificaciones</h2>
+            <p aria-live="polite">
+              @if (notificacionesNoLeidas()) {
+                {{ notificacionesNoLeidas() }} sin leer
+              } @else {
+                Estás al día
+              }
+            </p>
+          </div>
+          <button
+            type="button"
+            [disabled]="cargandoNotificaciones()"
+            (click)="cargarNotificaciones()"
+          >
+            {{ cargandoNotificaciones() ? 'Actualizando…' : 'Actualizar' }}
+          </button>
         </div>
-        <div class="campo">
-          <label for="clave-ingreso">Contraseña</label>
-          <div class="contenedor-clave">
-            <input
-              id="clave-ingreso"
-              name="clave"
-              [type]="mostrarClave() ? 'text' : 'password'"
-              autocomplete="current-password"
-              placeholder="Tu contraseña"
-              [(ngModel)]="clave"
-              #campoClave="ngModel"
-              required
-              [readOnly]="ocupado()"
-              [attr.aria-invalid]="campoClave.invalid && campoClave.touched ? 'true' : null"
-              [attr.aria-describedby]="
-                campoClave.invalid && campoClave.touched ? 'error-clave' : null
-              "
-            />
+        @if (errorNotificaciones()) {
+          <p class="error-notificaciones" role="alert">{{ errorNotificaciones() }}</p>
+        }
+        @if (cargandoNotificaciones() && !notificaciones().length) {
+          <p role="status">Consultando tus notificaciones…</p>
+        } @else {
+          <div class="lista-notificaciones">
+            @for (notificacion of notificaciones(); track notificacion.id) {
+              <article [class.no-leida]="!notificacion.leida">
+                <div>
+                  <span class="tipo-notificacion">{{ notificacion.tipo }}</span>
+                  <p>{{ notificacion.mensaje }}</p>
+                  <time [attr.datetime]="notificacion.fechaCreacion">
+                    {{ notificacion.fechaCreacion | date: 'medium' }}
+                  </time>
+                </div>
+                @if (!notificacion.leida) {
+                  <button
+                    type="button"
+                    [disabled]="marcandoNotificacion() !== null"
+                    (click)="marcarNotificacionLeida(notificacion)"
+                  >
+                    {{
+                      marcandoNotificacion() === notificacion.id ? 'Marcando…' : 'Marcar como leída'
+                    }}
+                  </button>
+                } @else {
+                  <span class="estado-leida">Leída</span>
+                }
+              </article>
+            } @empty {
+              <p class="vacio-notificaciones">Todavía no tienes notificaciones.</p>
+            }
+          </div>
+        }
+      </section>
+      @if (intento()?.estado === 'EN_PROGRESO') {
+        <p>Tiempo restante <span role="timer">{{ tiempoRestante() }}</span></p>
+        <p>Hora límite {{ intento()?.limite | date: 'shortTime' }}</p>
+        <p>{{ respondidas() }} de {{ caso.preguntas.length }} preguntas respondidas</p>
+        @if (segundosRestantes() === 0) {
+          <p role="status">Se agotó el tiempo. Estamos consultando el resultado.</p>
+        }
+        @if (pregunta(); as actual) {
+          <p>Pregunta {{ indice() + 1 }} de {{ caso.preguntas.length }}</p>
+          <h2>{{ actual.escenario }}</h2>
+          <p>{{ actual.contexto }}</p>
+          <fieldset [disabled]="ocupado() || segundosRestantes() === 0">
+            <legend>{{ actual.enunciado }}</legend>
+            @for (opcion of actual.opciones; track opcion.id) {
+              <label>
+                <input
+                  type="radio"
+                  name="respuesta"
+                  [checked]="intento()?.respuestas?.[actual.id] === opcion.id"
+                  (change)="responder(actual.id, opcion.id)"
+                />
+                {{ opcion.texto }}
+              </label>
+            }
+          </fieldset>
+          <footer>
             <button
               type="button"
-              class="alternar-clave"
-              [attr.aria-label]="mostrarClave() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
-              [attr.aria-pressed]="mostrarClave()"
-              [disabled]="ocupado()"
-              (click)="mostrarClave.set(!mostrarClave())"
+              [disabled]="ocupado() || segundosRestantes() === 0 || restringida() || indice() === 0"
+              (click)="operar('retroceder')"
             >
-              {{ mostrarClave() ? 'Ocultar' : 'Mostrar' }}
+              Anterior
             </button>
-          </div>
-          @if (campoClave.invalid && campoClave.touched) {
-            <small id="error-clave" class="error-campo">Escribe tu contraseña.</small>
+            <button
+              type="button"
+              [disabled]="
+                ocupado() || segundosRestantes() === 0 || indice() === caso.preguntas.length - 1 ||
+                (restringida() && !intento()?.respuestas?.[actual.id])
+              "
+              (click)="operar('avanzar')"
+            >
+              Siguiente
+            </button>
+            <button type="button" [disabled]="ocupado() || segundosRestantes() === 0" (click)="confirmarEntrega.set(true)">
+              Entregar intento
+            </button>
+          </footer>
+          @if (confirmarEntrega()) {
+            <p>¿Confirmas la entrega de tus respuestas?</p>
+            <button type="button" [disabled]="ocupado() || segundosRestantes() === 0" (click)="operar('finalizar')">
+              Confirmar entrega
+            </button>
+            <button type="button" [disabled]="ocupado()" (click)="confirmarEntrega.set(false)">
+              Seguir respondiendo
+            </button>
           }
-        </div>
-        <button class="boton-ingresar" type="submit" [disabled]="ocupado()">
-          <span>{{ ocupado() ? 'Iniciando sesión…' : 'Entrar a mi espacio' }}</span>
-          @if (ocupado()) {
-            <span class="cargando" aria-hidden="true"></span>
-          } @else {
-            <span aria-hidden="true">↗</span>
+        }
+      } @else if (resultado(); as nota) {
+        <h2>Calificación {{ nota.calificacion }}</h2>
+        <ul>
+          @for (detalle of nota.detalles; track detalle.idPregunta) {
+            <li>
+              @if (enunciadoResultado(detalle.idPregunta); as enunciado) {
+                <strong>{{ enunciado }}</strong>
+              }
+              <p>{{ !detalle.contestada ? 'Sin responder' : detalle.correcta ? 'Correcta' : 'Incorrecta' }}</p>
+              <p>{{ detalle.retroalimentacion }}</p>
+            </li>
           }
+        </ul>
+        @for (valoracion of valoraciones(); track valoracion.id) {
+          <blockquote>{{ valoracion.mensaje }}</blockquote>
+        }
+        <button type="button" [disabled]="ocupado()" (click)="consultarResultado()">
+          Actualizar resultado
         </button>
-        <p class="ayuda-acceso">
-          Acceso para docentes y administradores.<br />¿Necesitas ayuda con tu cuenta? Contacta al
-          administrador de tu institución.
-        </p>
+      } @else {
+        <p>Intento entregado.</p>
+        <button type="button" [disabled]="ocupado()" (click)="consultarResultado()">
+          Consultar calificación
+        </button>
+      }
+    } @else {
+      <h1>Ingreso a la sesión</h1>
+      <form #convocatoria="ngForm" (ngSubmit)="convocatoria.valid && iniciar()">
+        <label
+          >Correo institucional
+          <input type="email" name="correo" [(ngModel)]="correo" required email
+        /></label>
+        <label
+          >Identificador de sesión <input name="sesion" [(ngModel)]="idSesion" required
+        /></label>
+        <label
+          >Código de convocatoria
+          <input type="password" name="codigo" [(ngModel)]="codigo" required
+        /></label>
+        <button type="submit" [disabled]="ocupado() || convocatoria.invalid">
+          Entrar a la simulación
+        </button>
       </form>
-      <p class="ayuda-acceso"><a href="/ingreso?sesion=">Ingresar con código de convocatoria</a></p>
-      <div class="separador"><span>¿Quieres conocer Psicoapp?</span></div>
-      <button
-        class="boton-demostracion"
-        type="button"
-        [disabled]="ocupado()"
-        (click)="explorar.emit()"
-      >
-        Explorar la demostración <span aria-hidden="true">↗</span>
-      </button>
-      <p class="nota-demostracion">Un recorrido con datos ficticios, sin iniciar sesión.</p>
-    </div>
-    <footer class="pie-ingreso">
-      Simulador académico de psicología social.<br />Un espacio para aprender, no para diagnosticar.
-    </footer>
-  </section>
-</main>
+    }
+    @if (error()) {
+      <p role="alert">{{ error() }}</p>
+    }
+  </main>
+} @else {
+  <main class="pagina-ingreso" id="principal">
+    <section class="presentacion" aria-label="Psicoapp, simulador académico">
+      <img class="logo-ingreso" src="logo-psicoapp.png" alt="Psicoapp" width="130" height="93" />
+      <div class="mensaje-ingreso">
+        <p class="antetitulo">PSICOLOGÍA EN ACCIÓN</p>
+        <h1>Una nueva forma<br />de mirar.<br /><em>Y de aprender.</em></h1>
+        <p>
+          Explora perspectivas, conecta ideas y transforma<br class="salto-escritorio" />
+          cada experiencia en aprendizaje.
+        </p>
+      </div>
+      <div class="ilustracion-ingreso" aria-hidden="true">
+        <div class="orbita"></div>
+        <div class="orbita segunda"></div>
+        <div class="figura salvia"></div>
+        <div class="figura azul"></div>
+        <div class="circulo"></div>
+        <span class="destello">✳</span>
+        <span class="leyenda">↔ &nbsp; Cada mirada cuenta.</span>
+      </div>
+      <p class="pie-presentacion"><span aria-hidden="true">✦</span> Aprender a comprender.</p>
+    </section>
+    <section class="zona-formulario" aria-labelledby="titulo-ingreso">
+      <span class="sello-campus">TU CAMPUS VIRTUAL <span aria-hidden="true">↗</span></span>
+      <div class="formulario-ingreso">
+        <p class="antetitulo">QUÉ BUENO VERTE AQUÍ</p>
+        <h2 id="titulo-ingreso">Tu próxima <em>perspectiva.</em></h2>
+        <p class="instruccion">Ingresa con tu cuenta institucional para continuar.</p>
+        @if (error()) {
+          <div #avisoError class="error-ingreso" role="alert" tabindex="-1">{{ error() }}</div>
+        }
+        <form
+          #formulario="ngForm"
+          (ngSubmit)="ingresar(formulario)"
+          novalidate
+          [attr.aria-busy]="ocupado()"
+        >
+          <div class="campo">
+            <label for="correo-ingreso">Correo institucional</label>
+            <input
+              id="correo-ingreso"
+              name="correo"
+              type="email"
+              autocomplete="username"
+              inputmode="email"
+              autocapitalize="none"
+              spellcheck="false"
+              placeholder="tu.nombre@institucion.edu.co"
+              [(ngModel)]="correo"
+              #campoCorreo="ngModel"
+              required
+              email
+              [readOnly]="ocupado()"
+              [attr.aria-invalid]="campoCorreo.invalid && campoCorreo.touched ? 'true' : null"
+              [attr.aria-describedby]="
+                campoCorreo.invalid && campoCorreo.touched ? 'error-correo' : null
+              "
+            />
+            @if (campoCorreo.invalid && campoCorreo.touched) {
+              <small id="error-correo" class="error-campo"
+                >Escribe un correo institucional válido.</small
+              >
+            }
+          </div>
+          <div class="campo">
+            <label for="clave-ingreso">Contraseña</label>
+            <div class="contenedor-clave">
+              <input
+                id="clave-ingreso"
+                name="clave"
+                [type]="mostrarClave() ? 'text' : 'password'"
+                autocomplete="current-password"
+                placeholder="Tu contraseña"
+                [(ngModel)]="clave"
+                #campoClave="ngModel"
+                required
+                [readOnly]="ocupado()"
+                [attr.aria-invalid]="campoClave.invalid && campoClave.touched ? 'true' : null"
+                [attr.aria-describedby]="
+                  campoClave.invalid && campoClave.touched ? 'error-clave' : null
+                "
+              />
+              <button
+                type="button"
+                class="alternar-clave"
+                [attr.aria-label]="mostrarClave() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                [attr.aria-pressed]="mostrarClave()"
+                [disabled]="ocupado()"
+                (click)="mostrarClave.set(!mostrarClave())"
+              >
+                {{ mostrarClave() ? 'Ocultar' : 'Mostrar' }}
+              </button>
+            </div>
+            @if (campoClave.invalid && campoClave.touched) {
+              <small id="error-clave" class="error-campo">Escribe tu contraseña.</small>
+            }
+          </div>
+          <button class="boton-ingresar" type="submit" [disabled]="ocupado()">
+            <span>{{ ocupado() ? 'Iniciando sesión…' : 'Entrar a mi espacio' }}</span>
+            @if (ocupado()) {
+              <span class="cargando" aria-hidden="true"></span>
+            } @else {
+              <span aria-hidden="true">↗</span>
+            }
+          </button>
+          <p class="ayuda-acceso">
+            Acceso para docentes y administradores.<br />¿Necesitas ayuda con tu cuenta? Contacta al
+            administrador de tu institución.
+          </p>
+        </form>
+        <p class="ayuda-acceso">
+          <a href="/ingreso?sesion=">Ingresar con código de convocatoria</a>
+        </p>
+        <div class="separador"><span>¿Quieres conocer Psicoapp?</span></div>
+        <button
+          class="boton-demostracion"
+          type="button"
+          [disabled]="ocupado()"
+          (click)="explorar.emit()"
+        >
+          Explorar la demostración <span aria-hidden="true">↗</span>
+        </button>
+        <p class="nota-demostracion">Un recorrido con datos ficticios, sin iniciar sesión.</p>
+      </div>
+      <footer class="pie-ingreso">
+        Simulador académico de psicología social.<br />Un espacio para aprender, no para
+        diagnosticar.
+      </footer>
+    </section>
+  </main>
 }

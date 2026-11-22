@@ -201,7 +201,6 @@ test('vista móvil sin desbordamiento horizontal', async ({ page: pagina }) => {
 test('reporte: evaluación pendiente y ausencia de intentos sin inventar notas', async ({
   page: pagina,
 }) => {
-  let conIntento = true;
   await pagina.route('**/api/**', async (ruta) => {
     const direccion = new URL(ruta.request().url());
     if (direccion.pathname.endsWith('/ingreso'))
@@ -216,23 +215,43 @@ test('reporte: evaluación pendiente y ausencia de intentos sin inventar notas',
           puedeCrearCasos: true,
         },
       });
-    if (direccion.pathname.includes('/reportes/'))
+    if (direccion.pathname.endsWith('/sesiones'))
       return ruta.fulfill({
-        json: conIntento
-          ? [
-              {
-                participacion: {
-                  idIntento: 'intento-1',
-                  estado: 'FINALIZADO',
-                  inicio: '2026-11-15T15:00:00Z',
-                  idSesion: 'sesion',
-                },
-                resultado: null,
-                valoracionesGenerales: [],
-              },
-            ]
-          : [],
+        json: [{
+          id: 'sesion', idCaso: 'caso', idEspacio: 'espacio',
+          inicioPrevisto: '2026-11-15T15:00:00Z', finPrevisto: '2026-11-15T16:00:00Z',
+          duracionMaximaMin: 30, estado: 'FINALIZADO', modoNavegacion: 'FLEXIBLE',
+          lugar: '', mensaje: '', convocatorias: [],
+        }],
       });
+    if (direccion.pathname.endsWith('/reportes/sesiones/sesion'))
+      return ruta.fulfill({
+        json: [
+          {
+            idEstudiante: 'estudiante', nombreEstudiante: 'Ana Aprendiz',
+            correoEstudiante: 'ana@ejemplo.edu', idIntento: 'intento-1',
+            estado: 'FINALIZADO', calificacion: null, preguntasRespondidas: 1, preguntasTotales: 2, ausencia: null,
+          },
+          {
+            idEstudiante: 'ausente', nombreEstudiante: 'Beto Ausente',
+            correoEstudiante: 'beto@ejemplo.edu', idIntento: null,
+            estado: 'AUSENTE', calificacion: 0,
+            ausencia: {
+              fechaConsolidacion: '2026-11-15T16:00:00Z',
+              detalles: [{ idPregunta: 'pregunta', puntos: 0, valoracion: 'Ausencia' }],
+            },
+          },
+        ],
+      });
+    if (direccion.pathname.endsWith('/reportes/casos/caso/estudiantes/estudiante'))
+      return ruta.fulfill({ json: [{
+        participacion: {
+          idIntento: 'intento-1', estado: 'FINALIZADO',
+          inicio: '2026-11-15T15:00:00Z', idSesion: 'sesion',
+        },
+        resultado: null,
+        valoracionesGenerales: [],
+      }] });
     return ruta.fulfill({ json: [] });
   });
   await pagina.goto('/');
@@ -240,14 +259,20 @@ test('reporte: evaluación pendiente y ausencia de intentos sin inventar notas',
   await pagina.getByLabel('Contraseña', { exact: true }).fill('clave-ficticia');
   await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
   await pagina.getByRole('button', { name: 'Resultados', exact: true }).click();
-  await pagina.getByLabel('Identificador del caso').fill('caso');
-  await pagina.getByLabel('Identificador del estudiante').fill('estudiante');
-  await pagina.getByRole('button', { name: 'Consultar resultados' }).click();
+  await pagina.getByLabel('Sesión para exportar').selectOption('sesion');
+  await pagina.getByRole('button', { name: 'Preparar reporte' }).click();
+  await expect(pagina.getByText('Ana Aprendiz', { exact: true })).toBeVisible();
+  await expect(pagina.getByText('Ausencia consolidada · 1 pregunta con 0 puntos.')).toBeVisible();
+  await expect(pagina.getByText('1 de 2 preguntas respondidas')).toBeVisible();
+  const descargaPendiente = pagina.waitForEvent('download');
+  await pagina.getByRole('button', { name: 'Descargar CSV' }).click();
+  const archivo = await (await descargaPendiente).path();
+  const { readFile } = await import('node:fs/promises');
+  const csv = await readFile(archivo, 'utf8');
+  expect(csv).toContain('Preguntas respondidas,Preguntas totales');
+  expect(csv).toContain('"intento-1","FINALIZADO","","1","2","0"');
+  await pagina.getByRole('button', { name: 'Ver resultados de Ana Aprendiz' }).click();
   await expect(pagina.getByText('Evaluación pendiente.', { exact: false })).toBeVisible();
-  await expect(pagina.locator('.nota-calificacion')).toHaveCount(0);
-  conIntento = false;
-  await pagina.getByRole('button', { name: 'Consultar resultados' }).click();
-  await expect(
-    pagina.getByText('No hay intentos finalizados para este estudiante y caso.'),
-  ).toBeVisible();
+  await expect(pagina.locator('.intento-reporte .nota-calificacion')).toHaveCount(0);
+  await expect(pagina.getByRole('heading', { name: 'Recorrido académico · Ana Aprendiz' })).toBeVisible();
 });

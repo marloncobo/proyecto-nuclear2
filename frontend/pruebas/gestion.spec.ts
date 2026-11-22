@@ -1,6 +1,58 @@
 import { test, expect } from '@playwright/test';
 import { simularApi, ingresar } from './soporte/identidad';
 
+test('docente: consulta las cinco notificaciones priorizadas y marca su lectura', async ({
+  page: pagina,
+}) => {
+  const estado = await simularApi(pagina, 'DOCENTE');
+  const tipos = [
+    ['recordatorio', 'RECORDATORIO_SESION', 'La sesión de Conflictos Sociales comenzará mañana.'],
+    ['finalizacion', 'FINALIZACION_SESION', 'La sesión de Influencia Grupal ha finalizado.'],
+    ['pendientes', 'ESTUDIANTES_PENDIENTES', '5 de 25 estudiantes no completaron la sesión.'],
+    ['evaluaciones', 'EVALUACIONES_DISPONIBLES', 'Los resultados de la sesión ya están disponibles.'],
+    ['reporte', 'REPORTE_DISPONIBLE', 'El reporte de desempeño está disponible.'],
+  ];
+  estado.notificaciones.push(...tipos.map(([id, tipo, mensaje], indice) => ({
+    id,
+    idSesion: 'sesion-' + indice,
+    idIntento: null,
+    tipo,
+    mensaje,
+    fechaCreacion: `2026-11-21T${15 + indice}:00:00Z`,
+    leida: false,
+  })));
+  const erroresNavegador: string[] = [];
+  pagina.on('console', (mensaje) => {
+    if (mensaje.type() === 'error') erroresNavegador.push(mensaje.text());
+  });
+  pagina.on('pageerror', (error) => erroresNavegador.push(error.message));
+
+  await ingresar(pagina, 'docente@example.test');
+  await pagina.getByRole('button', { name: /Notificaciones/ }).click();
+
+  await expect(pagina.getByRole('heading', { name: 'Notificaciones docentes.' })).toBeVisible();
+  await expect(pagina.getByRole('heading', { name: '5 notificaciones nuevas' })).toBeVisible();
+  for (const titulo of [
+    'Recordatorio de sesión próxima',
+    'Finalización de sesión',
+    'Estudiantes que no completaron la actividad',
+    'Evaluaciones disponibles',
+    'Reporte disponible',
+  ]) await expect(pagina.getByRole('heading', { name: titulo })).toBeVisible();
+
+  await pagina.getByRole('button', { name: 'Marcar como leída' }).first().click();
+  await expect(pagina.getByRole('heading', { name: '4 notificaciones nuevas' })).toBeVisible();
+  expect(estado.solicitudes).toContainEqual(expect.objectContaining({
+    ruta: '/api/notificaciones/recordatorio/leida',
+    metodo: 'PUT',
+  }));
+
+  await pagina.setViewportSize({ width: 390, height: 844 });
+  expect(await pagina.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await expect(pagina.getByRole('heading', { name: 'Notificaciones docentes.' })).toBeVisible();
+  expect(erroresNavegador).toEqual([]);
+});
+
 test('administración: roles, filtros, detalle, edición y errores sin perder el formulario', async ({
   page: pagina,
 }) => {
@@ -144,6 +196,35 @@ test('docente: editar espacio y conservar valores ante conflicto 409', async ({ 
   await expect(
     pagina.getByRole('button', { name: 'Editar espacio Psicología comunitaria' }),
   ).toBeFocused();
+});
+
+test('docente: consulta espacios por nombre y periodo en escritorio y móvil', async ({
+  page: pagina,
+}) => {
+  await simularApi(pagina, 'DOCENTE');
+  await ingresar(pagina, 'docente@example.test');
+  await pagina.getByRole('button', { name: 'Espacios académicos', exact: true }).click();
+
+  await expect(pagina.getByRole('columnheader', { name: 'Espacio académico' })).toBeVisible();
+  await expect(pagina.locator('.resumen-espacios')).toContainText('1 espacio encontrado');
+  await pagina.getByLabel('Buscar espacios').fill('sin coincidencias');
+  await expect(pagina.getByText('No encontramos coincidencias.')).toBeVisible();
+  await pagina.getByRole('button', { name: 'Limpiar filtros' }).click();
+  await expect(pagina.getByRole('heading', { name: 'Psicología social' })).toBeVisible();
+  await pagina.getByLabel('Filtrar por periodo').selectOption('2026-2');
+  await expect(pagina.locator('.resumen-espacios')).toContainText('1 espacio encontrado');
+
+  await pagina.setViewportSize({ width: 390, height: 844 });
+  await expect(pagina.locator('.fila-espacio')).toHaveCount(1);
+  expect(
+    await pagina
+      .locator('.fila-espacio')
+      .first()
+      .evaluate((elemento) => getComputedStyle(elemento).display),
+  ).toBe('grid');
+  expect(await pagina.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+    390,
+  );
 });
 
 test('docente: buscar correo exacto, agregar sin duplicados y limpiar resultado al fallar', async ({
@@ -516,7 +597,22 @@ test('administración: fallo de lectura tras guardar no vuelve a enviar la escri
 test('el código de convocatoria abre la simulación sin entrar al panel del personal', async ({
   page: pagina,
 }) => {
+  await pagina.clock.install({ time: new Date('2026-11-30T11:59:40Z') });
   await simularApi(pagina, 'ESTUDIANTE');
+  await pagina.route('**/api/participaciones/intento', (ruta) =>
+    ruta.fulfill({ json: { id: 'intento', estado: 'VENCIDO', respuestas: {} } }),
+  );
+  await pagina.route('**/api/evaluaciones/intento', (ruta) =>
+    ruta.fulfill({
+      json: {
+        resultado: {
+          calificacion: 0,
+          detalles: [{ idPregunta: 'p1', contestada: false, correcta: false, retroalimentacion: 'Sin selección' }],
+        },
+      },
+    }),
+  );
+  await pagina.route('**/api/evaluaciones/intento/valoraciones', (ruta) => ruta.fulfill({ json: [] }));
   await pagina.route('**/api/participaciones/ingreso', async (ruta) => {
     expect(ruta.request().postDataJSON()).toEqual({
       idSesion: 'sesion-prueba',
@@ -529,6 +625,7 @@ test('el código de convocatoria abre la simulación sin entrar al panel del per
           id: 'intento',
           limite: '2026-11-30T12:00:00Z',
           estado: 'EN_PROGRESO',
+          modoNavegacion: 'RESTRINGIDA',
           preguntaActual: 'p1',
           respuestas: {},
         },
@@ -540,6 +637,7 @@ test('el código de convocatoria abre la simulación sin entrar al panel del per
             enunciado: '¿Qué harías?',
             opciones: [],
           },
+          { id: 'p2', escenario: 'Escenario', contexto: 'Contexto', enunciado: '¿Qué sigue?', opciones: [] },
         ],
       },
     });
@@ -551,4 +649,12 @@ test('el código de convocatoria abre la simulación sin entrar al panel del per
   await pagina.getByRole('button', { name: 'Entrar a la simulación' }).click();
   await expect(pagina.getByRole('heading', { name: 'Simulación de prueba' })).toBeVisible();
   await expect(pagina.getByRole('navigation', { name: 'Navegación principal' })).toHaveCount(0);
+  await expect(pagina.getByRole('timer')).toBeVisible();
+  await expect(pagina.getByRole('button', { name: 'Siguiente' })).toBeDisabled();
+  await expect(pagina.getByText('0 de 2 preguntas respondidas')).toBeVisible();
+
+  await pagina.clock.runFor(20_000);
+  await expect(pagina.getByRole('heading', { name: 'Calificación 0' })).toBeVisible();
+  await expect(pagina.getByText('Sin responder', { exact: true })).toBeVisible();
+  await expect(pagina.getByText('¿Qué harías?', { exact: true })).toBeVisible();
 });

@@ -149,18 +149,28 @@ CREATE TABLE IF NOT EXISTS intento (
     id_intento CHAR(36) PRIMARY KEY,
     id_sesion CHAR(36) NOT NULL,
     id_estudiante CHAR(36) NOT NULL,
-    fecha_inicio TIMESTAMP NOT NULL,
-    fecha_limite TIMESTAMP NOT NULL,
+    fecha_inicio TIMESTAMP(6) NOT NULL,
+    fecha_limite TIMESTAMP(6) NOT NULL,
     posicion_actual INT NOT NULL,
     modo_navegacion VARCHAR(12) NOT NULL,
     estado VARCHAR(20) NOT NULL,
+    fecha_fin TIMESTAMP(6) NULL DEFAULT NULL,
     FOREIGN KEY (id_sesion) REFERENCES sesion(id_sesion),
     FOREIGN KEY (id_estudiante) REFERENCES usuario(id_usuario),
     CHECK (fecha_inicio < fecha_limite),
     CHECK (posicion_actual >= 0),
     CHECK (modo_navegacion IN ('FLEXIBLE','RESTRINGIDA')),
     CHECK (estado IN ('EN_PROGRESO','FINALIZADO','VENCIDO')),
-    INDEX indice_intento_activo (id_sesion, id_estudiante, estado)
+    INDEX indice_intento_activo (id_sesion, id_estudiante, estado),
+    INDEX indice_estudiante_intento_activo (id_estudiante, estado)
+);
+
+CREATE TABLE IF NOT EXISTS autorizacion_reintento (
+    id_intento CHAR(36) PRIMARY KEY,
+    id_docente CHAR(36) NOT NULL,
+    fecha_autorizacion TIMESTAMP NOT NULL,
+    FOREIGN KEY (id_intento) REFERENCES intento(id_intento),
+    FOREIGN KEY (id_docente) REFERENCES usuario(id_usuario)
 );
 
 CREATE TABLE IF NOT EXISTS intento_pregunta (
@@ -205,6 +215,28 @@ CREATE TABLE IF NOT EXISTS detalle_evaluacion (
     FOREIGN KEY (id_pregunta) REFERENCES pregunta(id_pregunta),
     FOREIGN KEY (id_opcion) REFERENCES opcion_respuesta(id_opcion),
     CHECK (puntos >= 0)
+);
+
+-- Reportes. Una ausencia es un resultado consolidado de sesion, no un intento incompleto.
+CREATE TABLE IF NOT EXISTS ausencia_reporte (
+    id_sesion CHAR(36) NOT NULL,
+    id_estudiante CHAR(36) NOT NULL,
+    fecha_consolidacion TIMESTAMP NOT NULL,
+    PRIMARY KEY (id_sesion, id_estudiante),
+    FOREIGN KEY (id_sesion) REFERENCES sesion(id_sesion),
+    FOREIGN KEY (id_estudiante) REFERENCES usuario(id_usuario)
+);
+
+CREATE TABLE IF NOT EXISTS detalle_ausencia_reporte (
+    id_sesion CHAR(36) NOT NULL,
+    id_estudiante CHAR(36) NOT NULL,
+    id_pregunta CHAR(36) NOT NULL,
+    puntos DECIMAL(8,2) NOT NULL,
+    valoracion VARCHAR(200) NOT NULL,
+    PRIMARY KEY (id_sesion, id_estudiante, id_pregunta),
+    FOREIGN KEY (id_sesion, id_estudiante) REFERENCES ausencia_reporte(id_sesion, id_estudiante),
+    FOREIGN KEY (id_pregunta) REFERENCES pregunta(id_pregunta),
+    CHECK (puntos = 0)
 );
 
 -- La misma tabla funciona como outbox durable de entregas y almacen de avisos internos.

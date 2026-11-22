@@ -83,6 +83,15 @@ export type Rol = 'ADMINISTRADOR' | 'DOCENTE' | 'ESTUDIANTE';
 export interface UsuarioAdministrado extends Usuario {
   activo: boolean;
 }
+export interface AvisoNotificacion {
+  id: string;
+  idSesion: string | null;
+  idIntento: string | null;
+  tipo: string;
+  mensaje: string;
+  fechaCreacion: string;
+  leida: boolean;
+}
 @Injectable({ providedIn: 'root' })
 export class ServicioApi {
   private readonly enrutador = inject(Router);
@@ -189,6 +198,19 @@ export class ServicioApi {
   editarEspacio(id: string, datos: { nombre: string; periodo: string }) {
     return this.enviar<Espacio>(`/academico/espacios/${encodeURIComponent(id)}`, datos, 'PUT');
   }
+  async listarNotificaciones(limite = 20, desplazamiento = 0) {
+    const parametros = new URLSearchParams({
+      limite: String(limite),
+      desplazamiento: String(desplazamiento),
+    });
+    const notificaciones = await this.consultar<AvisoNotificacion[]>(`/notificaciones?${parametros}`);
+    if (!Array.isArray(notificaciones))
+      throw new Error('El servicio devolvió una lista de notificaciones inválida.');
+    return notificaciones;
+  }
+  marcarNotificacionLeida(id: string) {
+    return this.enviar<void>(`/notificaciones/${encodeURIComponent(id)}/leida`, undefined, 'PUT');
+  }
   async enviar<T>(ruta: string, datos: unknown, metodo = 'POST'): Promise<T> {
     return this.peticion<T>(ruta, metodo, datos);
   }
@@ -283,7 +305,7 @@ export class ServicioApi {
 }
 
 export interface Reporte {
-  participacion: { idIntento: string; estado: string; inicio: string; idSesion: string };
+  participacion: { idIntento: string; estado: string; inicio: string; fin?: string | null; idSesion: string };
   resultado: {
     calificacion: number;
     fecha: string;
@@ -300,7 +322,15 @@ export interface Reporte {
 
 export interface FilaReporteSesion {
   idEstudiante: string;
+  nombreEstudiante: string;
+  correoEstudiante: string;
   idIntento: string | null;
   estado: string;
   calificacion: number | null;
+  preguntasRespondidas: number | null;
+  preguntasTotales: number | null;
+  ausencia: {
+    fechaConsolidacion: string;
+    detalles: { idPregunta: string; puntos: number; valoracion: string }[];
+  } | null;
 }

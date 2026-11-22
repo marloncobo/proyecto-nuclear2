@@ -16,6 +16,7 @@ import {
   FilaReporteSesion,
   ErrorValidacionCaso,
   PublicacionCasoInvalida,
+  AvisoNotificacion,
 } from './servicio-api';
 import { nombreEtiqueta } from './etiqueta-usuario';
 @Component({
@@ -41,11 +42,30 @@ export class Aplicacion {
           { id: 'sesiones', nombre: 'Sesiones', icono: '◷' },
           { id: 'espacios', nombre: 'Espacios académicos', icono: '◇' },
           { id: 'resultados', nombre: 'Resultados', icono: '↗' },
+          { id: 'notificaciones', nombre: 'Notificaciones', icono: '◉' },
         ],
   );
   readonly casos = signal<Caso[]>(this.casosEjemplo());
   readonly sesiones = signal<Sesion[]>(this.sesionesEjemplo());
   readonly espacios = signal<Espacio[]>(this.espaciosEjemplo());
+  readonly busquedaEspacios = signal('');
+  readonly periodoEspacios = signal('');
+  readonly periodosEspacios = computed(() =>
+    [...new Set(this.espacios().map((espacio) => espacio.periodo))].sort((a, b) =>
+      b.localeCompare(a, 'es'),
+    ),
+  );
+  readonly espaciosVisibles = computed(() => {
+    const consulta = this.busquedaEspacios().trim().toLocaleLowerCase('es');
+    const periodo = this.periodoEspacios();
+    return this.espacios().filter(
+      (espacio) =>
+        (!consulta ||
+          espacio.nombre.toLocaleLowerCase('es').includes(consulta) ||
+          espacio.id.toLocaleLowerCase('es').includes(consulta)) &&
+        (!periodo || espacio.periodo === periodo),
+    );
+  });
   readonly busqueda = signal('');
   readonly filtro = signal('TODOS');
   readonly casosVisibles = computed(() =>
@@ -76,7 +96,15 @@ export class Aplicacion {
   readonly estudiantes = signal<Usuario[]>([]);
   readonly cargandoEstudiantes = signal(false);
   readonly reporteSesion = signal<FilaReporteSesion[] | null>(null);
+  readonly notificaciones = signal<AvisoNotificacion[]>([]);
+  readonly cargandoNotificaciones = signal(false);
+  readonly errorNotificaciones = signal('');
+  readonly marcandoNotificacion = signal<string | null>(null);
+  readonly notificacionesNoLeidas = computed(
+    () => this.notificaciones().filter((notificacion) => !notificacion.leida).length,
+  );
   idSesionReporte = '';
+  nombreEstudianteReporte = '';
   valoraciones: Record<string, string> = {};
   altaEstudiante = { nombre: '', correo: '' };
   convocadosSeleccionados: string[] = [];
@@ -148,6 +176,7 @@ export class Aplicacion {
       });
     this.busqueda.set('');
     this.error.set('');
+    if (vista === 'notificaciones' && this.api.conectado()) void this.cargarNotificaciones();
   }
   iniciarDemostracion() {
     this.reiniciarDatosDeCuenta();
@@ -265,8 +294,11 @@ export class Aplicacion {
     this.periodo = '2026-2';
     this.borrador = null;
     this.estudiantes.set([]);
+    this.notificaciones.set([]);
+    this.errorNotificaciones.set('');
     this.reporteSesion.set(null);
     this.idSesionReporte = '';
+    this.nombreEstudianteReporte = '';
     this.valoraciones = {};
     this.altaEstudiante = { nombre: '', correo: '' };
     this.convocadosSeleccionados = [];
@@ -319,8 +351,75 @@ export class Aplicacion {
         this.espacios.set(espacios);
         this.casos.set(casos);
         this.sesiones.set(sesiones);
+        await this.cargarNotificaciones();
       }
     });
+  }
+
+  async cargarNotificaciones() {
+    if (this.cargandoNotificaciones() || !this.api.conectado()) return;
+    const usuario = this.api.usuario();
+    this.cargandoNotificaciones.set(true);
+    this.errorNotificaciones.set('');
+    try {
+      const notificaciones = await this.api.listarNotificaciones(100);
+      if (this.api.usuario() === usuario) this.notificaciones.set(notificaciones);
+    } catch (error) {
+      if (this.api.usuario() === usuario)
+        this.errorNotificaciones.set(
+          error instanceof Error ? error.message : 'No fue posible consultar las notificaciones.',
+        );
+    } finally {
+      this.cargandoNotificaciones.set(false);
+    }
+  }
+
+  async marcarNotificacionLeida(notificacion: AvisoNotificacion) {
+    if (notificacion.leida || this.marcandoNotificacion()) return;
+    this.marcandoNotificacion.set(notificacion.id);
+    this.errorNotificaciones.set('');
+    try {
+      await this.api.marcarNotificacionLeida(notificacion.id);
+      this.notificaciones.update((lista) =>
+        lista.map((actual) =>
+          actual.id === notificacion.id ? { ...actual, leida: true } : actual,
+        ),
+      );
+    } catch (error) {
+      this.errorNotificaciones.set(
+        error instanceof Error ? error.message : 'No fue posible marcar la notificación.',
+      );
+    } finally {
+      this.marcandoNotificacion.set(null);
+    }
+  }
+
+  tituloNotificacion(tipo: string) {
+    return (
+      (
+        {
+          RECORDATORIO_SESION: 'Recordatorio de sesión próxima',
+          FINALIZACION_SESION: 'Finalización de sesión',
+          ESTUDIANTES_PENDIENTES: 'Estudiantes que no completaron la actividad',
+          EVALUACIONES_DISPONIBLES: 'Evaluaciones disponibles',
+          REPORTE_DISPONIBLE: 'Reporte disponible',
+        } as Record<string, string>
+      )[tipo] ?? tipo
+    );
+  }
+
+  iconoNotificacion(tipo: string) {
+    return (
+      (
+        {
+          RECORDATORIO_SESION: '◷',
+          FINALIZACION_SESION: '✓',
+          ESTUDIANTES_PENDIENTES: '♙',
+          EVALUACIONES_DISPONIBLES: '▣',
+          REPORTE_DISPONIBLE: '▤',
+        } as Record<string, string>
+      )[tipo] ?? '◉'
+    );
   }
   salir() {
     if (this.ocupado()) return;
@@ -388,6 +487,10 @@ export class Aplicacion {
     this.espacioEditado.set(espacio);
     this.nombreEspacio = espacio.nombre;
     this.periodo = espacio.periodo;
+  }
+  limpiarFiltrosEspacios() {
+    this.busquedaEspacios.set('');
+    this.periodoEspacios.set('');
   }
   async cargarEstudiantes() {
     if (this.cargandoEstudiantes()) return;
@@ -577,6 +680,8 @@ export class Aplicacion {
   async consultarReporteSesion() {
     await this.ejecutar(async () => {
       this.reporteSesion.set(null);
+      this.resultado.set(null);
+      this.nombreEstudianteReporte = '';
       this.reporteSesion.set(
         await this.api.consultar<FilaReporteSesion[]>(
           `/reportes/sesiones/${encodeURIComponent(this.idSesionReporte)}`,
@@ -585,13 +690,59 @@ export class Aplicacion {
     });
   }
 
+  puedeAutorizarReintento(fila: FilaReporteSesion, filas: FilaReporteSesion[]) {
+    const sesion = this.sesiones().find((actual) => actual.id === this.idSesionReporte);
+    return (
+      sesion?.estado === 'EN_CURSO' &&
+      filas.filter((actual) => actual.idEstudiante === fila.idEstudiante).at(-1) === fila
+    );
+  }
+
+  async autorizarReintento(fila: FilaReporteSesion) {
+    await this.ejecutar(async () => {
+      await this.api.enviar<void>(
+        `/sesiones/${this.idSesionReporte}/reintentos/${fila.idEstudiante}`,
+        {},
+        'PUT',
+      );
+      this.aviso.set(`Reintento autorizado para ${fila.nombreEstudiante}.`);
+    });
+  }
+
+  async consultarResultados(fila: FilaReporteSesion) {
+    const sesion = this.sesiones().find((actual) => actual.id === this.idSesionReporte);
+    if (!sesion) {
+      this.error.set(
+        'No se encontró la sesión seleccionada. Actualiza la página e inténtalo de nuevo.',
+      );
+      return;
+    }
+    this.identificadorReporte = sesion.idCaso;
+    this.idEstudiante = fila.idEstudiante;
+    this.nombreEstudianteReporte = fila.nombreEstudiante;
+    await this.consultarReporte();
+  }
+
   descargarReporteSesion() {
     const filas = this.reporteSesion();
     if (!filas) return;
+    const escapar = (valor: unknown) => `"${String(valor ?? '').replaceAll('"', '""')}"`;
     const csv = [
-      'Estudiante,Intento,Estado,Calificación',
+      'Estudiante,Correo,Identificador,Intento,Estado,Calificación,Preguntas respondidas,Preguntas totales,Preguntas ausentes',
       ...filas.map((fila) =>
-        [fila.idEstudiante, fila.idIntento, fila.estado, fila.calificacion].join(','),
+        [
+          fila.nombreEstudiante,
+          fila.correoEstudiante,
+          fila.idEstudiante,
+          fila.idIntento,
+          fila.estado,
+          fila.calificacion,
+          fila.preguntasRespondidas,
+          fila.preguntasTotales,
+          fila.ausencia?.detalles.length ?? 0,
+        ]
+          .map(escapar)
+          .join(','),
       ),
     ].join('\r\n');
     const url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }));
