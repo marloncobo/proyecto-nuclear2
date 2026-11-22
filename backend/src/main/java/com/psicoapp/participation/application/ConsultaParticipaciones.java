@@ -8,7 +8,7 @@ import java.util.UUID;
 /** Consulta docente de intentos terminados, sin exponer entidades de dominio. */
 public interface ConsultaParticipaciones {
     record ParticipacionFinalizada(UUID idIntento, UUID idSesion, UUID idEstudiante,
-            String estado, Instant inicio, Instant limite, List<UUID> preguntas, Map<UUID, UUID> respuestas) {
+            String estado, Instant inicio, Instant limite, Instant fin, List<UUID> preguntas, Map<UUID, UUID> respuestas) {
         public ParticipacionFinalizada {
             preguntas = List.copyOf(preguntas);
             respuestas = Map.copyOf(respuestas);

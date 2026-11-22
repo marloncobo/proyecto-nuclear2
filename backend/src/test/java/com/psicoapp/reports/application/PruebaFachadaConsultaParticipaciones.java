@@ -86,6 +86,6 @@ class PruebaFachadaConsultaParticipaciones {
 
     private ParticipacionFinalizada participacion(String estado, Map<UUID, UUID> respuestas) {
         return new ParticipacionFinalizada(UUID.randomUUID(), UUID.randomUUID(), estudiante,
-                estado, Instant.EPOCH, Instant.EPOCH.plusSeconds(1800), List.copyOf(respuestas.keySet()), respuestas);
+                estado, Instant.EPOCH, Instant.EPOCH.plusSeconds(1800), Instant.EPOCH.plusSeconds(15), List.copyOf(respuestas.keySet()), respuestas);
     }
 }

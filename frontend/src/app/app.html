@@ -589,6 +589,9 @@
                         >{{ reporte.participacion.estado }}</span
                       >
                     </div>
+                    @if (reporte.participacion.fin; as fin) {
+                      <p>Fin del intento {{ fin | date: 'short' }}</p>
+                    }
                     @if (reporte.resultado; as evaluacion) {
                       <p class="nota-calificacion">
                         {{ evaluacion.calificacion }} <small>Calificación</small>

@@ -327,7 +327,14 @@ se crea una cuenta predeterminada. Sin dominios configurados no se admiten
 nuevos estudiantes. El usuario MySQL debe poder crear las tablas y consultar y
 modificar sus registros. El esquema no migra tablas preexistentes incompatibles.
 
-### API mínima
+### Actualizar una base existente
+
+Antes de arrancar esta versión con una base creada sin `intento.fecha_fin`, aplica
+una vez [001-fecha-fin-intento.sql](migraciones/001-fecha-fin-intento.sql) en esa base.
+Las instalaciones nuevas ya incluyen la columna en `schema.sql`. Los intentos
+cerrados antes del cambio conservan su fecha de fin como desconocida.
+
+## API mínima
 
 La ampliacion de gestion del 18-11-2026 agrega las consultas y ediciones de la
 tabla siguiente. No requiere migraciones: utiliza las tablas y columnas existentes.

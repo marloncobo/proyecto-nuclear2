@@ -48,6 +48,6 @@ public class ServicioConsultaParticipaciones implements ConsultaParticipaciones 
             throw new Conflicto("La participacion aun no ha finalizado");
         }
         return new ParticipacionFinalizada(intento.id(), intento.idSesion(), intento.idEstudiante(),
-                intento.estado().name(), intento.inicio(), intento.limite(), intento.preguntas(), intento.respuestas());
+                intento.estado().name(), intento.inicio(), intento.limite(), intento.fin(), intento.preguntas(), intento.respuestas());
     }
 }

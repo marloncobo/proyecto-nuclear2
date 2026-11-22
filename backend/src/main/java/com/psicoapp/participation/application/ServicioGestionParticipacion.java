@@ -19,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class ServicioGestionParticipacion {
-    public record DatosIntento(UUID id, UUID idSesion, UUID idEstudiante, Instant inicio, Instant limite,
+    public record DatosIntento(UUID id, UUID idSesion, UUID idEstudiante, Instant inicio, Instant limite, Instant fin,
             String estado, String modoNavegacion, List<UUID> preguntas, UUID preguntaActual, java.util.Map<UUID, UUID> respuestas) { }
 
     private final NotificacionSujeto eventos;
@@ -164,7 +164,7 @@ public class ServicioGestionParticipacion {
 
     private DatosIntento representar(Intento intento) {
         return new DatosIntento(intento.id(), intento.idSesion(), intento.idEstudiante(), intento.inicio(),
-                intento.limite(), intento.estado().name(), intento.modoNavegacion().name(), intento.preguntas(), intento.preguntaActualId(),
+                intento.limite(), intento.fin(), intento.estado().name(), intento.modoNavegacion().name(), intento.preguntas(), intento.preguntaActualId(),
                 intento.respuestas());
     }
 }

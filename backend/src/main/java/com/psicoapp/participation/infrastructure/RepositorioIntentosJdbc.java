@@ -48,11 +48,12 @@ public class RepositorioIntentosJdbc implements RepositorioIntentos, Repositorio
     public void guardar(Intento intento) {
         jdbc.sql("""
                 INSERT INTO intento (id_intento,id_sesion,id_estudiante,fecha_inicio,fecha_limite,
-                    posicion_actual,modo_navegacion,estado)
-                VALUES (?,?,?,?,?,?,?,?)
+                    posicion_actual,modo_navegacion,estado,fecha_fin)
+                VALUES (?,?,?,?,?,?,?,?,?)
                 """).params(java.util.Arrays.asList(intento.id().toString(), intento.idSesion().toString(),
                 intento.idEstudiante().toString(), Timestamp.from(intento.inicio()), Timestamp.from(intento.limite()),
-                intento.posicionActual(), intento.modoNavegacion().name(), intento.estado().name())).update();
+                intento.posicionActual(), intento.modoNavegacion().name(), intento.estado().name(),
+                aTimestamp(intento.fin()))).update();
         int orden = 0;
         for (UUID idPregunta : intento.preguntas()) {
             jdbc.sql("INSERT INTO intento_pregunta (id_intento,id_pregunta,orden) VALUES (?,?,?)")
@@ -98,10 +99,10 @@ public class RepositorioIntentosJdbc implements RepositorioIntentos, Repositorio
     @Override
     public void actualizar(Intento intento) {
         if (jdbc.sql("""
-                UPDATE intento SET posicion_actual=?, estado=?, fecha_limite=?
+                UPDATE intento SET posicion_actual=?, estado=?, fecha_limite=?, fecha_fin=?
                 WHERE id_intento=?
-                """).params(intento.posicionActual(), intento.estado().name(), Timestamp.from(intento.limite()),
-                intento.id().toString()).update() != 1) {
+                """).params(java.util.Arrays.asList(intento.posicionActual(), intento.estado().name(), Timestamp.from(intento.limite()),
+                aTimestamp(intento.fin()), intento.id().toString())).update() != 1) {
             throw new IllegalStateException("El intento no existe");
         }
         guardarRespuestas(intento);
@@ -151,11 +152,17 @@ public class RepositorioIntentosJdbc implements RepositorioIntentos, Repositorio
 
     private Intento reconstruir(ResultSet fila, List<UUID> preguntas, LinkedHashMap<UUID, UUID> respuestas)
             throws SQLException {
+        Timestamp fin = fila.getTimestamp("fecha_fin");
         return Intento.desdePersistencia(UUID.fromString(fila.getString("id_intento")),
                 UUID.fromString(fila.getString("id_sesion")), UUID.fromString(fila.getString("id_estudiante")),
                 fila.getTimestamp("fecha_inicio").toInstant(), fila.getTimestamp("fecha_limite").toInstant(),
-                ModoNavegacion.valueOf(fila.getString("modo_navegacion")), preguntas, respuestas,
+                fin == null ? null : fin.toInstant(), ModoNavegacion.valueOf(fila.getString("modo_navegacion")),
+                preguntas, respuestas,
                 fila.getInt("posicion_actual"), EstadoIntento.valueOf(fila.getString("estado")));
+    }
+
+    private Timestamp aTimestamp(Instant instante) {
+        return instante == null ? null : Timestamp.from(instante);
     }
 
     private MapasRespuestas cargarRespuestas(UUID idIntento) {

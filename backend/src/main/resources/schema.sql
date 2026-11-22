@@ -154,6 +154,7 @@ CREATE TABLE IF NOT EXISTS intento (
     posicion_actual INT NOT NULL,
     modo_navegacion VARCHAR(12) NOT NULL,
     estado VARCHAR(20) NOT NULL,
+    fecha_fin TIMESTAMP(6) NULL DEFAULT NULL,
     FOREIGN KEY (id_sesion) REFERENCES sesion(id_sesion),
     FOREIGN KEY (id_estudiante) REFERENCES usuario(id_usuario),
     CHECK (fecha_inicio < fecha_limite),
