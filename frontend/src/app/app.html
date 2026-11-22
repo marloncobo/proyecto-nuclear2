@@ -554,6 +554,9 @@
                           </div>
                           <span class="estado">{{ fila.estado }}</span>
                           <p class="nota-calificacion compacta">{{ fila.calificacion ?? '—' }} <small>Calificación</small></p>
+                          @if (fila.idIntento && fila.preguntasTotales != null) {
+                            <p>{{ fila.preguntasRespondidas }} de {{ fila.preguntasTotales }} preguntas respondidas</p>
+                          }
                           @if (fila.ausencia; as ausencia) {
                             <p class="detalle-ausencia">
                               Ausencia consolidada · {{ ausencia.detalles.length }}
