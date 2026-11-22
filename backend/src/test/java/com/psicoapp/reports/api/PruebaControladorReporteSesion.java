@@ -41,7 +41,7 @@ class PruebaControladorReporteSesion {
         var ausencia = new ReporteSesionJdbc.Ausencia(Instant.EPOCH, List.of(
                 new ReporteSesionJdbc.DetalleAusencia(pregunta, BigDecimal.ZERO, "Ausencia registrada")));
         when(reportes.consultar(docente, sesion)).thenReturn(List.of(new ReporteSesionJdbc.Fila(
-                estudiante, "Ana Aprendiz", "ana@ejemplo.edu", null, "AUSENTE", BigDecimal.ZERO, ausencia)));
+                estudiante, "Ana Aprendiz", "ana@ejemplo.edu", null, "AUSENTE", BigDecimal.ZERO, null, null, ausencia)));
 
         mvc.perform(get("/api/reportes/sesiones/{id}", sesion)
                         .with(user(docente.toString()).roles("DOCENTE")))

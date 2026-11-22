@@ -76,10 +76,20 @@ class PruebaConsolidacionReporteSesionJdbc {
                                                 (?, ?, ?, 'codigo-b', 'AUTORIZADA')
                 """).params(UUID.randomUUID().toString(), sesion.toString(), ausente.toString(),
                         UUID.randomUUID().toString(), sesion.toString(), participante.toString()).update();
+        UUID intento = UUID.randomUUID();
         jdbc.sql("""
                 INSERT INTO intento VALUES (?, ?, ?, CURRENT_TIMESTAMP,
                     DATEADD('MINUTE', 30, CURRENT_TIMESTAMP), 0, 'FLEXIBLE', 'EN_PROGRESO')
-                """).params(UUID.randomUUID().toString(), sesion.toString(), participante.toString()).update();
+                """).params(intento.toString(), sesion.toString(), participante.toString()).update();
+        jdbc.sql("INSERT INTO intento_pregunta VALUES (?, ?, 0), (?, ?, 1)")
+                .params(intento.toString(), primeraPregunta.toString(), intento.toString(), segundaPregunta.toString()).update();
+        UUID opcion = UUID.randomUUID();
+        jdbc.sql("""
+                INSERT INTO opcion_respuesta (id_opcion,id_pregunta,texto,es_correcta,justificacion)
+                VALUES (?, ?, 'Seleccion', true, 'Explicacion')
+                """).params(opcion.toString(), primeraPregunta.toString()).update();
+        jdbc.sql("INSERT INTO respuesta VALUES (?, ?, ?, CURRENT_TIMESTAMP)")
+                .params(intento.toString(), primeraPregunta.toString(), opcion.toString()).update();
     }
 
     @AfterEach
@@ -110,6 +120,10 @@ class PruebaConsolidacionReporteSesionJdbc {
         assertEquals(cierre, filaAusente.ausencia().fechaConsolidacion());
         assertEquals(2, filaAusente.ausencia().detalles().size());
         assertEquals(primeraPregunta, filaAusente.ausencia().detalles().getFirst().idPregunta());
+        assertNull(filaAusente.preguntasRespondidas());
+        assertNull(filaAusente.preguntasTotales());
+        assertEquals(1, filas.get(1).preguntasRespondidas());
+        assertEquals(2, filas.get(1).preguntasTotales());
         assertNull(filas.get(1).ausencia());
         assertEquals("EN_PROGRESO", filas.get(1).estado());
         verify(autorizacion).exigirResponsable(docente, sesion);

@@ -298,6 +298,8 @@ export interface FilaReporteSesion {
   idIntento: string | null;
   estado: string;
   calificacion: number | null;
+  preguntasRespondidas: number | null;
+  preguntasTotales: number | null;
   ausencia: {
     fechaConsolidacion: string;
     detalles: { idPregunta: string; puntos: number; valoracion: string }[];

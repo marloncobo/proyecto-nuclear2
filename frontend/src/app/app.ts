@@ -645,9 +645,10 @@ export class Aplicacion {
     const filas = this.reporteSesion();
     if (!filas) return;
     const escapar = (valor: unknown) => `"${String(valor ?? '').replaceAll('"', '""')}"`;
-    const csv = ['Estudiante,Correo,Identificador,Intento,Estado,Calificación,Preguntas ausentes',
+    const csv = ['Estudiante,Correo,Identificador,Intento,Estado,Calificación,Preguntas respondidas,Preguntas totales,Preguntas ausentes',
       ...filas.map((fila) => [fila.nombreEstudiante, fila.correoEstudiante, fila.idEstudiante,
-        fila.idIntento, fila.estado, fila.calificacion, fila.ausencia?.detalles.length ?? 0]
+        fila.idIntento, fila.estado, fila.calificacion, fila.preguntasRespondidas,
+        fila.preguntasTotales, fila.ausencia?.detalles.length ?? 0]
         .map(escapar).join(','))].join('\r\n');
     const url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }));
     const enlace = document.createElement('a');

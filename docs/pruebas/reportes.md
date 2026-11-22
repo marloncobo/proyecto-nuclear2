@@ -41,7 +41,7 @@ Consultar no calcula notas, modifica intentos ni envia notificaciones.
 una fila por estudiante e intento. Incluye `nombreEstudiante`, `correoEstudiante`,
 `idEstudiante`, `idIntento`, `estado`, `calificacion` y `ausencia`. El frontend
 usa estas filas para enlazar sesion → estudiante → historial de intentos, sin
-pedir UUID al docente, y permite exportar el mismo resumen en CSV.
+pedir UUID al docente, y permite exportar el mismo resumen en CSV. Los intentos incluyen preguntas respondidas y totales, incluso cuando la calificación aún no está disponible.
 
 Al pasar una sesion a `FINALIZADO`, tanto manual como automaticamente, el puerto
 `ConsolidadorReporteSesion` registra en la misma transaccion a cada convocado

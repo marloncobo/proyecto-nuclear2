@@ -4,6 +4,7 @@ import com.psicoapp.shared.events.*;
 import com.psicoapp.sessions.application.AutorizacionConvocatorias;
 import com.psicoapp.sessions.application.ConsultaSesiones;
 import com.psicoapp.participation.domain.Intento;
+import com.psicoapp.participation.domain.EstadoIntento;
 import com.psicoapp.shared.exceptions.AccesoDenegado;
 import com.psicoapp.shared.exceptions.Conflicto;
 import com.psicoapp.shared.exceptions.NoEncontrado;
@@ -11,6 +12,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class ServicioGestionParticipacion {
     public record DatosIntento(UUID id, UUID idSesion, UUID idEstudiante, Instant inicio, Instant limite,
-            String estado, List<UUID> preguntas, UUID preguntaActual, java.util.Map<UUID, UUID> respuestas) { }
+            String estado, String modoNavegacion, List<UUID> preguntas, UUID preguntaActual, java.util.Map<UUID, UUID> respuestas) { }
 
     private final NotificacionSujeto eventos;
     private final RepositorioIntentos intentos;
@@ -35,7 +37,7 @@ public class ServicioGestionParticipacion {
         this.reloj = reloj;
     }
 
-    public DatosIntento iniciar(UUID idEstudiante, UUID idSesion, String codigo, List<UUID> preguntas) {
+    public DatosIntento iniciar(UUID idEstudiante, UUID idSesion, String codigo) {
         autorizacion.exigirAcceso(idEstudiante, idSesion, codigo);
         ConsultaSesiones.SesionEnCurso sesion = sesiones.exigirEnCurso(idSesion);
         if (intentos.buscarActivo(idSesion, idEstudiante).isPresent()) {
@@ -43,7 +45,7 @@ public class ServicioGestionParticipacion {
         }
         Intento intento = Intento.iniciar(UUID.randomUUID(), idSesion, idEstudiante, reloj.instant(),
                 sesion.duracionMaximaMin(), com.psicoapp.sessions.domain.ModoNavegacion.valueOf(sesion.modoNavegacion()),
-                preguntas);
+                intentos.preguntasDeSesion(idSesion));
         intentos.guardar(intento);
         return representar(intento);
     }
@@ -61,6 +63,9 @@ public class ServicioGestionParticipacion {
     public DatosIntento responder(UUID idEstudiante, UUID idIntento, UUID idPregunta, UUID idOpcion) {
         Intento intento = bloquearPropietario(idEstudiante, idIntento);
         Intento actualizado = intento.responder(idPregunta, idOpcion, reloj.instant());
+        if (!intentos.opcionDePregunta(idPregunta, idOpcion)) {
+            throw new IllegalArgumentException("La opcion no pertenece a la pregunta");
+        }
         intentos.actualizar(actualizado);
         return representar(actualizado);
     }
@@ -109,16 +114,39 @@ public class ServicioGestionParticipacion {
         return finalizados;
     }
 
+    @EventListener
+    public void cerrarIntentosDeSesion(SesionCerrada evento) {
+        for (UUID id : intentos.listarActivosDeSesion(evento.idSesion())) {
+            cerrarPorConvocatoria(id, evento.instante());
+        }
+    }
+
+    @EventListener
+    public void cerrarIntentoRetirado(ConvocatoriaModificada evento) {
+        if (evento.tipoCambio() == ConvocatoriaModificada.TipoCambio.RETIRO) {
+            intentos.buscarActivo(evento.idSesion(), evento.idEstudiante())
+                    .ifPresent(intento -> cerrarPorConvocatoria(intento.id(), evento.instante()));
+        }
+    }
+
+    private void cerrarPorConvocatoria(UUID id, Instant ahora) {
+        Intento intento = intentos.bloquearPorId(id).orElseThrow(() -> new NoEncontrado("Intento no encontrado"));
+        if (intento.estado() == EstadoIntento.EN_PROGRESO) {
+            Intento cerrado = intento.estaVencido(ahora) ? intento.vencer(ahora) : intento.finalizar(ahora);
+            intentos.actualizar(cerrado);
+            publicarFinalizacion(cerrado);
+        }
+    }
+
     private void publicarFinalizacion(Intento intento) {
         eventos.publicar(new IntentoFinalizado(UUID.nameUUIDFromBytes(("finalizacion:" + intento.id())
                 .getBytes(java.nio.charset.StandardCharsets.UTF_8)), reloj.instant(), intento.idEstudiante(), intento.id()));
     }
 
     private Intento bloquearPropietario(UUID idEstudiante, UUID idIntento) {
-        Intento intento = intentos.bloquearPorId(idIntento).orElseThrow(
-                () -> new NoEncontrado("Intento no encontrado"));
-        exigirPropietario(idEstudiante, intento);
-        return intento;
+        Intento lectura = exigirPropietario(idEstudiante, idIntento);
+        autorizacion.exigirParticipacionVigente(idEstudiante, lectura.idSesion());
+        return intentos.bloquearPorId(idIntento).orElseThrow(() -> new NoEncontrado("Intento no encontrado"));
     }
 
     private Intento exigirPropietario(UUID idEstudiante, UUID idIntento) {
@@ -136,7 +164,7 @@ public class ServicioGestionParticipacion {
 
     private DatosIntento representar(Intento intento) {
         return new DatosIntento(intento.id(), intento.idSesion(), intento.idEstudiante(), intento.inicio(),
-                intento.limite(), intento.estado().name(), intento.preguntas(), intento.preguntaActualId(),
+                intento.limite(), intento.estado().name(), intento.modoNavegacion().name(), intento.preguntas(), intento.preguntaActualId(),
                 intento.respuestas());
     }
 }

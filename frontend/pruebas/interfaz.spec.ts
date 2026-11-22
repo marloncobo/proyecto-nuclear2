@@ -144,7 +144,7 @@ test('reporte: evaluación pendiente y ausencia de intentos sin inventar notas',
           {
             idEstudiante: 'estudiante', nombreEstudiante: 'Ana Aprendiz',
             correoEstudiante: 'ana@ejemplo.edu', idIntento: 'intento-1',
-            estado: 'FINALIZADO', calificacion: null, ausencia: null,
+            estado: 'FINALIZADO', calificacion: null, preguntasRespondidas: 1, preguntasTotales: 2, ausencia: null,
           },
           {
             idEstudiante: 'ausente', nombreEstudiante: 'Beto Ausente',
@@ -177,6 +177,14 @@ test('reporte: evaluación pendiente y ausencia de intentos sin inventar notas',
   await pagina.getByRole('button', { name: 'Preparar reporte' }).click();
   await expect(pagina.getByText('Ana Aprendiz', { exact: true })).toBeVisible();
   await expect(pagina.getByText('Ausencia consolidada · 1 pregunta con 0 puntos.')).toBeVisible();
+  await expect(pagina.getByText('1 de 2 preguntas respondidas')).toBeVisible();
+  const descargaPendiente = pagina.waitForEvent('download');
+  await pagina.getByRole('button', { name: 'Descargar CSV' }).click();
+  const archivo = await (await descargaPendiente).path();
+  const { readFile } = await import('node:fs/promises');
+  const csv = await readFile(archivo, 'utf8');
+  expect(csv).toContain('Preguntas respondidas,Preguntas totales');
+  expect(csv).toContain('"intento-1","FINALIZADO","","1","2","0"');
   await pagina.getByRole('button', { name: 'Ver resultados de Ana Aprendiz' }).click();
   await expect(pagina.getByText('Evaluación pendiente.', { exact: false })).toBeVisible();
   await expect(pagina.locator('.intento-reporte .nota-calificacion')).toHaveCount(0);

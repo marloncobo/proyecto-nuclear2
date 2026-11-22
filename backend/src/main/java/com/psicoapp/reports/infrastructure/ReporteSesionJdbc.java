@@ -16,7 +16,8 @@ public class ReporteSesionJdbc {
         public Ausencia { detalles = List.copyOf(detalles); }
     }
     public record Fila(UUID idEstudiante, String nombreEstudiante, String correoEstudiante,
-            UUID idIntento, String estado, BigDecimal calificacion, Ausencia ausencia) { }
+            UUID idIntento, String estado, BigDecimal calificacion, Integer preguntasRespondidas,
+            Integer preguntasTotales, Ausencia ausencia) { }
 
     private final JdbcClient jdbc;
     private final ConsultaSesionesDocente sesiones;
@@ -37,6 +38,12 @@ public class ReporteSesionJdbc {
                             ELSE 'SIN_INTENTO' END AS estado,
                        CASE WHEN i.id_intento IS NULL AND s.estado = 'FINALIZADO'
                             THEN 0 ELSE ev.calificacion END AS calificacion,
+                       CASE WHEN i.id_intento IS NOT NULL THEN
+                           (SELECT COUNT(*) FROM respuesta r WHERE r.id_intento = i.id_intento)
+                       END AS respondidas,
+                       CASE WHEN i.id_intento IS NOT NULL THEN
+                           (SELECT COUNT(*) FROM intento_pregunta ip WHERE ip.id_intento = i.id_intento)
+                       END AS totales,
                        a.fecha_consolidacion
                 FROM convocatoria c
                 JOIN sesion s ON s.id_sesion = c.id_sesion
@@ -54,11 +61,12 @@ public class ReporteSesionJdbc {
                             fila.getTimestamp("fecha_consolidacion").toInstant(), List.of());
                     return new Fila(estudiante, fila.getString("nombre"), fila.getString("correo"),
                             intento == null ? null : UUID.fromString(intento),
-                            fila.getString("estado"), fila.getBigDecimal("calificacion"), ausencia);
+                            fila.getString("estado"), fila.getBigDecimal("calificacion"),
+                            fila.getObject("respondidas", Integer.class), fila.getObject("totales", Integer.class), ausencia);
                 }).list();
         return filas.stream().map(fila -> fila.ausencia() == null ? fila : new Fila(
                 fila.idEstudiante(), fila.nombreEstudiante(), fila.correoEstudiante(), fila.idIntento(),
-                fila.estado(), fila.calificacion(), new Ausencia(fila.ausencia().fechaConsolidacion(),
+                fila.estado(), fila.calificacion(), fila.preguntasRespondidas(), fila.preguntasTotales(), new Ausencia(fila.ausencia().fechaConsolidacion(),
                         consultarDetallesAusencia(sesion, fila.idEstudiante())))).toList();
     }
 

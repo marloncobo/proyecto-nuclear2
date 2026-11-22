@@ -48,7 +48,7 @@ class PruebaServicioGestionSesiones {
 
     @BeforeEach
     void preparar() {
-        servicio = new ServicioGestionSesiones(sesiones, identidades, casos, academico, Clock.fixed(INICIO, ZoneOffset.UTC), convocatorias, mock(com.psicoapp.shared.events.NotificacionSujeto.class), consolidadorReportes, "http://localhost:3000/ingreso");
+        servicio = new ServicioGestionSesiones(sesiones, identidades, casos, academico, Clock.fixed(INICIO, ZoneOffset.UTC), convocatorias, mock(com.psicoapp.shared.events.NotificacionSujeto.class), consolidadorReportes, mock(org.springframework.context.ApplicationEventPublisher.class), "http://localhost:3000/ingreso");
     }
 
     @Test

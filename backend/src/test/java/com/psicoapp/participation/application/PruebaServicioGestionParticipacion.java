@@ -34,7 +34,12 @@ class PruebaServicioGestionParticipacion {
     @BeforeEach
     void preparar() {
         repositorio = new RepositorioEnMemoria();
-        AutorizacionConvocatorias autorizacion = (idEstudiante, idSesion, codigo) -> accesosVerificados++;
+        AutorizacionConvocatorias autorizacion = new AutorizacionConvocatorias() {
+            @Override public void exigirAcceso(UUID estudiante, UUID sesion, String codigo) {
+                accesosVerificados++;
+            }
+            @Override public void exigirParticipacionVigente(UUID estudiante, UUID sesion) { }
+        };
         ConsultaSesiones sesiones = idSesion -> new ConsultaSesiones.SesionEnCurso(sesion, UUID.randomUUID(),
                 AHORA.minusSeconds(60), AHORA.plusSeconds(3600), 30, ModoNavegacion.FLEXIBLE.name());
         servicio = new ServicioGestionParticipacion(repositorio, autorizacion, sesiones,
@@ -43,26 +48,26 @@ class PruebaServicioGestionParticipacion {
 
     @Test
     void iniciaUnIntentoDespuesDeVerificarAcceso() {
-        ServicioGestionParticipacion.DatosIntento datos = servicio.iniciar(estudiante, sesion, "codigo",
-                List.of(pregunta));
+        ServicioGestionParticipacion.DatosIntento datos = servicio.iniciar(estudiante, sesion, "codigo");
 
         assertEquals(1, accesosVerificados);
         assertEquals(EstadoIntento.EN_PROGRESO.name(), datos.estado());
         assertEquals(estudiante, datos.idEstudiante());
+        assertEquals(List.of(pregunta), datos.preguntas());
         assertEquals(1, repositorio.intentos.size());
     }
 
     @Test
     void impideDosIntentosActivosParaLaMismaSesionYEstudiante() {
-        servicio.iniciar(estudiante, sesion, "codigo", List.of(pregunta));
+        servicio.iniciar(estudiante, sesion, "codigo");
 
         assertThrows(Conflicto.class,
-                () -> servicio.iniciar(estudiante, sesion, "codigo", List.of(pregunta)));
+                () -> servicio.iniciar(estudiante, sesion, "codigo"));
     }
 
     @Test
     void soloElPropietarioPuedeResponder() {
-        UUID idIntento = servicio.iniciar(estudiante, sesion, "codigo", List.of(pregunta)).id();
+        UUID idIntento = servicio.iniciar(estudiante, sesion, "codigo").id();
 
         assertThrows(AccesoDenegado.class,
                 () -> servicio.responder(otroEstudiante, idIntento, pregunta, opcion));
@@ -70,7 +75,7 @@ class PruebaServicioGestionParticipacion {
 
     @Test
     void respondeYFinalizaElIntento() {
-        UUID idIntento = servicio.iniciar(estudiante, sesion, "codigo", List.of(pregunta)).id();
+        UUID idIntento = servicio.iniciar(estudiante, sesion, "codigo").id();
 
         ServicioGestionParticipacion.DatosIntento respondido =
                 servicio.responder(estudiante, idIntento, pregunta, opcion);
@@ -82,7 +87,7 @@ class PruebaServicioGestionParticipacion {
 
     @Test
     void finalizaIntentosVencidosConservandoLaRespuesta() {
-        UUID idIntento = servicio.iniciar(estudiante, sesion, "codigo", List.of(pregunta)).id();
+        UUID idIntento = servicio.iniciar(estudiante, sesion, "codigo").id();
         servicio.responder(estudiante, idIntento, pregunta, opcion);
         Intento almacenado = repositorio.intentos.get(idIntento);
         repositorio.intentos.put(idIntento, Intento.iniciar(almacenado.id(), almacenado.idSesion(),
@@ -94,9 +99,26 @@ class PruebaServicioGestionParticipacion {
         assertEquals(opcion, repositorio.intentos.get(idIntento).respuestas().get(pregunta));
     }
 
-    private static final class RepositorioEnMemoria implements RepositorioIntentos {
+    @Test
+    void rechazaUnaOpcionAjenaSinGuardarLaRespuesta() {
+        UUID idIntento = servicio.iniciar(estudiante, sesion, "codigo").id();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> servicio.responder(estudiante, idIntento, pregunta, UUID.randomUUID()));
+        assertTrue(repositorio.intentos.get(idIntento).respuestas().isEmpty());
+    }
+
+    private final class RepositorioEnMemoria implements RepositorioIntentos {
         private final Map<UUID, Intento> intentos = new HashMap<>();
 
+        @Override public List<UUID> listarActivosDeSesion(UUID idSesion) {
+            return intentos.values().stream().filter(i -> i.idSesion().equals(idSesion)
+                    && i.estado() == EstadoIntento.EN_PROGRESO).map(Intento::id).toList();
+        }
+        @Override public List<UUID> preguntasDeSesion(UUID idSesion) { return List.of(pregunta); }
+        @Override public boolean opcionDePregunta(UUID idPregunta, UUID idOpcion) {
+            return pregunta.equals(idPregunta) && opcion.equals(idOpcion);
+        }
         @Override public void guardar(Intento intento) { intentos.put(intento.id(), intento); }
         @Override public Optional<Intento> buscarPorId(UUID id) { return Optional.ofNullable(intentos.get(id)); }
         @Override public Optional<Intento> buscarActivo(UUID idSesion, UUID idEstudiante) {

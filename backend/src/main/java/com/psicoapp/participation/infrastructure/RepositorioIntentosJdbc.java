@@ -27,6 +27,24 @@ public class RepositorioIntentosJdbc implements RepositorioIntentos, Repositorio
     }
 
     @Override
+    public List<UUID> preguntasDeSesion(UUID idSesion) {
+        return jdbc.sql("""
+                SELECT p.id_pregunta FROM sesion s
+                JOIN escenario e ON e.id_caso = s.id_caso
+                JOIN pregunta p ON p.id_escenario = e.id_escenario
+                WHERE s.id_sesion = ?
+                ORDER BY e.orden, p.orden
+                """).param(idSesion.toString()).query(String.class).list().stream()
+                .map(UUID::fromString).toList();
+    }
+
+    @Override
+    public boolean opcionDePregunta(UUID idPregunta, UUID idOpcion) {
+        return jdbc.sql("SELECT id_opcion FROM opcion_respuesta WHERE id_pregunta = ? AND id_opcion = ?")
+                .params(idPregunta.toString(), idOpcion.toString()).query(String.class).optional().isPresent();
+    }
+
+    @Override
     public void guardar(Intento intento) {
         jdbc.sql("""
                 INSERT INTO intento (id_intento,id_sesion,id_estudiante,fecha_inicio,fecha_limite,
@@ -57,6 +75,15 @@ public class RepositorioIntentosJdbc implements RepositorioIntentos, Repositorio
                 WHERE id_sesion=? AND id_estudiante=? AND estado='EN_PROGRESO'
                 ORDER BY fecha_inicio DESC
                 """).params(idSesion.toString(), idEstudiante.toString()).query(this::mapear).optional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UUID> listarActivosDeSesion(UUID idSesion) {
+        return jdbc.sql("""
+                SELECT id_intento FROM intento WHERE id_sesion = ? AND estado = 'EN_PROGRESO'
+                ORDER BY id_intento
+                """).param(idSesion.toString()).query(String.class).list().stream().map(UUID::fromString).toList();
     }
 
     @Override

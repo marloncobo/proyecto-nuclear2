@@ -78,13 +78,15 @@ se conserva en los DTO de `ServicioCreacionCaso`.
 | Método y ruta | Acceso | Entrada | Resultado |
 | --- | --- | --- | --- |
 | `POST /api/participaciones/ingreso` | Estudiante convocado | `idSesion`, `codigoAcceso` | Caso visible sin claves de corrección e intento nuevo o recuperado. |
-| `POST /api/participaciones` | Estudiante convocado | `idSesion`, `codigoAcceso`, lista `preguntas` | Intento creado. |
+| `POST /api/participaciones` | Estudiante convocado | `idSesion`, `codigoAcceso` | Intento creado con las preguntas ordenadas del caso. |
 | `GET /api/participaciones/{id}` | Estudiante propietario | — | Estado y progreso del intento. |
 | `PUT /api/participaciones/{id}/respuestas` | Estudiante propietario | `idPregunta`, `idOpcion` | Intento con la respuesta guardada. |
 | `POST /api/participaciones/{id}/avanzar` | Estudiante propietario | — | Intento situado en la siguiente pregunta. |
 | `POST /api/participaciones/{id}/retroceder` | Estudiante propietario | — | Intento situado en la pregunta anterior, si la modalidad lo permite. |
 | `POST /api/participaciones/{id}/reanudar` | Estudiante propietario | — | Intento reanudado. |
 | `POST /api/participaciones/{id}/finalizar` | Estudiante propietario | — | Intento finalizado y evaluación solicitada. |
+
+Al cerrar una sesión o retirar una convocatoria, se cierra y califica el intento activo con las respuestas registradas. Las preguntas pendientes reciben cero. El estudiante conserva la lectura de su intento con una sesión autenticada vigente.
 
 ## Evaluaciones y valoraciones
 
