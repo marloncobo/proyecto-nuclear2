@@ -1,0 +1,2293 @@
+{
+  "info": {
+    "_postman_id": "c80ca1c6-4ba3-4b75-9e0c-a5c0a9922026",
+    "name": "Psicoapp API - develop",
+    "description": "Colección completa de la API disponible en la rama develop. El Runner ejecuta un recorrido integral con JWT y conserva los identificadores en variables de colección.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "teacherToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "studentToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "teacherId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "studentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "additionalStudentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "spaceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "caseId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sessionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "attemptId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "valuationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "notificationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "studentPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "scenarioId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "questionOneId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "questionTwoId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "correctOptionOneId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "wrongOptionOneId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "correctOptionTwoId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "wrongOptionTwoId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rubricId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "criterionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sessionStart",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sessionEnd",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const uuid = () => pm.variables.replaceIn('{{$guid}}');",
+          "const initialize = pm.info.requestName === 'Ingresar como administrador' || !pm.collectionVariables.get('scenarioId');",
+          "if (initialize) {",
+          "  const suffix = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;",
+          "  const domain = pm.environment.get('institutionalDomain') || 'universidad.edu.co';",
+          "  pm.collectionVariables.set('teacherEmail', `docente.postman.${suffix}@${domain}`);",
+          "  pm.collectionVariables.set('studentEmail', `estudiante.postman.${suffix}@${domain}`);",
+          "  ['scenarioId','questionOneId','questionTwoId','correctOptionOneId','wrongOptionOneId','correctOptionTwoId','wrongOptionTwoId','rubricId','criterionId','notificationId'].forEach(k => pm.collectionVariables.set(k, uuid()));",
+          "  const now = new Date();",
+          "  pm.collectionVariables.set('sessionStart', new Date(Math.floor((now.getTime() - 60000) / 1000) * 1000).toISOString());",
+          "  pm.collectionVariables.set('sessionEnd', new Date(Math.floor((now.getTime() + 3600000) / 1000) * 1000).toISOString());",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Identidad y autenticación",
+      "item": [
+        {
+          "name": "Ingresar como administrador",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{adminEmail}}\",\n  \"clave\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/identidad/ingreso",
+            "description": "Inicia el recorrido automatizado. Configure adminEmail y adminPassword en el entorno."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});",
+                  "const respuesta = pm.response.json();",
+                  "pm.test('Entrega un JWT Bearer', () => {",
+                  "  pm.expect(respuesta.token).to.be.a('string').and.not.empty;",
+                  "  pm.expect(respuesta.tipo).to.eql('Bearer');",
+                  "  pm.expect(respuesta.venceEn).to.be.a('string');",
+                  "});",
+                  "pm.collectionVariables.set('adminToken', respuesta.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar mi identidad (administrador)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/identidad/yo",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});",
+                  "pm.test('El actor es administrador', () => pm.expect(pm.response.json().rol).to.eql('ADMINISTRADOR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar roles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/identidad/roles",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar permiso de creación de casos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/identidad/roles/DOCENTE/creacion-casos",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Habilitar creación de casos para docentes",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"habilitado\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/identidad/roles/DOCENTE/creacion-casos",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [204];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear docente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{teacherEmail}}\",\n  \"nombre\": \"Docente Postman\",\n  \"clave\": \"{{teacherPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/identidad/docentes",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [201];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});",
+                  "const respuesta = pm.response.json();",
+                  "pm.collectionVariables.set('teacherId', respuesta.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar usuarios con filtros",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/identidad/usuarios?rol=DOCENTE&activo=true&busqueda=Postman",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar docente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/identidad/usuarios/{{teacherId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar docente",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{teacherEmail}}\",\n  \"nombre\": \"Docente Postman Actualizado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/identidad/docentes/{{teacherId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirmar rol docente",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rol\": \"DOCENTE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/identidad/usuarios/{{teacherId}}/rol",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirmar cuenta activa",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activo\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/identidad/usuarios/{{teacherId}}/estado",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ingresar como docente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{teacherEmail}}\",\n  \"clave\": \"{{teacherPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/identidad/ingreso",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});",
+                  "const respuesta = pm.response.json();",
+                  "pm.test('Entrega un JWT Bearer', () => {",
+                  "  pm.expect(respuesta.token).to.be.a('string').and.not.empty;",
+                  "  pm.expect(respuesta.tipo).to.eql('Bearer');",
+                  "  pm.expect(respuesta.venceEn).to.be.a('string');",
+                  "});",
+                  "pm.collectionVariables.set('teacherToken', respuesta.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar mi identidad (docente)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/identidad/yo",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});",
+                  "pm.test('El actor es docente', () => pm.expect(pm.response.json().rol).to.eql('DOCENTE'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar estudiante",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{studentEmail}}\",\n  \"nombre\": \"Estudiante Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/identidad/estudiantes",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [201];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});",
+                  "const respuesta = pm.response.json();",
+                  "pm.collectionVariables.set('studentId', respuesta.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar estudiante por correo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/identidad/estudiantes?correo={{studentEmail}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar estudiantes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/identidad/estudiantes/listado",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Espacios académicos",
+      "item": [
+        {
+          "name": "Crear espacio académico",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Consultorio Postman\",\n  \"periodo\": \"2026-2\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/academico/espacios",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [201];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});",
+                  "const respuesta = pm.response.json();",
+                  "pm.collectionVariables.set('spaceId', respuesta.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar espacio académico",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Consultorio Postman Actualizado\",\n  \"periodo\": \"2026-2\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/academico/espacios/{{spaceId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar espacios académicos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/academico/espacios",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar espacio académico",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/academico/espacios/{{spaceId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Casos",
+      "item": [
+        {
+          "name": "Crear caso",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Caso clínico Postman\",\n  \"desarrolloSituacional\": \"Caso completo creado automáticamente desde Postman.\",\n  \"contexto\": \"Contexto académico controlado para validar el flujo integral.\",\n  \"tiempoEstimadoMin\": 30,\n  \"escenarios\": [\n    {\n      \"id\": \"{{scenarioId}}\",\n      \"titulo\": \"Entrevista inicial\",\n      \"contextoSituacional\": \"La persona consulta por dificultades de adaptación.\",\n      \"orden\": 1,\n      \"preguntas\": [\n        {\n          \"id\": \"{{questionOneId}}\",\n          \"enunciado\": \"¿Cuál es la primera acción profesional adecuada?\",\n          \"orden\": 1,\n          \"opciones\": [\n            {\n              \"id\": \"{{correctOptionOneId}}\",\n              \"texto\": \"Explorar el motivo de consulta\",\n              \"esCorrecta\": true,\n              \"justificacion\": \"Permite delimitar la necesidad.\"\n            },\n            {\n              \"id\": \"{{wrongOptionOneId}}\",\n              \"texto\": \"Emitir un diagnóstico inmediato\",\n              \"esCorrecta\": false,\n              \"justificacion\": \"No existe información suficiente.\"\n            }\n          ]\n        },\n        {\n          \"id\": \"{{questionTwoId}}\",\n          \"enunciado\": \"¿Qué elemento debe registrarse después?\",\n          \"orden\": 2,\n          \"opciones\": [\n            {\n              \"id\": \"{{correctOptionTwoId}}\",\n              \"texto\": \"Antecedentes relevantes\",\n              \"esCorrecta\": true,\n              \"justificacion\": \"Aporta contexto clínico.\"\n            },\n            {\n              \"id\": \"{{wrongOptionTwoId}}\",\n              \"texto\": \"Suposiciones no verificadas\",\n              \"esCorrecta\": false,\n              \"justificacion\": \"No son evidencia clínica.\"\n            }\n          ]\n        }\n      ]\n    }\n  ],\n  \"rubrica\": {\n    \"id\": \"{{rubricId}}\",\n    \"nombre\": \"Rúbrica Postman\",\n    \"escalaMaxima\": 5,\n    \"criterios\": [\n      {\n        \"id\": \"{{criterionId}}\",\n        \"nombre\": \"Razonamiento profesional\",\n        \"ponderacion\": 1,\n        \"preguntas\": [\n          \"{{questionOneId}}\",\n          \"{{questionTwoId}}\"\n        ]\n      }\n    ]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/casos",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [201];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});",
+                  "const respuesta = pm.response.json();",
+                  "pm.collectionVariables.set('caseId', respuesta.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar borrador",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Caso clínico Postman actualizado\",\n  \"desarrolloSituacional\": \"Caso completo creado automáticamente desde Postman.\",\n  \"contexto\": \"Contexto académico controlado para validar el flujo integral.\",\n  \"tiempoEstimadoMin\": 30,\n  \"escenarios\": [\n    {\n      \"id\": \"{{scenarioId}}\",\n      \"titulo\": \"Entrevista inicial\",\n      \"contextoSituacional\": \"La persona consulta por dificultades de adaptación.\",\n      \"orden\": 1,\n      \"preguntas\": [\n        {\n          \"id\": \"{{questionOneId}}\",\n          \"enunciado\": \"¿Cuál es la primera acción profesional adecuada?\",\n          \"orden\": 1,\n          \"opciones\": [\n            {\n              \"id\": \"{{correctOptionOneId}}\",\n              \"texto\": \"Explorar el motivo de consulta\",\n              \"esCorrecta\": true,\n              \"justificacion\": \"Permite delimitar la necesidad.\"\n            },\n            {\n              \"id\": \"{{wrongOptionOneId}}\",\n              \"texto\": \"Emitir un diagnóstico inmediato\",\n              \"esCorrecta\": false,\n              \"justificacion\": \"No existe información suficiente.\"\n            }\n          ]\n        },\n        {\n          \"id\": \"{{questionTwoId}}\",\n          \"enunciado\": \"¿Qué elemento debe registrarse después?\",\n          \"orden\": 2,\n          \"opciones\": [\n            {\n              \"id\": \"{{correctOptionTwoId}}\",\n              \"texto\": \"Antecedentes relevantes\",\n              \"esCorrecta\": true,\n              \"justificacion\": \"Aporta contexto clínico.\"\n            },\n            {\n              \"id\": \"{{wrongOptionTwoId}}\",\n              \"texto\": \"Suposiciones no verificadas\",\n              \"esCorrecta\": false,\n              \"justificacion\": \"No son evidencia clínica.\"\n            }\n          ]\n        }\n      ]\n    }\n  ],\n  \"rubrica\": {\n    \"id\": \"{{rubricId}}\",\n    \"nombre\": \"Rúbrica Postman\",\n    \"escalaMaxima\": 5,\n    \"criterios\": [\n      {\n        \"id\": \"{{criterionId}}\",\n        \"nombre\": \"Razonamiento profesional\",\n        \"ponderacion\": 1,\n        \"preguntas\": [\n          \"{{questionOneId}}\",\n          \"{{questionTwoId}}\"\n        ]\n      }\n    ]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/casos/{{caseId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar casos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/casos",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar caso",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/casos/{{caseId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Publicar caso",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/casos/{{caseId}}/publicar",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});",
+                  "pm.test('El caso queda publicado', () => pm.expect(pm.response.json().estado).to.eql('PUBLICADO'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Sesiones",
+      "item": [
+        {
+          "name": "Programar sesión",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idCaso\": \"{{caseId}}\",\n  \"idEspacio\": \"{{spaceId}}\",\n  \"inicioPrevisto\": \"{{sessionStart}}\",\n  \"finPrevisto\": \"{{sessionEnd}}\",\n  \"duracionMaximaMin\": 30,\n  \"modoNavegacion\": \"FLEXIBLE\",\n  \"lugar\": \"Consultorio 1\",\n  \"mensaje\": \"Sesión generada por Postman\",\n  \"estudiantes\": [\n    \"{{studentId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/sesiones",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [201];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});",
+                  "const respuesta = pm.response.json();",
+                  "pm.collectionVariables.set('sessionId', respuesta.id);",
+                  "pm.collectionVariables.set('studentPassword', respuesta.convocatorias[0].codigoAcceso);",
+                  "pm.test('Entrega el código de convocatoria una sola vez', () => pm.expect(respuesta.convocatorias[0].codigoAcceso).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar sesiones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/sesiones",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar sesión",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/sesiones/{{sessionId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Iniciar sesión",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/sesiones/{{sessionId}}/iniciar",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});",
+                  "pm.test('La sesión queda en curso', () => pm.expect(pm.response.json().estado).to.eql('EN_CURSO'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 - Participación",
+      "item": [
+        {
+          "name": "Ingresar como estudiante",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{studentEmail}}\",\n  \"clave\": \"{{studentPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/identidad/ingreso",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});",
+                  "const respuesta = pm.response.json();",
+                  "pm.test('Entrega un JWT Bearer', () => {",
+                  "  pm.expect(respuesta.token).to.be.a('string').and.not.empty;",
+                  "  pm.expect(respuesta.tipo).to.eql('Bearer');",
+                  "  pm.expect(respuesta.venceEn).to.be.a('string');",
+                  "});",
+                  "pm.collectionVariables.set('studentToken', respuesta.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar mi identidad (estudiante)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/identidad/yo",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});",
+                  "pm.test('El actor es estudiante', () => pm.expect(pm.response.json().rol).to.eql('ESTUDIANTE'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Iniciar participación",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idSesion\": \"{{sessionId}}\",\n  \"codigoAcceso\": \"{{studentPassword}}\",\n  \"preguntas\": [\n    \"{{questionOneId}}\",\n    \"{{questionTwoId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/participaciones",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [201];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});",
+                  "const respuesta = pm.response.json();",
+                  "pm.collectionVariables.set('attemptId', respuesta.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ingresar a la simulación",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idSesion\": \"{{sessionId}}\",\n  \"codigoAcceso\": \"{{studentPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/participaciones/ingreso",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});",
+                  "pm.test('No expone claves de corrección', () => pm.expect(pm.response.text()).not.to.include('esCorrecta'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar intento",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/participaciones/{{attemptId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Responder primera pregunta",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idPregunta\": \"{{questionOneId}}\",\n  \"idOpcion\": \"{{correctOptionOneId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/participaciones/{{attemptId}}/respuestas",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Avanzar a segunda pregunta",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/participaciones/{{attemptId}}/avanzar",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Responder segunda pregunta",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idPregunta\": \"{{questionTwoId}}\",\n  \"idOpcion\": \"{{correctOptionTwoId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/participaciones/{{attemptId}}/respuestas",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Retroceder a primera pregunta",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/participaciones/{{attemptId}}/retroceder",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Avanzar nuevamente",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/participaciones/{{attemptId}}/avanzar",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Finalizar participación",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/participaciones/{{attemptId}}/finalizar",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});",
+                  "pm.test('El intento queda finalizado', () => pm.expect(pm.response.json().estado).to.eql('FINALIZADO'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 - Evaluación y valoraciones",
+      "item": [
+        {
+          "name": "Solicitar evaluación idempotente",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/evaluaciones/{{attemptId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [201];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});",
+                  "pm.test('La evaluación contiene resultado', () => pm.expect(pm.response.json().resultado).to.be.an('object'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar evaluación",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/evaluaciones/{{attemptId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar valoración docente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensaje\": \"Buen razonamiento y adecuada priorización.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/evaluaciones/{{attemptId}}/valoraciones",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [201];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});",
+                  "const respuesta = pm.response.json();",
+                  "pm.collectionVariables.set('valuationId', respuesta.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar valoraciones como estudiante",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/evaluaciones/{{attemptId}}/valoraciones",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 - Reportes",
+      "item": [
+        {
+          "name": "Consultar reporte por caso y estudiante",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/reportes/casos/{{caseId}}/estudiantes/{{studentId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar reporte de sesión",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/reportes/sesiones/{{sessionId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar valoración desde reportes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensaje\": \"Valoración registrada desde el módulo de reportes.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/reportes/participaciones/{{attemptId}}/valoraciones",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [201];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08 - Notificaciones y cierre",
+      "item": [
+        {
+          "name": "Listar notificaciones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/notificaciones?limite=20&desplazamiento=0",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});",
+                  "const avisos = pm.response.json();",
+                  "pm.test('La bandeja es un arreglo', () => pm.expect(avisos).to.be.an('array'));",
+                  "if (avisos.length > 0) pm.collectionVariables.set('notificationId', avisos[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Marcar notificación como leída",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/notificaciones/{{notificationId}}/leida",
+            "description": "Devuelve 204 si el despachador interno ya creó un aviso; 404 si las notificaciones están deshabilitadas o aún no se han despachado."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [204,404];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Finalizar sesión",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/sesiones/{{sessionId}}/finalizar",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});",
+                  "pm.test('La sesión queda finalizada', () => pm.expect(pm.response.json().estado).to.eql('FINALIZADO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Archivar caso",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/casos/{{caseId}}/archivar",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});",
+                  "pm.test('El caso queda archivado', () => pm.expect(pm.response.json().estado).to.eql('ARCHIVADO'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "09 - Operaciones manuales",
+      "description": "Estas rutas requieren estados o datos adicionales y no forman parte del recorrido feliz.",
+      "item": [
+        {
+          "name": "Modificar convocados",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"agregar\": [\n    \"{{additionalStudentId}}\"\n  ],\n  \"retirar\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/sesiones/{{sessionId}}/convocados",
+            "description": "Operación manual: asigne additionalStudentId a otro estudiante activo y ejecútela antes de finalizar la sesión."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200,400,404,409];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reanudar intento",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/participaciones/{{attemptId}}/reanudar",
+            "description": "Operación manual para un intento suspendido. En el recorrido feliz el intento termina FINALIZADO y la API responde 409."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const estadosEsperados = [200,409];",
+                  "pm.test(`Estado HTTP esperado (${estadosEsperados.join(', ')})`, () => {",
+                  "  pm.expect(estadosEsperados).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
