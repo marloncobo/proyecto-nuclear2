@@ -35,6 +35,20 @@ export interface Caso {
   escenarios: Escenario[];
   rubrica: Rubrica | null;
 }
+export interface ErrorValidacionCaso {
+  codigo: string;
+  ruta: string;
+  mensaje: string;
+}
+export class PublicacionCasoInvalida extends Error {
+  constructor(
+    mensaje: string,
+    readonly errores: ErrorValidacionCaso[],
+  ) {
+    super(mensaje);
+    this.name = 'PublicacionCasoInvalida';
+  }
+}
 export interface Sesion {
   id: string;
   idCaso: string;
@@ -81,11 +95,10 @@ export class ServicioApi {
     const generacionIngreso = ++this.generacionSesion;
     const anterior = this.autorizacion;
     try {
-      const ingreso = await this.peticion<{ token: string }>(
-        '/identidad/ingreso',
-        'POST',
-        { correo, clave },
-      );
+      const ingreso = await this.peticion<{ token: string }>('/identidad/ingreso', 'POST', {
+        correo,
+        clave,
+      });
       if (this.generacionSesion !== generacionIngreso)
         throw new Error('La cuenta cambió. Vuelve a intentar la operación.');
       if (typeof ingreso.token !== 'string' || ingreso.token.trim() === '')
@@ -234,6 +247,21 @@ export class ServicioApi {
         503: 'El servicio no está disponible. Vuelve a intentar en unos momentos.',
         504: 'El backend tardó demasiado en responder. Vuelve a intentar.',
       };
+      if (respuesta.status === 422 && Array.isArray(problema?.errores)) {
+        const errores = problema.errores.filter(
+          (error: unknown): error is ErrorValidacionCaso =>
+            typeof error === 'object' &&
+            error !== null &&
+            typeof (error as ErrorValidacionCaso).codigo === 'string' &&
+            typeof (error as ErrorValidacionCaso).ruta === 'string' &&
+            typeof (error as ErrorValidacionCaso).mensaje === 'string',
+        );
+        if (errores.length > 0)
+          throw new PublicacionCasoInvalida(
+            'Este caso aún no está listo para publicarse.',
+            errores,
+          );
+      }
       throw new Error(
         (typeof problema?.detail === 'string' ? problema.detail : null) ??
           mensajes[respuesta.status] ??
