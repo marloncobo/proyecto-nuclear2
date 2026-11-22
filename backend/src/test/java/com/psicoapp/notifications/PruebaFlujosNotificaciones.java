@@ -41,6 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "psicoapp.notificaciones.clave-cifrado=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
     "psicoapp.notificaciones.url-acceso=https://universidad.example/ingreso",
     "psicoapp.notificaciones.despacho-habilitado=false",
+    "psicoapp.notificaciones.avisos-docente-habilitados=false",
     "psicoapp.sesiones.cierre-automatico-habilitado=false",
     "psicoapp.participacion.cierre-automatico-habilitado=false"
 })
@@ -61,6 +62,7 @@ class PruebaFlujosNotificaciones {
     @Autowired ServicioEntregaNotificaciones entrega;
     @Autowired RepositorioEntregas pendientes;
     @Autowired RepositorioAvisos avisos;
+    @Autowired GeneradorAvisosDocente avisosDocente;
     @Autowired JdbcClient jdbc;
     @Autowired PlatformTransactionManager gestor;
     @Autowired CifradorNotificaciones cifrador;
@@ -93,6 +95,40 @@ class PruebaFlujosNotificaciones {
                 30, ModoNavegacion.FLEXIBLE, "Aula 1", "Mensaje del docente", List.of(estudiante));
         var creada = sesiones.programar(docente, programacion);
         sesion = creada.id(); codigo = creada.convocatorias().getFirst().codigoAcceso();
+    }
+
+    @Test
+    void docenteRecibeLasCincoNotificacionesPriorizadasSinDuplicados() throws Exception {
+        var recordatorio = new ServicioGestionSesiones.DatosProgramacion(caso, espacio,
+                AHORA.plus(Duration.ofHours(12)), AHORA.plus(Duration.ofHours(13)), 30,
+                ModoNavegacion.FLEXIBLE, "Aula 2", "Recordatorio", List.of(estudiante));
+        sesiones.programar(docente, recordatorio);
+
+        sesiones.iniciar(docente, sesion);
+        sesiones.finalizar(docente, sesion);
+
+        var evaluada = sesiones.programar(docente, programacion);
+        sesiones.iniciar(docente, evaluada.id());
+        var intento = participacion.iniciar(estudiante, evaluada.id(),
+                evaluada.convocatorias().getFirst().codigoAcceso(), List.of(pregunta));
+        participacion.finalizar(estudiante, intento.id());
+        sesiones.finalizar(docente, evaluada.id());
+
+        avisosDocente.generar(AHORA, Duration.ofHours(24));
+        avisosDocente.generar(AHORA, Duration.ofHours(24));
+        for (UUID id : entrega.pendientes()) entrega.entregar(id);
+
+        var recibidos = avisos.listar(docente, 100, 0);
+        var tipos = recibidos.stream().map(RepositorioAvisos.Aviso::tipo).collect(java.util.stream.Collectors.toSet());
+        assertTrue(tipos.containsAll(Set.of("RECORDATORIO_SESION", "FINALIZACION_SESION",
+                "ESTUDIANTES_PENDIENTES", "EVALUACIONES_DISPONIBLES", "REPORTE_DISPONIBLE")), tipos::toString);
+        assertEquals(7, recibidos.size());
+
+        UUID aviso = recibidos.getFirst().id();
+        mvc.perform(get("/api/notificaciones").with(user(docente.toString()).roles("DOCENTE")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(recibidos.size()));
+        mvc.perform(put("/api/notificaciones/{id}/leida", aviso)
+                .with(user(docente.toString()).roles("DOCENTE"))).andExpect(status().isNoContent());
     }
 
     // CP-NO-001/004: RF-20/21, CU-14. Entrega real sustituida por puerto de correo.
@@ -234,7 +270,8 @@ class PruebaFlujosNotificaciones {
         mvc.perform(get("/api/notificaciones").with(portador(mvc, correoEstudiante, codigo)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2));
         mvc.perform(get("/api/notificaciones")).andExpect(status().isUnauthorized());
-        mvc.perform(get("/api/notificaciones").with(user(docente.toString()).roles("DOCENTE"))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/notificaciones").with(user(docente.toString()).roles("DOCENTE")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
         UUID otro = UUID.randomUUID();
         mvc.perform(get("/api/notificaciones").with(user(otro.toString()).roles("ESTUDIANTE")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
