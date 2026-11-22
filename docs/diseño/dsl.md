@@ -177,6 +177,21 @@ El caso publicado se almacena con identificador y versión. Una asignación refi
 
 Confirmar contra la matriz definitiva: códigos RF/RN aplicables a publicación, modalidad de navegación, opciones mínimas, puntuación y rúbrica; estados de sesión e intento; política de reintentos; semántica de archivado; obligatoriedad de retroalimentación; y las asociaciones UML que permiten ejecutar las reglas OCL-03, 04 y 06–09. Esta sección se considera propuesta técnica integrada y no validación formal ejecutada en un evaluador OCL.
 
+## Correspondencia con la implementación actual
+
+El editor y la API guardan el contenido académico en el modelo de casos. Antes
+de publicar, el backend exige escenarios y preguntas consecutivos, opciones
+correctas e incorrectas con justificación y una rúbrica completa con peso total
+de 1. Al iniciar una participación, el servidor toma las preguntas del caso en
+ese orden y comprueba que cada opción guardada pertenezca a su pregunta.
+
+Para aprobar un formato portable falta decidir la estructura versionada, el
+vínculo de los criterios con sus preguntas y si el puntaje por opción sustituye
+la corrección binaria o se calcula de otra forma. También falta conciliar
+OCL-02 con CU-11 para una sesión que ya estaba programada cuando se archiva
+el caso. El ejemplo de esta sección documenta la propuesta original. La API de
+casos todavía usa su propio contrato.
+
 ## Consideraciones para integración
 
 - La definición portable del caso se separa de sesiones, convocatorias, intentos, respuestas y calificaciones, tal como se especifica en la fuente.
