@@ -256,6 +256,35 @@ class PruebaFlujosNotificaciones {
         assertEquals(1, avisos.listar(estudiante, 20, 0).size());
     }
 
+    @Test
+    void cerrarSesionCalificaIntentoActivoYConservaLaRespuesta() {
+        sesiones.iniciar(docente, sesion);
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
+        participacion.responder(estudiante, intento.id(), pregunta, opcion);
+
+        sesiones.finalizar(docente, sesion);
+
+        assertEquals("FINALIZADO", participacion.consultar(estudiante, intento.id()).estado());
+        assertEquals(opcion, participacion.consultar(estudiante, intento.id()).respuestas().get(pregunta));
+        assertEquals(0, evaluaciones.consultar(estudiante, intento.id()).resultado()
+                .calificacion().compareTo(new java.math.BigDecimal("5")));
+        assertThrows(AccesoDenegado.class,
+                () -> participacion.responder(estudiante, intento.id(), pregunta, opcion));
+    }
+
+    @Test
+    void retirarConvocatoriaCierraYCalificaElIntentoActivo() {
+        sesiones.iniciar(docente, sesion);
+        var intento = participacion.iniciar(estudiante, sesion, codigo);
+
+        sesiones.modificarConvocados(docente, sesion,
+                new ServicioGestionSesiones.CambioConvocados(List.of(), List.of(estudiante)));
+
+        assertEquals("FINALIZADO", participacion.consultar(estudiante, intento.id()).estado());
+        assertEquals(0, evaluaciones.consultar(estudiante, intento.id()).resultado().calificacion().signum());
+        assertThrows(AccesoDenegado.class, () -> participacion.reanudar(estudiante, intento.id()));
+    }
+
     // CP-NO-007: propietario, roles, JWT y consulta despues del cierre de sesion.
     @Test
     void valoracionSeNotificaYApiAislaAvisosDespuesDeCerrarSesion() throws Exception {

@@ -55,6 +55,20 @@ public class VerificadorConvocatorias implements VerificadorAccesoEstudiante, Au
         }
     }
 
+    @Override
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public void exigirParticipacionVigente(UUID estudiante, UUID idSesion) {
+        identidades.exigirEstudiante(estudiante);
+        var sesion = sesiones.bloquearPorId(idSesion).orElseThrow(() -> new NoEncontrado("Sesion no encontrada"));
+        if (sesion.estado().codigo() != TipoEstadoSesion.EN_CURSO || sesion.estaVencida(reloj.instant())) {
+            throw new AccesoDenegado("La sesion ya no permite continuar la participacion");
+        }
+        if (convocatorias.listarPorSesion(idSesion).stream()
+                .noneMatch(c -> c.idEstudiante().equals(estudiante) && c.autorizada())) {
+            throw new AccesoDenegado("La convocatoria ya no autoriza esta participacion");
+        }
+    }
+
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
     public Sesion exigirConvocatoria(UUID estudiante, UUID idSesion, String codigo) {
         identidades.exigirEstudiante(estudiante);

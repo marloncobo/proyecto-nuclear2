@@ -4,6 +4,7 @@ import com.psicoapp.shared.events.*;
 import com.psicoapp.sessions.application.AutorizacionConvocatorias;
 import com.psicoapp.sessions.application.ConsultaSesiones;
 import com.psicoapp.participation.domain.Intento;
+import com.psicoapp.participation.domain.EstadoIntento;
 import com.psicoapp.shared.exceptions.AccesoDenegado;
 import com.psicoapp.shared.exceptions.Conflicto;
 import com.psicoapp.shared.exceptions.NoEncontrado;
@@ -11,6 +12,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -112,16 +114,39 @@ public class ServicioGestionParticipacion {
         return finalizados;
     }
 
+    @EventListener
+    public void cerrarIntentosDeSesion(SesionCerrada evento) {
+        for (UUID id : intentos.listarActivosDeSesion(evento.idSesion())) {
+            cerrarPorConvocatoria(id, evento.instante());
+        }
+    }
+
+    @EventListener
+    public void cerrarIntentoRetirado(ConvocatoriaModificada evento) {
+        if (evento.tipoCambio() == ConvocatoriaModificada.TipoCambio.RETIRO) {
+            intentos.buscarActivo(evento.idSesion(), evento.idEstudiante())
+                    .ifPresent(intento -> cerrarPorConvocatoria(intento.id(), evento.instante()));
+        }
+    }
+
+    private void cerrarPorConvocatoria(UUID id, Instant ahora) {
+        Intento intento = intentos.bloquearPorId(id).orElseThrow(() -> new NoEncontrado("Intento no encontrado"));
+        if (intento.estado() == EstadoIntento.EN_PROGRESO) {
+            Intento cerrado = intento.estaVencido(ahora) ? intento.vencer(ahora) : intento.finalizar(ahora);
+            intentos.actualizar(cerrado);
+            publicarFinalizacion(cerrado);
+        }
+    }
+
     private void publicarFinalizacion(Intento intento) {
         eventos.publicar(new IntentoFinalizado(UUID.nameUUIDFromBytes(("finalizacion:" + intento.id())
                 .getBytes(java.nio.charset.StandardCharsets.UTF_8)), reloj.instant(), intento.idEstudiante(), intento.id()));
     }
 
     private Intento bloquearPropietario(UUID idEstudiante, UUID idIntento) {
-        Intento intento = intentos.bloquearPorId(idIntento).orElseThrow(
-                () -> new NoEncontrado("Intento no encontrado"));
-        exigirPropietario(idEstudiante, intento);
-        return intento;
+        Intento lectura = exigirPropietario(idEstudiante, idIntento);
+        autorizacion.exigirParticipacionVigente(idEstudiante, lectura.idSesion());
+        return intentos.bloquearPorId(idIntento).orElseThrow(() -> new NoEncontrado("Intento no encontrado"));
     }
 
     private Intento exigirPropietario(UUID idEstudiante, UUID idIntento) {

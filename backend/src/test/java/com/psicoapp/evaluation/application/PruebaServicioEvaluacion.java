@@ -40,6 +40,7 @@ class PruebaServicioEvaluacion {
                 .finalizar(AHORA.minusSeconds(1));
         Map<UUID, Intento> almacen = new HashMap<>(Map.of(intentoId, intento));
         intentos = new RepositorioIntentos() {
+            @Override public List<UUID> listarActivosDeSesion(UUID sesion) { throw new UnsupportedOperationException(); }
             @Override public List<UUID> preguntasDeSesion(UUID sesion) { throw new UnsupportedOperationException(); }
             @Override public boolean opcionDePregunta(UUID pregunta, UUID opcion) { throw new UnsupportedOperationException(); }
             @Override public void guardar(Intento valor) { almacen.put(valor.id(), valor); }

@@ -121,7 +121,7 @@ abstract class FlujoBackend {
                 ((org.springframework.jdbc.datasource.DataSourceTransactionManager)gestor).getDataSource());
         var recuperador = new ServicioGestionSesiones(new com.psicoapp.sessions.infrastructure.RepositorioSesionesJdbc(jdbc),
                 null,null,null,reloj,new com.psicoapp.sessions.infrastructure.RepositorioConvocatoriasJdbc(jdbc),
-                mock(com.psicoapp.shared.events.NotificacionSujeto.class), (id, fecha) -> { },
+                mock(com.psicoapp.shared.events.NotificacionSujeto.class), (id, fecha) -> { }, evento -> { },
                 "http://localhost:3000/ingreso");
         var tx = new org.springframework.transaction.support.TransactionTemplate(gestor);
         int cerradas = tx.execute(estado -> recuperador.cerrarVencidas(reloj.instant()));

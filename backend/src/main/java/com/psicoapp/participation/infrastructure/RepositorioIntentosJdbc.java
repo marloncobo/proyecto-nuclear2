@@ -79,6 +79,15 @@ public class RepositorioIntentosJdbc implements RepositorioIntentos, Repositorio
 
     @Override
     @Transactional(readOnly = true)
+    public List<UUID> listarActivosDeSesion(UUID idSesion) {
+        return jdbc.sql("""
+                SELECT id_intento FROM intento WHERE id_sesion = ? AND estado = 'EN_PROGRESO'
+                ORDER BY id_intento
+                """).param(idSesion.toString()).query(String.class).list().stream().map(UUID::fromString).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<Intento> buscarUltimo(UUID idSesion, UUID idEstudiante) {
         return jdbc.sql("""
                 SELECT * FROM intento WHERE id_sesion = ? AND id_estudiante = ?

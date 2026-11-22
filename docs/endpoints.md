@@ -86,6 +86,8 @@ se conserva en los DTO de `ServicioCreacionCaso`.
 | `POST /api/participaciones/{id}/reanudar` | Estudiante propietario | — | Intento reanudado. |
 | `POST /api/participaciones/{id}/finalizar` | Estudiante propietario | — | Intento finalizado y evaluación solicitada. |
 
+Al cerrar una sesión o retirar una convocatoria, se cierra y califica el intento activo con las respuestas registradas. Las preguntas pendientes reciben cero. El estudiante conserva la lectura de su intento con una sesión autenticada vigente.
+
 ## Evaluaciones y valoraciones
 
 | Método y ruta | Acceso | Entrada | Resultado |

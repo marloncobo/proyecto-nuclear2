@@ -34,7 +34,12 @@ class PruebaServicioGestionParticipacion {
     @BeforeEach
     void preparar() {
         repositorio = new RepositorioEnMemoria();
-        AutorizacionConvocatorias autorizacion = (idEstudiante, idSesion, codigo) -> accesosVerificados++;
+        AutorizacionConvocatorias autorizacion = new AutorizacionConvocatorias() {
+            @Override public void exigirAcceso(UUID estudiante, UUID sesion, String codigo) {
+                accesosVerificados++;
+            }
+            @Override public void exigirParticipacionVigente(UUID estudiante, UUID sesion) { }
+        };
         ConsultaSesiones sesiones = idSesion -> new ConsultaSesiones.SesionEnCurso(sesion, UUID.randomUUID(),
                 AHORA.minusSeconds(60), AHORA.plusSeconds(3600), 30, ModoNavegacion.FLEXIBLE.name());
         servicio = new ServicioGestionParticipacion(repositorio, autorizacion, sesiones,
@@ -106,6 +111,10 @@ class PruebaServicioGestionParticipacion {
     private final class RepositorioEnMemoria implements RepositorioIntentos {
         private final Map<UUID, Intento> intentos = new HashMap<>();
 
+        @Override public List<UUID> listarActivosDeSesion(UUID idSesion) {
+            return intentos.values().stream().filter(i -> i.idSesion().equals(idSesion)
+                    && i.estado() == EstadoIntento.EN_PROGRESO).map(Intento::id).toList();
+        }
         @Override public List<UUID> preguntasDeSesion(UUID idSesion) { return List.of(pregunta); }
         @Override public boolean opcionDePregunta(UUID idPregunta, UUID idOpcion) {
             return pregunta.equals(idPregunta) && opcion.equals(idOpcion);
