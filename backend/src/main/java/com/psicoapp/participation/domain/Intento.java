@@ -16,13 +16,14 @@ public final class Intento {
     private final UUID idEstudiante;
     private final Instant inicio;
     private final Instant limite;
+    private final Instant fin;
     private final ModoNavegacion modoNavegacion;
     private final List<UUID> preguntas;
     private final Map<UUID, UUID> respuestas;
     private final int posicionActual;
     private final EstadoIntento estado;
 
-    private Intento(UUID id, UUID idSesion, UUID idEstudiante, Instant inicio, Instant limite,
+    private Intento(UUID id, UUID idSesion, UUID idEstudiante, Instant inicio, Instant limite, Instant fin,
             ModoNavegacion modoNavegacion, List<UUID> preguntas, Map<UUID, UUID> respuestas,
             int posicionActual, EstadoIntento estado) {
         this.id = exigir(id, "El intento es obligatorio");
@@ -30,6 +31,10 @@ public final class Intento {
         this.idEstudiante = exigir(idEstudiante, "El estudiante es obligatorio");
         this.inicio = Objects.requireNonNull(inicio, "El inicio es obligatorio");
         this.limite = Objects.requireNonNull(limite, "El limite es obligatorio");
+        this.fin = fin;
+        if (fin != null && (fin.isBefore(inicio) || estado == EstadoIntento.EN_PROGRESO)) {
+            throw new IllegalArgumentException("El fin debe corresponder a un intento cerrado");
+        }
         if (!inicio.isBefore(limite)) throw new IllegalArgumentException("El limite debe ser posterior al inicio");
         this.modoNavegacion = Objects.requireNonNull(modoNavegacion, "El modo es obligatorio");
         this.preguntas = validarPreguntas(preguntas);
@@ -43,14 +48,14 @@ public final class Intento {
         if (duracionMaximaMin <= 0) throw new IllegalArgumentException("La duracion debe ser positiva");
         Objects.requireNonNull(inicio, "El inicio es obligatorio");
         return new Intento(id, idSesion, idEstudiante, inicio,
-                inicio.plus(Duration.ofMinutes(duracionMaximaMin)), modoNavegacion, preguntas,
+                inicio.plus(Duration.ofMinutes(duracionMaximaMin)), null, modoNavegacion, preguntas,
                 Map.of(), 0, EstadoIntento.EN_PROGRESO);
     }
 
     public static Intento desdePersistencia(UUID id, UUID idSesion, UUID idEstudiante, Instant inicio,
-            Instant limite, ModoNavegacion modoNavegacion, List<UUID> preguntas,
+            Instant limite, Instant fin, ModoNavegacion modoNavegacion, List<UUID> preguntas,
             Map<UUID, UUID> respuestas, int posicionActual, EstadoIntento estado) {
-        return new Intento(id, idSesion, idEstudiante, inicio, limite, modoNavegacion,
+        return new Intento(id, idSesion, idEstudiante, inicio, limite, fin, modoNavegacion,
                 preguntas, respuestas, posicionActual, estado);
     }
 
@@ -88,14 +93,19 @@ public final class Intento {
 
     public Intento finalizar(Instant ahora) {
         exigirActivo(ahora);
-        return copiar(respuestas, posicionActual, EstadoIntento.FINALIZADO);
+        return cerrar(EstadoIntento.FINALIZADO, ahora);
     }
 
     public Intento vencer(Instant ahora) {
         exigirEstadoEnProgreso();
         Objects.requireNonNull(ahora, "El instante es obligatorio");
         if (!estaVencido(ahora)) throw new TransicionIntentoInvalida("El intento aun no ha vencido");
-        return copiar(respuestas, posicionActual, EstadoIntento.VENCIDO);
+        return cerrar(EstadoIntento.VENCIDO, ahora);
+    }
+
+    private Intento cerrar(EstadoIntento nuevoEstado, Instant ahora) {
+        return new Intento(id, idSesion, idEstudiante, inicio, limite, ahora, modoNavegacion,
+                preguntas, respuestas, posicionActual, nuevoEstado);
     }
 
     public boolean estaVencido(Instant ahora) {
@@ -126,7 +136,7 @@ public final class Intento {
     }
 
     private Intento copiar(Map<UUID, UUID> nuevasRespuestas, int nuevaPosicion, EstadoIntento nuevoEstado) {
-        return new Intento(id, idSesion, idEstudiante, inicio, limite, modoNavegacion,
+        return new Intento(id, idSesion, idEstudiante, inicio, limite, fin, modoNavegacion,
                 preguntas, nuevasRespuestas, nuevaPosicion, nuevoEstado);
     }
 
@@ -155,6 +165,7 @@ public final class Intento {
     public UUID idEstudiante() { return idEstudiante; }
     public Instant inicio() { return inicio; }
     public Instant limite() { return limite; }
+    public Instant fin() { return fin; }
     public ModoNavegacion modoNavegacion() { return modoNavegacion; }
     public List<UUID> preguntas() { return preguntas; }
     public Map<UUID, UUID> respuestas() { return respuestas; }

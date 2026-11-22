@@ -78,7 +78,8 @@ class PruebaConsolidacionReporteSesionJdbc {
                         UUID.randomUUID().toString(), sesion.toString(), participante.toString()).update();
         UUID intento = UUID.randomUUID();
         jdbc.sql("""
-                INSERT INTO intento VALUES (?, ?, ?, CURRENT_TIMESTAMP,
+                INSERT INTO intento (id_intento,id_sesion,id_estudiante,fecha_inicio,fecha_limite,
+                    posicion_actual,modo_navegacion,estado) VALUES (?, ?, ?, CURRENT_TIMESTAMP,
                     DATEADD('MINUTE', 30, CURRENT_TIMESTAMP), 0, 'FLEXIBLE', 'EN_PROGRESO')
                 """).params(intento.toString(), sesion.toString(), participante.toString()).update();
         jdbc.sql("INSERT INTO intento_pregunta VALUES (?, ?, 0), (?, ?, 1)")

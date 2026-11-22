@@ -276,7 +276,7 @@ export class ServicioApi {
 }
 
 export interface Reporte {
-  participacion: { idIntento: string; estado: string; inicio: string; idSesion: string };
+  participacion: { idIntento: string; estado: string; inicio: string; fin?: string | null; idSesion: string };
   resultado: {
     calificacion: number;
     fecha: string;

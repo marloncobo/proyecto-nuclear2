@@ -86,6 +86,12 @@ se conserva en los DTO de `ServicioCreacionCaso`.
 | `POST /api/participaciones/{id}/reanudar` | Estudiante propietario | — | Intento reanudado. |
 | `POST /api/participaciones/{id}/finalizar` | Estudiante propietario | — | Intento finalizado y evaluación solicitada. |
 
+El docente responsable puede usar `PUT /api/sesiones/{sesion}/reintentos/{estudiante}`
+para autorizar un reintento de un estudiante convocado con un intento anterior
+cerrado. El estudiante vuelve a entrar con su código dentro de la ventana
+vigente. Cada autorización se consume con el siguiente intento. Solo puede
+existir un intento activo por estudiante entre todas las sesiones.
+
 Al cerrar una sesión o retirar una convocatoria, se cierra y califica el intento activo con las respuestas registradas. Las preguntas pendientes reciben cero. El estudiante conserva la lectura de su intento con una sesión autenticada vigente.
 
 ## Evaluaciones y valoraciones

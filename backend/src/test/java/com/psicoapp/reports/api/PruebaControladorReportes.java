@@ -61,7 +61,7 @@ class PruebaControladorReportes {
         UUID opcion = UUID.randomUUID();
         when(participaciones.consultarPorEstudiante(docente, estudiante, caso)).thenReturn(List.of(
                 new ParticipacionFinalizada(intento, UUID.randomUUID(), estudiante, "FINALIZADO",
-                        Instant.EPOCH, Instant.EPOCH.plusSeconds(1800), List.of(pregunta), Map.of(pregunta, opcion))));
+                        Instant.EPOCH, Instant.EPOCH.plusSeconds(1800), Instant.EPOCH.plusSeconds(15), List.of(pregunta), Map.of(pregunta, opcion))));
         when(resultados.consultar(docente, intento)).thenReturn(Optional.empty());
         mvc.perform(get(ruta).with(user(docente.toString()).roles("DOCENTE")))
                 .andExpect(status().isOk())

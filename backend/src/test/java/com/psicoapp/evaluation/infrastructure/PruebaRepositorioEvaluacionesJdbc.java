@@ -77,7 +77,8 @@ class PruebaRepositorioEvaluacionesJdbc {
                 java.sql.Timestamp.from(Instant.parse("2026-01-01T10:00:00Z")),
                 java.sql.Timestamp.from(Instant.parse("2026-01-01T11:00:00Z"))).update();
         jdbc.sql("""
-                INSERT INTO intento VALUES (?, ?, ?, ?, ?, 0, 'FLEXIBLE', 'FINALIZADO')
+                INSERT INTO intento (id_intento,id_sesion,id_estudiante,fecha_inicio,fecha_limite,
+                    posicion_actual,modo_navegacion,estado) VALUES (?, ?, ?, ?, ?, 0, 'FLEXIBLE', 'FINALIZADO')
                 """).params(intento.toString(), sesion.toString(), estudiante.toString(),
                 java.sql.Timestamp.from(Instant.parse("2026-01-01T10:00:00Z")),
                 java.sql.Timestamp.from(Instant.parse("2026-01-01T10:30:00Z"))).update();
