@@ -17,6 +17,7 @@ interface Intento {
   id: string;
   limite: string;
   estado: string;
+  modoNavegacion?: 'FLEXIBLE' | 'RESTRINGIDA';
   preguntaActual: string;
   respuestas: Record<string, string>;
 }
@@ -108,6 +109,17 @@ export class Ingreso {
     effect(() => {
       this.idSesion = this.sesionEstudiante() ?? '';
     });
+    effect((alLimpiar) => {
+      const intento = this.intento();
+      if (intento?.estado !== 'EN_PROGRESO') return;
+
+      let segundos = 0;
+      const intervalo = setInterval(() => {
+        this.ahora.set(Date.now());
+        if (++segundos % 5 === 0) void this.actualizarIntento(intento.id);
+      }, 1000);
+      alLimpiar(() => clearInterval(intervalo));
+    });
   }
 
   readonly simulacion = signal<Simulacion | null>(null);
@@ -122,6 +134,18 @@ export class Ingreso {
     () => this.notificaciones().filter((notificacion) => !notificacion.leida).length,
   );
   readonly confirmarEntrega = signal(false);
+  private readonly ahora = signal(Date.now());
+  private actualizandoIntento = false;
+  readonly segundosRestantes = computed(() =>
+    Math.max(0, Math.ceil((Date.parse(this.intento()?.limite ?? '') - this.ahora()) / 1000)),
+  );
+  readonly tiempoRestante = computed(() => {
+    const segundos = this.segundosRestantes();
+    return [Math.floor(segundos / 60), segundos % 60]
+      .map((parte) => String(parte).padStart(2, '0')).join(':');
+  });
+  readonly restringida = computed(() => this.intento()?.modoNavegacion === 'RESTRINGIDA');
+  readonly respondidas = computed(() => Object.keys(this.intento()?.respuestas ?? {}).length);
   readonly indice = computed(
     () =>
       this.simulacion()?.preguntas.findIndex(
@@ -138,6 +162,7 @@ export class Ingreso {
         codigoAcceso,
       });
       this.codigo = '';
+      this.ahora.set(Date.now());
       this.simulacion.set(simulacion);
       this.intento.set(simulacion.intento);
       if (simulacion.intento.estado !== 'EN_PROGRESO')
@@ -197,6 +222,29 @@ export class Ingreso {
         await this.cargarResultado(intento.id);
       }
     });
+  }
+
+  private async actualizarIntento(id: string) {
+    if (this.actualizandoIntento || this.ocupado() || this.intento()?.id !== id) return;
+    this.actualizandoIntento = true;
+    try {
+      const lectura = this.intento();
+      const intento = await this.api.consultar<Intento>(`/participaciones/${id}`);
+      if (this.ocupado() || this.intento() !== lectura || intento.estado === 'EN_PROGRESO') return;
+      await this.ejecutar(async () => {
+        this.intento.set(intento);
+        this.confirmarEntrega.set(false);
+        await this.cargarResultado(id);
+      });
+    } catch {
+      // La siguiente consulta vuelve a comprobar el estado del intento.
+    } finally {
+      this.actualizandoIntento = false;
+    }
+  }
+
+  enunciadoResultado(idPregunta: string) {
+    return this.simulacion()?.preguntas.find((pregunta) => pregunta.id === idPregunta)?.enunciado;
   }
 
   async consultarResultado() {

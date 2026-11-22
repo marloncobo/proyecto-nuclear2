@@ -61,12 +61,17 @@
         }
       </section>
       @if (intento()?.estado === 'EN_PROGRESO') {
+        <p>Tiempo restante <span role="timer">{{ tiempoRestante() }}</span></p>
         <p>Hora límite {{ intento()?.limite | date: 'shortTime' }}</p>
+        <p>{{ respondidas() }} de {{ caso.preguntas.length }} preguntas respondidas</p>
+        @if (segundosRestantes() === 0) {
+          <p role="status">Se agotó el tiempo. Estamos consultando el resultado.</p>
+        }
         @if (pregunta(); as actual) {
           <p>Pregunta {{ indice() + 1 }} de {{ caso.preguntas.length }}</p>
           <h2>{{ actual.escenario }}</h2>
           <p>{{ actual.contexto }}</p>
-          <fieldset [disabled]="ocupado()">
+          <fieldset [disabled]="ocupado() || segundosRestantes() === 0">
             <legend>{{ actual.enunciado }}</legend>
             @for (opcion of actual.opciones; track opcion.id) {
               <label>
@@ -83,25 +88,28 @@
           <footer>
             <button
               type="button"
-              [disabled]="ocupado() || indice() === 0"
+              [disabled]="ocupado() || segundosRestantes() === 0 || restringida() || indice() === 0"
               (click)="operar('retroceder')"
             >
               Anterior
             </button>
             <button
               type="button"
-              [disabled]="ocupado() || indice() === caso.preguntas.length - 1"
+              [disabled]="
+                ocupado() || segundosRestantes() === 0 || indice() === caso.preguntas.length - 1 ||
+                (restringida() && !intento()?.respuestas?.[actual.id])
+              "
               (click)="operar('avanzar')"
             >
               Siguiente
             </button>
-            <button type="button" [disabled]="ocupado()" (click)="confirmarEntrega.set(true)">
+            <button type="button" [disabled]="ocupado() || segundosRestantes() === 0" (click)="confirmarEntrega.set(true)">
               Entregar intento
             </button>
           </footer>
           @if (confirmarEntrega()) {
             <p>¿Confirmas la entrega de tus respuestas?</p>
-            <button type="button" [disabled]="ocupado()" (click)="operar('finalizar')">
+            <button type="button" [disabled]="ocupado() || segundosRestantes() === 0" (click)="operar('finalizar')">
               Confirmar entrega
             </button>
             <button type="button" [disabled]="ocupado()" (click)="confirmarEntrega.set(false)">
@@ -113,7 +121,13 @@
         <h2>Calificación {{ nota.calificacion }}</h2>
         <ul>
           @for (detalle of nota.detalles; track detalle.idPregunta) {
-            <li>{{ detalle.retroalimentacion }}</li>
+            <li>
+              @if (enunciadoResultado(detalle.idPregunta); as enunciado) {
+                <strong>{{ enunciado }}</strong>
+              }
+              <p>{{ !detalle.contestada ? 'Sin responder' : detalle.correcta ? 'Correcta' : 'Incorrecta' }}</p>
+              <p>{{ detalle.retroalimentacion }}</p>
+            </li>
           }
         </ul>
         @for (valoracion of valoraciones(); track valoracion.id) {

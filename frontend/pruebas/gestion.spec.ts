@@ -597,7 +597,22 @@ test('administración: fallo de lectura tras guardar no vuelve a enviar la escri
 test('el código de convocatoria abre la simulación sin entrar al panel del personal', async ({
   page: pagina,
 }) => {
+  await pagina.clock.install({ time: new Date('2026-11-30T11:59:40Z') });
   await simularApi(pagina, 'ESTUDIANTE');
+  await pagina.route('**/api/participaciones/intento', (ruta) =>
+    ruta.fulfill({ json: { id: 'intento', estado: 'VENCIDO', respuestas: {} } }),
+  );
+  await pagina.route('**/api/evaluaciones/intento', (ruta) =>
+    ruta.fulfill({
+      json: {
+        resultado: {
+          calificacion: 0,
+          detalles: [{ idPregunta: 'p1', contestada: false, correcta: false, retroalimentacion: 'Sin selección' }],
+        },
+      },
+    }),
+  );
+  await pagina.route('**/api/evaluaciones/intento/valoraciones', (ruta) => ruta.fulfill({ json: [] }));
   await pagina.route('**/api/participaciones/ingreso', async (ruta) => {
     expect(ruta.request().postDataJSON()).toEqual({
       idSesion: 'sesion-prueba',
@@ -610,6 +625,7 @@ test('el código de convocatoria abre la simulación sin entrar al panel del per
           id: 'intento',
           limite: '2026-11-30T12:00:00Z',
           estado: 'EN_PROGRESO',
+          modoNavegacion: 'RESTRINGIDA',
           preguntaActual: 'p1',
           respuestas: {},
         },
@@ -621,6 +637,7 @@ test('el código de convocatoria abre la simulación sin entrar al panel del per
             enunciado: '¿Qué harías?',
             opciones: [],
           },
+          { id: 'p2', escenario: 'Escenario', contexto: 'Contexto', enunciado: '¿Qué sigue?', opciones: [] },
         ],
       },
     });
@@ -632,4 +649,12 @@ test('el código de convocatoria abre la simulación sin entrar al panel del per
   await pagina.getByRole('button', { name: 'Entrar a la simulación' }).click();
   await expect(pagina.getByRole('heading', { name: 'Simulación de prueba' })).toBeVisible();
   await expect(pagina.getByRole('navigation', { name: 'Navegación principal' })).toHaveCount(0);
+  await expect(pagina.getByRole('timer')).toBeVisible();
+  await expect(pagina.getByRole('button', { name: 'Siguiente' })).toBeDisabled();
+  await expect(pagina.getByText('0 de 2 preguntas respondidas')).toBeVisible();
+
+  await pagina.clock.runFor(20_000);
+  await expect(pagina.getByRole('heading', { name: 'Calificación 0' })).toBeVisible();
+  await expect(pagina.getByText('Sin responder', { exact: true })).toBeVisible();
+  await expect(pagina.getByText('¿Qué harías?', { exact: true })).toBeVisible();
 });
