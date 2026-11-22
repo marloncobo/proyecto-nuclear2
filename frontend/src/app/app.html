@@ -374,7 +374,9 @@
                   </div>
                   @if (sesion.estado !== 'FINALIZADO') {
                     @if (api.conectado()) {
-                      <button class="boton secundario" (click)="editarConvocados(sesion)">Editar convocados</button>
+                      <button class="boton secundario" (click)="editarConvocados(sesion)">
+                        Editar convocados
+                      </button>
                     }
                     <button
                       class="boton secundario"
@@ -533,50 +535,88 @@
                 <button class="boton primario" (click)="abrir('ingreso')">Conectar cuenta ↗</button>
               } @else {
                 <form (ngSubmit)="consultarReporteSesion()">
-                  <label>Sesión para exportar
-                    <select name="sesionReporte" [(ngModel)]="idSesionReporte" (ngModelChange)="reporteSesion.set(null); resultado.set(null); nombreEstudianteReporte = ''" required>
+                  <label
+                    >Sesión para exportar
+                    <select
+                      name="sesionReporte"
+                      [(ngModel)]="idSesionReporte"
+                      (ngModelChange)="
+                        reporteSesion.set(null); resultado.set(null); nombreEstudianteReporte = ''
+                      "
+                      required
+                    >
                       <option value="">Selecciona una sesión</option>
                       @for (sesion of sesiones(); track sesion.id) {
-                        <option [value]="sesion.id">{{ nombreCaso(sesion.idCaso) }} · {{ sesion.inicioPrevisto | date: 'short' }}</option>
+                        <option [value]="sesion.id">
+                          {{ nombreCaso(sesion.idCaso) }} ·
+                          {{ sesion.inicioPrevisto | date: 'short' }}
+                        </option>
                       }
                     </select>
                   </label>
-                  <button class="boton secundario" [disabled]="ocupado() || !idSesionReporte">Preparar reporte</button>
+                  <button class="boton secundario" [disabled]="ocupado() || !idSesionReporte">
+                    Preparar reporte
+                  </button>
                   @if (reporteSesion(); as filas) {
                     <p role="status">{{ filas.length }} filas listas para exportar.</p>
-                    <button type="button" class="boton secundario" (click)="descargarReporteSesion()">Descargar CSV</button>
+                    <button
+                      type="button"
+                      class="boton secundario"
+                      (click)="descargarReporteSesion()"
+                    >
+                      Descargar CSV
+                    </button>
                     <div class="lista-reporte-sesion">
-                      @for (fila of filas; track fila.idEstudiante + (fila.idIntento ?? 'ausencia')) {
+                      @for (
+                        fila of filas;
+                        track fila.idEstudiante + (fila.idIntento ?? 'ausencia')
+                      ) {
                         <article class="fila-reporte-sesion">
                           <div>
                             <strong>{{ fila.nombreEstudiante }}</strong>
                             <small>{{ fila.correoEstudiante }}</small>
                           </div>
                           <span class="estado">{{ fila.estado }}</span>
-                          <p class="nota-calificacion compacta">{{ fila.calificacion ?? '—' }} <small>Calificación</small></p>
+                          <p class="nota-calificacion compacta">
+                            {{ fila.calificacion ?? '—' }} <small>Calificación</small>
+                          </p>
                           @if (fila.idIntento && fila.preguntasTotales != null) {
-                            <p>{{ fila.preguntasRespondidas }} de {{ fila.preguntasTotales }} preguntas respondidas</p>
+                            <p>
+                              {{ fila.preguntasRespondidas }} de
+                              {{ fila.preguntasTotales }} preguntas respondidas
+                            </p>
                           }
                           @if (fila.ausencia; as ausencia) {
                             <p class="detalle-ausencia">
                               Ausencia consolidada · {{ ausencia.detalles.length }}
-                              {{ ausencia.detalles.length === 1 ? 'pregunta' : 'preguntas' }} con 0 puntos.
+                              {{ ausencia.detalles.length === 1 ? 'pregunta' : 'preguntas' }} con 0
+                              puntos.
                             </p>
                           } @else if (fila.estado === 'FINALIZADO' || fila.estado === 'VENCIDO') {
-                            <button type="button" class="boton secundario" (click)="consultarResultados(fila)"
-                              [disabled]="ocupado()">
+                            <button
+                              type="button"
+                              class="boton secundario"
+                              (click)="consultarResultados(fila)"
+                              [disabled]="ocupado()"
+                            >
                               Ver resultados de {{ fila.nombreEstudiante }}
                             </button>
                             @if (puedeAutorizarReintento(fila, filas)) {
-                              <button type="button" class="boton secundario" (click)="autorizarReintento(fila)"
-                                [disabled]="ocupado()">
+                              <button
+                                type="button"
+                                class="boton secundario"
+                                (click)="autorizarReintento(fila)"
+                                [disabled]="ocupado()"
+                              >
                                 Autorizar reintento para {{ fila.nombreEstudiante }}
                               </button>
                             }
                           }
                         </article>
                       } @empty {
-                        <p class="vacio">La sesión todavía no tiene participaciones para mostrar.</p>
+                        <p class="vacio">
+                          La sesión todavía no tiene participaciones para mostrar.
+                        </p>
                       }
                     </div>
                   }
@@ -585,7 +625,9 @@
               @if (resultado() !== null) {
                 <h3>
                   Recorrido académico
-                  @if (nombreEstudianteReporte) { <span>· {{ nombreEstudianteReporte }}</span> }
+                  @if (nombreEstudianteReporte) {
+                    <span>· {{ nombreEstudianteReporte }}</span>
+                  }
                 </h3>
                 @for (reporte of resultado(); track reporte.participacion.idIntento) {
                   <article class="intento-reporte">
@@ -633,11 +675,24 @@
                         }}<small>{{ valoracion.fecha | date: 'mediumDate' }}</small>
                       </blockquote>
                     }
-                  <form (ngSubmit)="valorar(reporte)">
-                    <label>Valoración docente<textarea name="valoracion" [(ngModel)]="valoraciones[reporte.participacion.idIntento]"
-                      required maxlength="2000"></textarea></label>
-                    <button class="boton secundario" [disabled]="ocupado() || !valoraciones[reporte.participacion.idIntento]?.trim()">Publicar valoración</button>
-                  </form>
+                    <form (ngSubmit)="valorar(reporte)">
+                      <label
+                        >Valoración docente<textarea
+                          name="valoracion"
+                          [(ngModel)]="valoraciones[reporte.participacion.idIntento]"
+                          required
+                          maxlength="2000"
+                        ></textarea>
+                      </label>
+                      <button
+                        class="boton secundario"
+                        [disabled]="
+                          ocupado() || !valoraciones[reporte.participacion.idIntento]?.trim()
+                        "
+                      >
+                        Publicar valoración
+                      </button>
+                    </form>
                   </article>
                 } @empty {
                   <p class="vacio">No hay intentos finalizados para este estudiante y caso.</p>
@@ -666,7 +721,9 @@
               <div class="resumen-notificaciones-docente">
                 <h2 id="resumen-notificaciones">
                   {{ notificacionesNoLeidas() || 'Sin' }}
-                  {{ notificacionesNoLeidas() === 1 ? 'notificación nueva' : 'notificaciones nuevas' }}
+                  {{
+                    notificacionesNoLeidas() === 1 ? 'notificación nueva' : 'notificaciones nuevas'
+                  }}
                 </h2>
                 <p>Los avisos leídos permanecen disponibles como historial.</p>
               </div>
@@ -734,6 +791,7 @@
     <div class="fondo-modal" (click)="cerrar()">
       <section
         class="modal"
+        [class.modal-detalle-caso]="modal() === 'detalle'"
         role="dialog"
         aria-modal="true"
         aria-labelledby="titulo-modal"
@@ -745,7 +803,7 @@
         <button class="cerrar-modal boton-icono" aria-label="Cerrar ventana" (click)="cerrar()">
           ×
         </button>
-        @if (error()) {
+        @if (error() && erroresPublicacion().length === 0) {
           <p class="error" role="alert">{{ error() }}</p>
         }
         @switch (modal()) {
@@ -763,47 +821,165 @@
             <button class="boton secundario" (click)="salir()">Cerrar sesión</button>
           }
           @case ('crear') {
-            <h2 id="titulo-modal">{{ seleccionado() ? 'Editar borrador' : 'Crea una experiencia.' }}</h2>
+            <h2 id="titulo-modal">
+              {{ seleccionado() ? 'Editar borrador' : 'Crea una experiencia.' }}
+            </h2>
             @if (borrador; as caso) {
-              <psico-editor-caso [caso]="caso" [ocupado]="ocupado()" (guardar)="guardarCaso($event)" />
+              <psico-editor-caso
+                [caso]="caso"
+                [ocupado]="ocupado()"
+                (guardar)="guardarCaso($event)"
+              />
             }
           }
           @case ('detalle') {
             @if (seleccionado(); as caso) {
-              <p class="sobretitulo">{{ caso.contexto }}</p>
-              <h2 id="titulo-modal">{{ caso.nombre }}</h2>
-              <span class="estado">{{ estadoLegible(caso.estado) }}</span>
-              <p>{{ caso.desarrolloSituacional }}</p>
-              <p>
-                ◷ {{ caso.tiempoEstimadoMin }} minutos · {{ caso.escenarios.length }} escenarios
-              </p>
-              <small class="identificador">ID: {{ caso.id }}</small>
-              @for (escenario of caso.escenarios; track escenario.id) {
-                <h3>{{ escenario.orden }} / {{ escenario.titulo }}</h3>
-                <p>{{ escenario.contextoSituacional }}</p>
-                @for (pregunta of escenario.preguntas; track pregunta.id) {
-                  <strong>{{ pregunta.enunciado }}</strong>
-                  <ul>
-                    @for (opcion of pregunta.opciones; track opcion.id) {
-                      <li>
-                        {{ opcion.texto }}
-                        <small
-                          >{{ opcion.esCorrecta ? '(Correcta)' : '' }} ·
-                          {{ opcion.justificacion }}</small
-                        >
-                      </li>
-                    }
-                  </ul>
-                }
-              }
-              @if (caso.rubrica) {
+              <header class="cabecera-caso-detalle">
+                <div class="fila-meta-caso">
+                  <span class="estado estado-caso">{{ estadoLegible(caso.estado) }}</span>
+                  <span class="tema-caso">{{ caso.contexto || 'Contexto por definir' }}</span>
+                </div>
+                <h2 id="titulo-modal">{{ caso.nombre || 'Caso sin nombre' }}</h2>
                 <p>
-                  Rúbrica: {{ caso.rubrica.nombre }} · Escala máxima {{ caso.rubrica.escalaMaxima }}
+                  {{
+                    caso.desarrolloSituacional ||
+                      'El desarrollo de la situación aún no ha sido definido.'
+                  }}
                 </p>
+                <dl class="resumen-caso" aria-label="Resumen del caso">
+                  <div>
+                    <dt>Duración</dt>
+                    <dd>{{ caso.tiempoEstimadoMin || '—' }} <small>min</small></dd>
+                  </div>
+                  <div>
+                    <dt>Escenarios</dt>
+                    <dd>{{ caso.escenarios.length }}</dd>
+                  </div>
+                  <div>
+                    <dt>Preguntas</dt>
+                    <dd>{{ cantidadPreguntas(caso) }}</dd>
+                  </div>
+                  <div>
+                    <dt>Escala</dt>
+                    <dd>{{ caso.rubrica?.escalaMaxima ?? '—' }}</dd>
+                  </div>
+                </dl>
+              </header>
+
+              @if (erroresPublicacion().length > 0) {
+                <section
+                  class="panel-validacion-caso"
+                  role="alert"
+                  aria-labelledby="titulo-validacion-caso"
+                >
+                  <span class="icono-validacion" aria-hidden="true">!</span>
+                  <div>
+                    <h3 id="titulo-validacion-caso">Este caso aún no está listo para publicarse</h3>
+                    <p>Completa los siguientes puntos y vuelve a intentarlo:</p>
+                    <ul>
+                      @for (
+                        pendiente of erroresPublicacion();
+                        track pendiente.ruta + pendiente.codigo
+                      ) {
+                        <li>
+                          <strong>{{ etiquetaErrorPublicacion(pendiente.ruta) }}</strong>
+                          <span>{{ pendiente.mensaje }}</span>
+                        </li>
+                      }
+                    </ul>
+                    <button class="boton secundario" (click)="abrir('crear', caso)">
+                      Corregir el borrador
+                    </button>
+                  </div>
+                </section>
               }
-              <div class="acciones-modal">
+
+              <div class="contenido-caso-detalle">
+                <section class="bloque-detalle-caso" aria-labelledby="titulo-contenido-caso">
+                  <div class="encabezado-seccion-caso">
+                    <div>
+                      <p class="sobretitulo">RECORRIDO DEL CASO</p>
+                      <h3 id="titulo-contenido-caso">Escenarios y preguntas</h3>
+                    </div>
+                    <span>{{ caso.escenarios.length }} en total</span>
+                  </div>
+                  @if (caso.escenarios.length === 0) {
+                    <p class="vacio-detalle-caso">
+                      Aún no hay escenarios. Edita el borrador para construir el recorrido.
+                    </p>
+                  }
+                  @for (escenario of caso.escenarios; track escenario.id) {
+                    <article class="escenario-detalle">
+                      <div class="numero-escenario" aria-hidden="true">{{ escenario.orden }}</div>
+                      <div class="cuerpo-escenario">
+                        <h4>{{ escenario.titulo || 'Escenario sin título' }}</h4>
+                        <p>{{ escenario.contextoSituacional || 'Sin contexto definido.' }}</p>
+                        @for (
+                          pregunta of escenario.preguntas;
+                          track pregunta.id;
+                          let numeroPregunta = $index
+                        ) {
+                          <section class="pregunta-detalle">
+                            <span>Pregunta {{ numeroPregunta + 1 }}</span>
+                            <h5>{{ pregunta.enunciado || 'Pregunta sin enunciado' }}</h5>
+                            <ul class="opciones-detalle">
+                              @for (opcion of pregunta.opciones; track opcion.id) {
+                                <li [class.opcion-correcta]="opcion.esCorrecta">
+                                  <span class="marca-opcion" aria-hidden="true">{{
+                                    opcion.esCorrecta ? '✓' : '○'
+                                  }}</span>
+                                  <div>
+                                    <strong>{{ opcion.texto || 'Opción sin texto' }}</strong>
+                                    <small>{{
+                                      opcion.justificacion || 'Sin justificación.'
+                                    }}</small>
+                                  </div>
+                                </li>
+                              }
+                            </ul>
+                          </section>
+                        }
+                      </div>
+                    </article>
+                  }
+                </section>
+
+                <aside
+                  class="bloque-detalle-caso rubrica-detalle"
+                  aria-labelledby="titulo-rubrica-caso"
+                >
+                  <p class="sobretitulo">EVALUACIÓN</p>
+                  <h3 id="titulo-rubrica-caso">Rúbrica</h3>
+                  @if (caso.rubrica; as rubrica) {
+                    <strong class="nombre-rubrica">{{
+                      rubrica.nombre || 'Rúbrica sin nombre'
+                    }}</strong>
+                    <p>Escala máxima de {{ rubrica.escalaMaxima }} puntos.</p>
+                    <ul>
+                      @for (criterio of rubrica.criterios; track criterio.id) {
+                        <li>
+                          <div>
+                            <strong>{{ criterio.nombre || 'Criterio sin nombre' }}</strong>
+                            <small>{{ criterio.preguntas.length }} preguntas asociadas</small>
+                          </div>
+                          <span>{{ criterio.ponderacion * 100 }}%</span>
+                        </li>
+                      }
+                    </ul>
+                  } @else {
+                    <p class="vacio-detalle-caso">
+                      Este caso todavía no tiene una rúbrica asociada.
+                    </p>
+                  }
+                  <small class="identificador">ID: {{ caso.id }}</small>
+                </aside>
+              </div>
+
+              <div class="acciones-modal acciones-detalle-caso">
                 @if (caso.estado === 'BORRADOR') {
-                  <button class="boton secundario" (click)="abrir('crear', caso)">Editar borrador</button>
+                  <button class="boton secundario" (click)="abrir('crear', caso)">
+                    Editar borrador
+                  </button>
                   <button
                     class="boton primario"
                     [disabled]="ocupado()"
@@ -880,13 +1056,21 @@
             <h2 id="titulo-modal">Dale fecha a una idea.</h2>
             <form (ngSubmit)="programar()">
               @if (api.conectado()) {
-                <fieldset [disabled]="ocupado() || cargandoEstudiantes()" class="busqueda-estudiante">
+                <fieldset
+                  [disabled]="ocupado() || cargandoEstudiantes()"
+                  class="busqueda-estudiante"
+                >
                   <legend>Agregar estudiantes</legend>
                   @if (cargandoEstudiantes()) {
                     <p role="status">Cargando estudiantes…</p>
                   }
-                  <psico-selector-estudiantes [estudiantes]="estudiantes()" [(seleccion)]="programacion.estudiantes" />
-                  <button type="button" class="boton secundario" (click)="abrir('alta-estudiante')">Registrar estudiante</button>
+                  <psico-selector-estudiantes
+                    [estudiantes]="estudiantes()"
+                    [(seleccion)]="programacion.estudiantes"
+                  />
+                  <button type="button" class="boton secundario" (click)="abrir('alta-estudiante')">
+                    Registrar estudiante
+                  </button>
                 </fieldset>
                 <fieldset [disabled]="ocupado()" class="busqueda-estudiante">
                   <legend>Buscar estudiantes</legend>
@@ -982,10 +1166,28 @@
           @case ('alta-estudiante') {
             <h2 id="titulo-modal">Registrar estudiante</h2>
             <form #alta="ngForm" (ngSubmit)="alta.valid && registrarEstudiante()">
-              <label>Nombre del estudiante<input name="nombre" [(ngModel)]="altaEstudiante.nombre" required maxlength="120" /></label>
-              <label>Correo del estudiante<input name="correo" type="email" [(ngModel)]="altaEstudiante.correo" required email maxlength="180" /></label>
-              <button class="boton primario" [disabled]="ocupado() || alta.invalid">Registrar y agregar</button>
-              <button type="button" class="boton secundario" (click)="abrir('programar')">Volver a programación</button>
+              <label
+                >Nombre del estudiante<input
+                  name="nombre"
+                  [(ngModel)]="altaEstudiante.nombre"
+                  required
+                  maxlength="120"
+              /></label>
+              <label
+                >Correo del estudiante<input
+                  name="correo"
+                  type="email"
+                  [(ngModel)]="altaEstudiante.correo"
+                  required
+                  email
+                  maxlength="180"
+              /></label>
+              <button class="boton primario" [disabled]="ocupado() || alta.invalid">
+                Registrar y agregar
+              </button>
+              <button type="button" class="boton secundario" (click)="abrir('programar')">
+                Volver a programación
+              </button>
             </form>
           }
           @case ('convocados') {
@@ -997,10 +1199,18 @@
                 @if (cargandoEstudiantes()) {
                   <p role="status">Procesando solicitud…</p>
                 }
-                <psico-selector-estudiantes [estudiantes]="estudiantes()" [(seleccion)]="convocadosSeleccionados" />
+                <psico-selector-estudiantes
+                  [estudiantes]="estudiantes()"
+                  [(seleccion)]="convocadosSeleccionados"
+                />
               </fieldset>
               @let cambios = cambiosConvocados();
-              <button class="boton primario" [disabled]="ocupado() || (!cambios.agregar.length && !cambios.retirar.length)">Guardar convocatoria</button>
+              <button
+                class="boton primario"
+                [disabled]="ocupado() || (!cambios.agregar.length && !cambios.retirar.length)"
+              >
+                Guardar convocatoria
+              </button>
             </form>
           }
           @case ('iniciar-sesion') {

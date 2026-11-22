@@ -44,6 +44,92 @@ test('creación de borrador y transición a publicado en demostración', async (
   await expect(pagina.getByRole('dialog').getByText('Publicado', { exact: true })).toBeVisible();
 });
 
+test('detalle de caso presenta el contenido y explica cada requisito de publicación pendiente', async ({
+  page: pagina,
+}) => {
+  const caso = {
+    id: 'caso-invalido',
+    nombre: 'Caso por completar',
+    contexto: 'Influencia social',
+    desarrolloSituacional: 'Un grupo debe tomar una decisión bajo presión.',
+    tiempoEstimadoMin: 30,
+    estado: 'BORRADOR',
+    escenarios: [
+      {
+        id: 'escenario-1',
+        titulo: 'La reunión',
+        contextoSituacional: 'El equipo escucha distintas propuestas.',
+        orden: 1,
+        preguntas: [],
+      },
+    ],
+    rubrica: null,
+  };
+  await pagina.route('**/api/**', async (ruta) => {
+    const direccion = new URL(ruta.request().url());
+    if (direccion.pathname.endsWith('/identidad/ingreso'))
+      return ruta.fulfill({ json: { token: 'token-ficticio', tipo: 'Bearer' } });
+    if (direccion.pathname.endsWith('/identidad/yo'))
+      return ruta.fulfill({
+        json: {
+          id: 'docente',
+          nombre: 'Docente de prueba',
+          rol: 'DOCENTE',
+          correo: 'docente@ejemplo.edu',
+          puedeCrearCasos: true,
+        },
+      });
+    if (direccion.pathname.endsWith('/casos/caso-invalido/publicar'))
+      return ruta.fulfill({
+        status: 422,
+        contentType: 'application/problem+json',
+        json: {
+          detail: 'El caso no cumple las condiciones de publicacion',
+          errores: [
+            {
+              codigo: 'PREGUNTAS_REQUERIDAS',
+              ruta: 'escenarios[0].preguntas',
+              mensaje: 'El escenario debe contener preguntas',
+            },
+            {
+              codigo: 'RUBRICA_REQUERIDA',
+              ruta: 'rubrica',
+              mensaje: 'Debe asociar una rubrica',
+            },
+          ],
+        },
+      });
+    if (direccion.pathname.endsWith('/casos')) return ruta.fulfill({ json: [caso] });
+    return ruta.fulfill({ json: [] });
+  });
+
+  await pagina.goto('/');
+  await pagina.getByLabel('Correo institucional').fill('docente@ejemplo.edu');
+  await pagina.getByLabel('Contraseña', { exact: true }).fill('clave-ficticia');
+  await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
+  await pagina.getByRole('button', { name: 'Biblioteca de casos', exact: true }).click();
+  await expect(pagina.getByRole('heading', { name: 'Biblioteca de casos.' })).toBeVisible();
+  const tarjeta = pagina.locator('.tarjeta-caso').filter({ hasText: 'Caso por completar' });
+  await expect(tarjeta).toBeVisible();
+  await tarjeta.getByRole('button', { name: 'Explorar caso' }).click();
+
+  const modal = pagina.getByRole('dialog');
+  await expect(modal.getByRole('heading', { name: 'Caso por completar' })).toBeVisible();
+  await expect(modal.getByText('Escenarios y preguntas')).toBeVisible();
+  await expect(modal.getByText('Rúbrica', { exact: true })).toBeVisible();
+  await pagina.getByRole('button', { name: 'Publicar caso' }).click();
+
+  const alerta = modal.getByRole('alert');
+  await expect(
+    alerta.getByRole('heading', { name: 'Este caso aún no está listo para publicarse' }),
+  ).toBeVisible();
+  await expect(alerta.getByText('Escenario 1 · Preguntas')).toBeVisible();
+  await expect(alerta.getByText('El escenario debe contener preguntas')).toBeVisible();
+  await expect(alerta.getByText('Rúbrica', { exact: true })).toBeVisible();
+  await expect(alerta.getByText('Debe asociar una rubrica')).toBeVisible();
+  await expect(alerta.getByRole('button', { name: 'Corregir el borrador' })).toBeVisible();
+});
+
 test('API: autenticación Bearer y separación de datos ficticios al crear un espacio', async ({
   page: pagina,
 }) => {

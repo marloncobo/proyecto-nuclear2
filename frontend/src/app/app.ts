@@ -6,7 +6,18 @@ import { Ingreso } from './ingreso';
 import { EditorCaso } from './editor-caso';
 import { SelectorEstudiantes } from './selector-estudiantes';
 import { Administracion } from './administracion';
-import { ServicioApi, Caso, Sesion, Espacio, Reporte, Usuario, FilaReporteSesion, AvisoNotificacion } from './servicio-api';
+import {
+  ServicioApi,
+  Caso,
+  Sesion,
+  Espacio,
+  Reporte,
+  Usuario,
+  FilaReporteSesion,
+  ErrorValidacionCaso,
+  PublicacionCasoInvalida,
+  AvisoNotificacion,
+} from './servicio-api';
 import { nombreEtiqueta } from './etiqueta-usuario';
 @Component({
   selector: 'psico-raiz',
@@ -73,6 +84,7 @@ export class Aplicacion {
   readonly ocupado = signal(false);
   readonly aviso = signal('');
   readonly error = signal('');
+  readonly erroresPublicacion = signal<ErrorValidacionCaso[]>([]);
   private focoAnterior: HTMLElement | null = null;
   readonly resultado = signal<Reporte[] | null>(null);
   readonly espacioEditado = signal<Espacio | null>(null);
@@ -128,9 +140,17 @@ export class Aplicacion {
       if (!(evento instanceof NavigationEnd)) return;
       const direccion = this.enrutador.parseUrl(evento.urlAfterRedirects);
       const sesion = direccion.queryParams['sesion'];
-      this.sesionEstudiante.set(direccion.root.children['primary']?.segments[0]?.path === 'ingreso'
-        && typeof sesion === 'string' ? sesion : null);
-      if (this.sesionEstudiante() !== null && (!this.api.conectado() || this.api.usuario()?.rol === 'ESTUDIANTE')) return;
+      this.sesionEstudiante.set(
+        direccion.root.children['primary']?.segments[0]?.path === 'ingreso' &&
+          typeof sesion === 'string'
+          ? sesion
+          : null,
+      );
+      if (
+        this.sesionEstudiante() !== null &&
+        (!this.api.conectado() || this.api.usuario()?.rol === 'ESTUDIANTE')
+      )
+        return;
       this.demostracion.set(!this.api.conectado() && direccion.queryParams['demostracion'] === '1');
       if (!this.api.conectado() && !this.demostracion()) {
         if (evento.urlAfterRedirects !== '/ingreso')
@@ -185,6 +205,7 @@ export class Aplicacion {
     if (!this.modal()) this.focoAnterior = document.activeElement as HTMLElement;
     this.seleccionado.set(caso);
     this.error.set('');
+    this.erroresPublicacion.set([]);
     this.modal.set(tipo);
     if (tipo === 'espacio') {
       this.espacioEditado.set(null);
@@ -202,6 +223,7 @@ export class Aplicacion {
     if (!this.ocupado()) {
       this.modal.set('');
       this.error.set('');
+      this.erroresPublicacion.set([]);
       this.focoAnterior?.focus();
     }
   }
@@ -296,9 +318,11 @@ export class Aplicacion {
     if (this.ocupado()) return;
     this.ocupado.set(true);
     this.error.set('');
+    this.erroresPublicacion.set([]);
     try {
       await accion();
     } catch (error) {
+      if (error instanceof PublicacionCasoInvalida) this.erroresPublicacion.set(error.errores);
       this.error.set(
         error instanceof Error ? error.message : 'No fue posible completar la operación.',
       );
@@ -356,8 +380,11 @@ export class Aplicacion {
     this.errorNotificaciones.set('');
     try {
       await this.api.marcarNotificacionLeida(notificacion.id);
-      this.notificaciones.update((lista) => lista.map((actual) =>
-        actual.id === notificacion.id ? { ...actual, leida: true } : actual));
+      this.notificaciones.update((lista) =>
+        lista.map((actual) =>
+          actual.id === notificacion.id ? { ...actual, leida: true } : actual,
+        ),
+      );
     } catch (error) {
       this.errorNotificaciones.set(
         error instanceof Error ? error.message : 'No fue posible marcar la notificación.',
@@ -368,23 +395,31 @@ export class Aplicacion {
   }
 
   tituloNotificacion(tipo: string) {
-    return ({
-      RECORDATORIO_SESION: 'Recordatorio de sesión próxima',
-      FINALIZACION_SESION: 'Finalización de sesión',
-      ESTUDIANTES_PENDIENTES: 'Estudiantes que no completaron la actividad',
-      EVALUACIONES_DISPONIBLES: 'Evaluaciones disponibles',
-      REPORTE_DISPONIBLE: 'Reporte disponible',
-    } as Record<string, string>)[tipo] ?? tipo;
+    return (
+      (
+        {
+          RECORDATORIO_SESION: 'Recordatorio de sesión próxima',
+          FINALIZACION_SESION: 'Finalización de sesión',
+          ESTUDIANTES_PENDIENTES: 'Estudiantes que no completaron la actividad',
+          EVALUACIONES_DISPONIBLES: 'Evaluaciones disponibles',
+          REPORTE_DISPONIBLE: 'Reporte disponible',
+        } as Record<string, string>
+      )[tipo] ?? tipo
+    );
   }
 
   iconoNotificacion(tipo: string) {
-    return ({
-      RECORDATORIO_SESION: '◷',
-      FINALIZACION_SESION: '✓',
-      ESTUDIANTES_PENDIENTES: '♙',
-      EVALUACIONES_DISPONIBLES: '▣',
-      REPORTE_DISPONIBLE: '▤',
-    } as Record<string, string>)[tipo] ?? '◉';
+    return (
+      (
+        {
+          RECORDATORIO_SESION: '◷',
+          FINALIZACION_SESION: '✓',
+          ESTUDIANTES_PENDIENTES: '♙',
+          EVALUACIONES_DISPONIBLES: '▣',
+          REPORTE_DISPONIBLE: '▤',
+        } as Record<string, string>
+      )[tipo] ?? '◉'
+    );
   }
   salir() {
     if (this.ocupado()) return;
@@ -402,9 +437,11 @@ export class Aplicacion {
           ? await this.api.enviar<Caso>(`/casos/${anterior.id}`, caso, 'PUT')
           : await this.api.enviar<Caso>('/casos', caso)
         : caso;
-      this.casos.update((casos) => anterior
-        ? casos.map((actual) => actual.id === anterior.id ? guardado : actual)
-        : [guardado, ...casos]);
+      this.casos.update((casos) =>
+        anterior
+          ? casos.map((actual) => (actual.id === anterior.id ? guardado : actual))
+          : [guardado, ...casos],
+      );
       this.modal.set('');
       this.navegar('casos');
       this.aviso.set(anterior ? 'Borrador actualizado.' : 'Borrador guardado.');
@@ -472,11 +509,17 @@ export class Aplicacion {
 
   async registrarEstudiante() {
     await this.ejecutar(async () => {
-      const estudiante = await this.api.enviar<Usuario>('/identidad/estudiantes', this.altaEstudiante);
+      const estudiante = await this.api.enviar<Usuario>(
+        '/identidad/estudiantes',
+        this.altaEstudiante,
+      );
       this.altaEstudiante = { nombre: '', correo: '' };
-      this.estudiantes.update((lista) => lista.some((actual) => actual.id === estudiante.id)
-        ? lista : [...lista, estudiante]);
-      this.programacion.estudiantes = [...new Set([...this.programacion.estudiantes, estudiante.id])];
+      this.estudiantes.update((lista) =>
+        lista.some((actual) => actual.id === estudiante.id) ? lista : [...lista, estudiante],
+      );
+      this.programacion.estudiantes = [
+        ...new Set([...this.programacion.estudiantes, estudiante.id]),
+      ];
       this.abrir('programar');
       this.aviso.set('Estudiante registrado y agregado a la convocatoria.');
     });
@@ -492,7 +535,9 @@ export class Aplicacion {
   agregarEstudiante() {
     const estudiante = this.estudianteEncontrado();
     if (!estudiante) return;
-    this.estudiantes.update(lista => lista.some(actual => actual.id === estudiante.id) ? lista : [...lista, estudiante]);
+    this.estudiantes.update((lista) =>
+      lista.some((actual) => actual.id === estudiante.id) ? lista : [...lista, estudiante],
+    );
     this.programacion.estudiantes = [...new Set([...this.programacion.estudiantes, estudiante.id])];
     this.estudianteEncontrado.set(null);
     this.correoBusqueda = '';
@@ -505,7 +550,8 @@ export class Aplicacion {
   }
 
   private convocadosActuales(sesion: Sesion) {
-    return sesion.convocatorias.filter((convocatoria) => convocatoria.autorizada !== false)
+    return sesion.convocatorias
+      .filter((convocatoria) => convocatoria.autorizada !== false)
       .map((convocatoria) => convocatoria.idEstudiante);
   }
 
@@ -522,9 +568,15 @@ export class Aplicacion {
     await this.ejecutar(async () => {
       const sesion = this.sesionPendiente();
       if (!sesion) return;
-      await this.api.enviar<Sesion>(`/sesiones/${sesion.id}/convocados`, this.cambiosConvocados(), 'PUT');
+      await this.api.enviar<Sesion>(
+        `/sesiones/${sesion.id}/convocados`,
+        this.cambiosConvocados(),
+        'PUT',
+      );
       const actualizada = await this.api.consultar<Sesion>(`/sesiones/${sesion.id}`);
-      this.sesiones.update((sesiones) => sesiones.map((actual) => actual.id === actualizada.id ? actualizada : actual));
+      this.sesiones.update((sesiones) =>
+        sesiones.map((actual) => (actual.id === actualizada.id ? actualizada : actual)),
+      );
       this.modal.set('');
       this.aviso.set('Convocatoria actualizada.');
     });
@@ -609,10 +661,17 @@ export class Aplicacion {
     await this.ejecutar(async () => {
       const id = reporte.participacion.idIntento;
       const valoracion = await this.api.enviar<Reporte['valoracionesGenerales'][number]>(
-        `/reportes/participaciones/${id}/valoraciones`, { mensaje: this.valoraciones[id].trim() },
+        `/reportes/participaciones/${id}/valoraciones`,
+        { mensaje: this.valoraciones[id].trim() },
       );
-      this.resultado.update((reportes) => reportes?.map((actual) => actual.participacion.idIntento === id
-        ? { ...actual, valoracionesGenerales: [...actual.valoracionesGenerales, valoracion] } : actual) ?? null);
+      this.resultado.update(
+        (reportes) =>
+          reportes?.map((actual) =>
+            actual.participacion.idIntento === id
+              ? { ...actual, valoracionesGenerales: [...actual.valoracionesGenerales, valoracion] }
+              : actual,
+          ) ?? null,
+      );
       this.valoraciones[id] = '';
       this.aviso.set('Valoración publicada.');
     });
@@ -623,21 +682,29 @@ export class Aplicacion {
       this.reporteSesion.set(null);
       this.resultado.set(null);
       this.nombreEstudianteReporte = '';
-      this.reporteSesion.set(await this.api.consultar<FilaReporteSesion[]>(
-        `/reportes/sesiones/${encodeURIComponent(this.idSesionReporte)}`,
-      ));
+      this.reporteSesion.set(
+        await this.api.consultar<FilaReporteSesion[]>(
+          `/reportes/sesiones/${encodeURIComponent(this.idSesionReporte)}`,
+        ),
+      );
     });
   }
 
   puedeAutorizarReintento(fila: FilaReporteSesion, filas: FilaReporteSesion[]) {
     const sesion = this.sesiones().find((actual) => actual.id === this.idSesionReporte);
-    return sesion?.estado === 'EN_CURSO'
-      && filas.filter((actual) => actual.idEstudiante === fila.idEstudiante).at(-1) === fila;
+    return (
+      sesion?.estado === 'EN_CURSO' &&
+      filas.filter((actual) => actual.idEstudiante === fila.idEstudiante).at(-1) === fila
+    );
   }
 
   async autorizarReintento(fila: FilaReporteSesion) {
     await this.ejecutar(async () => {
-      await this.api.enviar<void>(`/sesiones/${this.idSesionReporte}/reintentos/${fila.idEstudiante}`, {}, 'PUT');
+      await this.api.enviar<void>(
+        `/sesiones/${this.idSesionReporte}/reintentos/${fila.idEstudiante}`,
+        {},
+        'PUT',
+      );
       this.aviso.set(`Reintento autorizado para ${fila.nombreEstudiante}.`);
     });
   }
@@ -645,7 +712,9 @@ export class Aplicacion {
   async consultarResultados(fila: FilaReporteSesion) {
     const sesion = this.sesiones().find((actual) => actual.id === this.idSesionReporte);
     if (!sesion) {
-      this.error.set('No se encontró la sesión seleccionada. Actualiza la página e inténtalo de nuevo.');
+      this.error.set(
+        'No se encontró la sesión seleccionada. Actualiza la página e inténtalo de nuevo.',
+      );
       return;
     }
     this.identificadorReporte = sesion.idCaso;
@@ -658,11 +727,24 @@ export class Aplicacion {
     const filas = this.reporteSesion();
     if (!filas) return;
     const escapar = (valor: unknown) => `"${String(valor ?? '').replaceAll('"', '""')}"`;
-    const csv = ['Estudiante,Correo,Identificador,Intento,Estado,Calificación,Preguntas respondidas,Preguntas totales,Preguntas ausentes',
-      ...filas.map((fila) => [fila.nombreEstudiante, fila.correoEstudiante, fila.idEstudiante,
-        fila.idIntento, fila.estado, fila.calificacion, fila.preguntasRespondidas,
-        fila.preguntasTotales, fila.ausencia?.detalles.length ?? 0]
-        .map(escapar).join(','))].join('\r\n');
+    const csv = [
+      'Estudiante,Correo,Identificador,Intento,Estado,Calificación,Preguntas respondidas,Preguntas totales,Preguntas ausentes',
+      ...filas.map((fila) =>
+        [
+          fila.nombreEstudiante,
+          fila.correoEstudiante,
+          fila.idEstudiante,
+          fila.idIntento,
+          fila.estado,
+          fila.calificacion,
+          fila.preguntasRespondidas,
+          fila.preguntasTotales,
+          fila.ausencia?.detalles.length ?? 0,
+        ]
+          .map(escapar)
+          .join(','),
+      ),
+    ].join('\r\n');
     const url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }));
     const enlace = document.createElement('a');
     enlace.href = url;
@@ -686,6 +768,47 @@ export class Aplicacion {
         } as Record<string, string>
       )[estado] ?? estado
     );
+  }
+  cantidadPreguntas(caso: Caso) {
+    return caso.escenarios.reduce((total, escenario) => total + escenario.preguntas.length, 0);
+  }
+  etiquetaErrorPublicacion(ruta: string) {
+    const partes: string[] = [];
+    const escenario = ruta.match(/escenarios\[(\d+)]/);
+    const pregunta = ruta.match(/preguntas\[(\d+)]/);
+    const opcion = ruta.match(/opciones\[(\d+)]/);
+    const criterio = ruta.match(/criterios\[(\d+)]/);
+    if (escenario) partes.push(`Escenario ${Number(escenario[1]) + 1}`);
+    if (pregunta) partes.push(`Pregunta ${Number(pregunta[1]) + 1}`);
+    if (opcion) partes.push(`Opción ${Number(opcion[1]) + 1}`);
+    if (ruta.startsWith('rubrica')) partes.push('Rúbrica');
+    if (criterio) partes.push(`Criterio ${Number(criterio[1]) + 1}`);
+    const campo =
+      ruta
+        .split('.')
+        .at(-1)
+        ?.replace(/\[\d+]/g, '') ?? ruta;
+    const nombres: Record<string, string> = {
+      nombre: 'Nombre',
+      desarrolloSituacional: 'Desarrollo de la situación',
+      contexto: 'Tema o contexto',
+      tiempoEstimadoMin: 'Tiempo estimado',
+      escenarios: 'Escenarios',
+      titulo: 'Título',
+      contextoSituacional: 'Contexto del escenario',
+      orden: 'Orden',
+      preguntas: 'Preguntas',
+      enunciado: 'Enunciado',
+      opciones: 'Opciones de respuesta',
+      texto: 'Texto de la opción',
+      justificacion: 'Justificación',
+      rubrica: 'Rúbrica',
+      criterios: 'Criterios',
+      ponderacion: 'Ponderación',
+    };
+    const nombreCampo = nombres[campo];
+    if (nombreCampo && partes.at(-1) !== nombreCampo) partes.push(nombreCampo);
+    return partes.length > 0 ? partes.join(' · ') : 'Contenido del caso';
   }
   representar(dato: unknown) {
     return JSON.stringify(dato, null, 2);

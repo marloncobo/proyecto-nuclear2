@@ -1,5 +1,37 @@
 # Arquitectura del backend
 
+## Ejecución con Docker
+
+La imagen usa una construcción multi-stage: Maven y el JDK 21 solo están presentes
+durante la compilación; la imagen final contiene el JRE 21, el JAR ejecutable y un
+usuario sin privilegios. Desde la raíz del repositorio:
+
+```powershell
+Copy-Item .env.example .env
+docker compose up --build -d
+docker compose ps
+docker compose logs -f backend
+```
+
+Compose inicia MySQL, espera a que acepte conexiones y luego arranca el backend en
+`http://localhost:8080`. El esquema se inicializa mediante `schema.sql`. Los datos
+se conservan en el volumen `psicoapp_mysql` aunque se recree el contenedor.
+
+Para reconstruir únicamente la aplicación:
+
+```powershell
+docker compose build backend
+docker compose up -d backend
+```
+
+Para detener los servicios conservando la base use `docker compose down`. El comando
+`docker compose down --volumes` elimina también el volumen y todos sus datos.
+
+Los valores `PSICOAPP_DOCKER_*` de `.env.example` solo facilitan el desarrollo local.
+No deben reutilizarse en producción. Configure claves Base64 persistentes para JWT y
+notificaciones, credenciales distintas y HTTPS en el entorno de despliegue. El puerto
+del host puede cambiarse mediante `PSICOAPP_BACKEND_PUERTO`.
+
 La [referencia completa de endpoints](../docs/endpoints.md) documenta las 47
 rutas implementadas, sus roles, entradas y resultados por módulo.
 
