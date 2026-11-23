@@ -270,8 +270,8 @@
               <label class="buscador"
                 ><span aria-hidden="true">⌕</span
                 ><input
-                  aria-label="Buscar casos por nombre"
-                  placeholder="Encuentra una idea…"
+                  aria-label="Buscar casos por nombre o tema"
+                  placeholder="Nombre o tema del caso"
                   [ngModel]="busqueda()"
                   (ngModelChange)="busqueda.set($event)"
               /></label>
@@ -283,18 +283,6 @@
                 }
               </div>
             </div>
-            @if (api.conectado()) {
-              <form class="consulta-id" (ngSubmit)="consultarId('casos')">
-                <label for="id-caso">Consultar un caso existente</label
-                ><input
-                  id="id-caso"
-                  name="idCaso"
-                  [(ngModel)]="identificadorCaso"
-                  placeholder="Identificador del caso (UUID)"
-                  required
-                /><button class="boton secundario" [disabled]="ocupado()">Consultar ↗</button>
-              </form>
-            }
             <section class="rejilla-casos">
               @for (caso of casosVisibles(); track caso.id; let indice = $index) {
                 <article class="tarjeta-caso">
@@ -343,20 +331,57 @@
                 ＋ Programar sesión
               </button>
             </div>
-            @if (api.conectado()) {
-              <form class="consulta-id" (ngSubmit)="consultarId('sesiones')">
-                <label for="id-sesion">Consultar una sesión existente</label
-                ><input
-                  id="id-sesion"
-                  name="idSesion"
-                  [(ngModel)]="identificadorSesion"
-                  placeholder="Identificador de la sesión (UUID)"
-                  required
-                /><button class="boton secundario" [disabled]="ocupado()">Consultar ↗</button>
-              </form>
-            }
+            <form class="filtros-listado" (ngSubmit)="$event.preventDefault()">
+              <label
+                >Buscar sesiones<input
+                  type="search"
+                  name="busquedaSesiones"
+                  placeholder="Nombre del caso o lugar"
+                  maxlength="180"
+                  [ngModel]="busquedaSesiones()"
+                  (ngModelChange)="busquedaSesiones.set($event)"
+              /></label>
+              <label
+                >Filtrar por estado<select
+                  name="estadoSesiones"
+                  [ngModel]="estadoSesiones()"
+                  (ngModelChange)="estadoSesiones.set($event)"
+                >
+                  <option value="">Todos los estados</option>
+                  <option value="SIN_INICIAR">Sin iniciar</option>
+                  <option value="EN_CURSO">En curso</option>
+                  <option value="FINALIZADO">Finalizadas</option>
+                </select></label
+              >
+              <label
+                >Filtrar por espacio<select
+                  name="espacioSesiones"
+                  [ngModel]="espacioSesiones()"
+                  (ngModelChange)="espacioSesiones.set($event)"
+                >
+                  <option value="">Todos los espacios</option>
+                  @for (espacio of espacios(); track espacio.id) {
+                    <option [value]="espacio.id">
+                      {{ espacio.nombre }} · {{ espacio.periodo }}
+                    </option>
+                  }
+                </select></label
+              >
+              <button
+                type="button"
+                class="boton-limpiar-espacios"
+                [disabled]="!busquedaSesiones() && !estadoSesiones() && !espacioSesiones()"
+                (click)="limpiarFiltrosSesiones()"
+              >
+                Limpiar filtros
+              </button>
+            </form>
+            <p class="resumen-listado" role="status" aria-live="polite">
+              <strong>{{ sesionesVisibles().length }}</strong>
+              {{ sesionesVisibles().length === 1 ? 'sesión encontrada' : 'sesiones encontradas' }}
+            </p>
             <section class="lista-sesiones">
-              @for (sesion of sesiones(); track sesion.id) {
+              @for (sesion of sesionesVisibles(); track sesion.id) {
                 <article class="tarjeta-sesion">
                   <div class="calendario">
                     <strong>{{ sesion.inicioPrevisto | date: 'dd' }}</strong><span>{{
@@ -370,7 +395,7 @@
                       {{ sesion.inicioPrevisto | date: 'shortTime' }} ·
                       {{ sesion.duracionMaximaMin }} min · {{ sesion.lugar }}
                     </p>
-                    <small class="identificador">ID: {{ sesion.id }}</small>
+                    <small>{{ nombreEspacioAcademico(sesion.idEspacio) }}</small>
                   </div>
                   @if (sesion.estado !== 'FINALIZADO') {
                     @if (api.conectado()) {
@@ -396,7 +421,13 @@
               } @empty {
                 <div class="vacio">
                   <h2>El siguiente encuentro está por escribirse.</h2>
-                  <p>Programa una sesión con un caso publicado o consulta su identificador.</p>
+                  <p>
+                    {{
+                      sesiones().length
+                        ? 'Prueba otro nombre, lugar, estado o espacio académico.'
+                        : 'Programa una sesión con un caso publicado.'
+                    }}
+                  </p>
                 </div>
               }
             </section>
@@ -414,7 +445,7 @@
                 >Buscar espacios<input
                   type="search"
                   name="busquedaEspacios"
-                  placeholder="Nombre o identificador"
+                  placeholder="Nombre del espacio"
                   maxlength="180"
                   [ngModel]="busquedaEspacios()"
                   (ngModelChange)="busquedaEspacios.set($event)"
@@ -460,7 +491,6 @@
                   <tr>
                     <th scope="col">Espacio académico</th>
                     <th scope="col">Periodo</th>
-                    <th scope="col">Identificador</th>
                     <th scope="col">Acciones</th>
                   </tr>
                 </thead>
@@ -476,9 +506,6 @@
                       </th>
                       <td class="celda-periodo" data-etiqueta="Periodo">
                         <span class="periodo-espacio">{{ espacio.periodo }}</span>
-                      </td>
-                      <td class="celda-identificador" data-etiqueta="Identificador">
-                        <span>{{ espacio.id }}</span>
                       </td>
                       <td class="celda-acciones-espacio">
                         <div class="acciones-espacio">
@@ -500,10 +527,10 @@
                     </tr>
                   } @empty {
                     <tr>
-                      <td class="espacios-vacios" colspan="4">
+                      <td class="espacios-vacios" colspan="3">
                         @if (espacios().length) {
                           <strong>No encontramos coincidencias.</strong>
-                          <p>Prueba otro nombre, identificador o periodo.</p>
+                          <p>Prueba otro nombre o periodo.</p>
                         } @else {
                           <strong>Aún no hay espacios académicos.</strong>
                           <p>Crea el primero para organizar tus sesiones.</p>
@@ -558,7 +585,41 @@
                     Preparar reporte
                   </button>
                   @if (reporteSesion(); as filas) {
-                    <p role="status">{{ filas.length }} filas listas para exportar.</p>
+                    <div class="filtros-listado filtros-resultados">
+                      <label
+                        >Buscar estudiante<input
+                          type="search"
+                          name="busquedaResultados"
+                          placeholder="Nombre o correo institucional"
+                          maxlength="180"
+                          [ngModel]="busquedaResultados()"
+                          (ngModelChange)="busquedaResultados.set($event)"
+                      /></label>
+                      <label
+                        >Filtrar por estado<select
+                          name="estadoResultados"
+                          [ngModel]="estadoResultados()"
+                          (ngModelChange)="estadoResultados.set($event)"
+                        >
+                          <option value="">Todos los estados</option>
+                          @for (estado of estadosResultados(); track estado) {
+                            <option [value]="estado">{{ estadoLegible(estado) }}</option>
+                          }
+                        </select></label
+                      >
+                      <button
+                        type="button"
+                        class="boton-limpiar-espacios"
+                        [disabled]="!busquedaResultados() && !estadoResultados()"
+                        (click)="limpiarFiltrosResultados()"
+                      >
+                        Limpiar filtros
+                      </button>
+                    </div>
+                    <p class="resumen-listado" role="status" aria-live="polite">
+                      {{ reporteSesionVisible().length }} de {{ filas.length }} estudiantes
+                      visibles.
+                    </p>
                     <button
                       type="button"
                       class="boton secundario"
@@ -568,7 +629,7 @@
                     </button>
                     <div class="lista-reporte-sesion">
                       @for (
-                        fila of filas;
+                        fila of reporteSesionVisible();
                         track fila.idEstudiante + (fila.idIntento ?? 'ausencia')
                       ) {
                         <article class="fila-reporte-sesion">
@@ -615,7 +676,11 @@
                         </article>
                       } @empty {
                         <p class="vacio">
-                          La sesión todavía no tiene participaciones para mostrar.
+                          {{
+                            filas.length
+                              ? 'No hay estudiantes que coincidan con los filtros.'
+                              : 'La sesión todavía no tiene participaciones para mostrar.'
+                          }}
                         </p>
                       }
                     </div>
@@ -733,8 +798,52 @@
               @if (cargandoNotificaciones() && !notificaciones().length) {
                 <p class="vacio" role="status">Consultando tus notificaciones…</p>
               } @else {
+                <form
+                  class="filtros-listado filtros-notificaciones"
+                  (ngSubmit)="$event.preventDefault()"
+                >
+                  <label
+                    >Filtrar por lectura<select
+                      name="estadoNotificaciones"
+                      [ngModel]="estadoNotificaciones()"
+                      (ngModelChange)="estadoNotificaciones.set($event)"
+                    >
+                      <option value="">Todas</option>
+                      <option value="NO_LEIDA">No leídas</option>
+                      <option value="LEIDA">Leídas</option>
+                    </select></label
+                  >
+                  <label
+                    >Filtrar por tipo<select
+                      name="tipoNotificaciones"
+                      [ngModel]="tipoNotificaciones()"
+                      (ngModelChange)="tipoNotificaciones.set($event)"
+                    >
+                      <option value="">Todos los tipos</option>
+                      @for (tipo of tiposNotificaciones(); track tipo) {
+                        <option [value]="tipo">{{ tituloNotificacion(tipo) }}</option>
+                      }
+                    </select></label
+                  >
+                  <button
+                    type="button"
+                    class="boton-limpiar-espacios"
+                    [disabled]="!estadoNotificaciones() && !tipoNotificaciones()"
+                    (click)="limpiarFiltrosNotificaciones()"
+                  >
+                    Limpiar filtros
+                  </button>
+                </form>
+                <p class="resumen-listado" role="status" aria-live="polite">
+                  {{ notificacionesVisibles().length }}
+                  {{
+                    notificacionesVisibles().length === 1
+                      ? 'notificación visible'
+                      : 'notificaciones visibles'
+                  }}
+                </p>
                 <div class="lista-notificaciones-docente">
-                  @for (notificacion of notificaciones(); track notificacion.id) {
+                  @for (notificacion of notificacionesVisibles(); track notificacion.id) {
                     <article [class.no-leida]="!notificacion.leida">
                       <span class="icono-notificacion-docente" aria-hidden="true">{{
                         iconoNotificacion(notificacion.tipo)
@@ -771,8 +880,18 @@
                   } @empty {
                     <div class="vacio vacio-notificaciones-docente">
                       <span aria-hidden="true">✓</span>
-                      <h2>Todo está al día.</h2>
-                      <p>Aquí aparecerán las novedades de tus sesiones.</p>
+                      <h2>
+                        {{
+                          notificaciones().length ? 'No hay coincidencias.' : 'Todo está al día.'
+                        }}
+                      </h2>
+                      <p>
+                        {{
+                          notificaciones().length
+                            ? 'Cambia o limpia los filtros para ver otros avisos.'
+                            : 'Aquí aparecerán las novedades de tus sesiones.'
+                        }}
+                      </p>
                     </div>
                   }
                 </div>

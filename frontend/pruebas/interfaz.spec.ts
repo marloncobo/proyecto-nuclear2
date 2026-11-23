@@ -1,20 +1,26 @@
 import { test, expect } from '@playwright/test';
 
-test('biblioteca: búsqueda, filtros y navegación conservada al recargar', async ({
+test('docente: filtros por datos reconocibles y navegación conservada al recargar', async ({
   page: pagina,
 }) => {
   await pagina.goto('/');
   await pagina.getByRole('button', { name: 'Explorar la demostración' }).click();
   await expect(pagina.getByRole('heading', { name: /El aprendizaje empieza/ })).toBeVisible();
   await pagina.getByRole('button', { name: 'Biblioteca de casos', exact: true }).click();
-  await pagina.getByRole('textbox', { name: 'Buscar casos por nombre' }).fill('pertenecer');
+  await pagina.getByRole('textbox', { name: 'Buscar casos por nombre o tema' }).fill('pertenecer');
   await expect(pagina.locator('.tarjeta-caso')).toHaveCount(1);
-  await pagina.getByRole('textbox', { name: 'Buscar casos por nombre' }).fill('');
+  await pagina.getByRole('textbox', { name: 'Buscar casos por nombre o tema' }).fill('');
   await pagina.getByRole('button', { name: 'Borrador', exact: true }).click();
   await expect(pagina.locator('.tarjeta-caso')).toHaveCount(1);
   await expect(
     pagina.getByRole('heading', { name: 'Más allá de la primera impresión' }),
   ).toBeVisible();
+  await pagina.getByRole('button', { name: 'Sesiones', exact: true }).click();
+  await pagina.getByLabel('Buscar sesiones').fill('demo-sesion');
+  await expect(pagina.locator('.tarjeta-sesion')).toHaveCount(0);
+  await pagina.getByLabel('Buscar sesiones').fill('Aula 302');
+  await expect(pagina.locator('.tarjeta-sesion')).toHaveCount(1);
+  await pagina.getByRole('button', { name: 'Biblioteca de casos', exact: true }).click();
   await pagina.reload();
   await expect(pagina.getByRole('heading', { name: 'Biblioteca de casos.' })).toBeVisible();
 });
@@ -217,25 +223,43 @@ test('reporte: evaluación pendiente y ausencia de intentos sin inventar notas',
       });
     if (direccion.pathname.endsWith('/sesiones'))
       return ruta.fulfill({
-        json: [{
-          id: 'sesion', idCaso: 'caso', idEspacio: 'espacio',
-          inicioPrevisto: '2026-11-15T15:00:00Z', finPrevisto: '2026-11-15T16:00:00Z',
-          duracionMaximaMin: 30, estado: 'FINALIZADO', modoNavegacion: 'FLEXIBLE',
-          lugar: '', mensaje: '', convocatorias: [],
-        }],
+        json: [
+          {
+            id: 'sesion',
+            idCaso: 'caso',
+            idEspacio: 'espacio',
+            inicioPrevisto: '2026-11-15T15:00:00Z',
+            finPrevisto: '2026-11-15T16:00:00Z',
+            duracionMaximaMin: 30,
+            estado: 'FINALIZADO',
+            modoNavegacion: 'FLEXIBLE',
+            lugar: '',
+            mensaje: '',
+            convocatorias: [],
+          },
+        ],
       });
     if (direccion.pathname.endsWith('/reportes/sesiones/sesion'))
       return ruta.fulfill({
         json: [
           {
-            idEstudiante: 'estudiante', nombreEstudiante: 'Ana Aprendiz',
-            correoEstudiante: 'ana@ejemplo.edu', idIntento: 'intento-1',
-            estado: 'FINALIZADO', calificacion: null, preguntasRespondidas: 1, preguntasTotales: 2, ausencia: null,
+            idEstudiante: 'estudiante',
+            nombreEstudiante: 'Ana Aprendiz',
+            correoEstudiante: 'ana@ejemplo.edu',
+            idIntento: 'intento-1',
+            estado: 'FINALIZADO',
+            calificacion: null,
+            preguntasRespondidas: 1,
+            preguntasTotales: 2,
+            ausencia: null,
           },
           {
-            idEstudiante: 'ausente', nombreEstudiante: 'Beto Ausente',
-            correoEstudiante: 'beto@ejemplo.edu', idIntento: null,
-            estado: 'AUSENTE', calificacion: 0,
+            idEstudiante: 'ausente',
+            nombreEstudiante: 'Beto Ausente',
+            correoEstudiante: 'beto@ejemplo.edu',
+            idIntento: null,
+            estado: 'AUSENTE',
+            calificacion: 0,
             ausencia: {
               fechaConsolidacion: '2026-11-15T16:00:00Z',
               detalles: [{ idPregunta: 'pregunta', puntos: 0, valoracion: 'Ausencia' }],
@@ -244,14 +268,20 @@ test('reporte: evaluación pendiente y ausencia de intentos sin inventar notas',
         ],
       });
     if (direccion.pathname.endsWith('/reportes/casos/caso/estudiantes/estudiante'))
-      return ruta.fulfill({ json: [{
-        participacion: {
-          idIntento: 'intento-1', estado: 'FINALIZADO',
-          inicio: '2026-11-15T15:00:00Z', idSesion: 'sesion',
-        },
-        resultado: null,
-        valoracionesGenerales: [],
-      }] });
+      return ruta.fulfill({
+        json: [
+          {
+            participacion: {
+              idIntento: 'intento-1',
+              estado: 'FINALIZADO',
+              inicio: '2026-11-15T15:00:00Z',
+              idSesion: 'sesion',
+            },
+            resultado: null,
+            valoracionesGenerales: [],
+          },
+        ],
+      });
     return ruta.fulfill({ json: [] });
   });
   await pagina.goto('/');
@@ -264,6 +294,12 @@ test('reporte: evaluación pendiente y ausencia de intentos sin inventar notas',
   await expect(pagina.getByText('Ana Aprendiz', { exact: true })).toBeVisible();
   await expect(pagina.getByText('Ausencia consolidada · 1 pregunta con 0 puntos.')).toBeVisible();
   await expect(pagina.getByText('1 de 2 preguntas respondidas')).toBeVisible();
+  await pagina.getByLabel('Buscar estudiante').fill('Beto');
+  await expect(pagina.getByText('Beto Ausente', { exact: true })).toBeVisible();
+  await expect(pagina.getByText('Ana Aprendiz', { exact: true })).toHaveCount(0);
+  await pagina.getByLabel('Filtrar por estado').selectOption('AUSENTE');
+  await expect(pagina.locator('.fila-reporte-sesion')).toHaveCount(1);
+  await pagina.getByRole('button', { name: 'Limpiar filtros' }).click();
   const descargaPendiente = pagina.waitForEvent('download');
   await pagina.getByRole('button', { name: 'Descargar CSV' }).click();
   const archivo = await (await descargaPendiente).path();
@@ -274,5 +310,7 @@ test('reporte: evaluación pendiente y ausencia de intentos sin inventar notas',
   await pagina.getByRole('button', { name: 'Ver resultados de Ana Aprendiz' }).click();
   await expect(pagina.getByText('Evaluación pendiente.', { exact: false })).toBeVisible();
   await expect(pagina.locator('.intento-reporte .nota-calificacion')).toHaveCount(0);
-  await expect(pagina.getByRole('heading', { name: 'Recorrido académico · Ana Aprendiz' })).toBeVisible();
+  await expect(
+    pagina.getByRole('heading', { name: 'Recorrido académico · Ana Aprendiz' }),
+  ).toBeVisible();
 });

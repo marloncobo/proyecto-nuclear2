@@ -39,56 +39,6 @@ interface Simulacion {
   imports: [FormsModule, DatePipe],
   templateUrl: './ingreso.html',
   styleUrl: './ingreso.css',
-  styles: [
-    `
-      .ingreso-estudiante {
-        max-width: 48rem;
-        margin: 3rem auto;
-        padding: clamp(1rem, 5vw, 3rem);
-        background: white;
-        border: 1px solid var(--borde);
-        border-radius: 1.25rem;
-      }
-      .ingreso-estudiante img {
-        width: 9rem;
-      }
-      .ingreso-estudiante :is(form, label, fieldset) {
-        display: grid;
-        gap: 0.6rem;
-      }
-      .ingreso-estudiante form {
-        gap: 1rem;
-      }
-      .ingreso-estudiante input:not([type='radio']) {
-        padding: 0.7rem;
-        border: 1px solid #82928d;
-        border-radius: 0.45rem;
-      }
-      .ingreso-estudiante fieldset label {
-        display: flex;
-        align-items: baseline;
-        padding: 0.35rem;
-      }
-      .ingreso-estudiante :is(button, a) {
-        color: var(--azul);
-      }
-      .ingreso-estudiante button {
-        padding: 0.65rem 1rem;
-        border: 1px solid var(--azul);
-        border-radius: 0.45rem;
-        background: var(--salvia);
-      }
-      .ingreso-estudiante footer {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-        margin-top: 1.5rem;
-      }
-      .ingreso-estudiante [role='alert'] {
-        color: #a22126;
-      }
-    `,
-  ],
 })
 export class Ingreso {
   private readonly api = inject(ServicioApi);
@@ -142,10 +92,15 @@ export class Ingreso {
   readonly tiempoRestante = computed(() => {
     const segundos = this.segundosRestantes();
     return [Math.floor(segundos / 60), segundos % 60]
-      .map((parte) => String(parte).padStart(2, '0')).join(':');
+      .map((parte) => String(parte).padStart(2, '0'))
+      .join(':');
   });
   readonly restringida = computed(() => this.intento()?.modoNavegacion === 'RESTRINGIDA');
   readonly respondidas = computed(() => Object.keys(this.intento()?.respuestas ?? {}).length);
+  readonly porcentajeProgreso = computed(() => {
+    const total = this.simulacion()?.preguntas.length ?? 0;
+    return total ? Math.round((this.respondidas() / total) * 100) : 0;
+  });
   readonly indice = computed(
     () =>
       this.simulacion()?.preguntas.findIndex(
@@ -153,6 +108,9 @@ export class Ingreso {
       ) ?? -1,
   );
   readonly pregunta = computed(() => this.simulacion()?.preguntas[this.indice()]);
+  preguntaRespondida(idPregunta: string) {
+    return Boolean(this.intento()?.respuestas?.[idPregunta]);
+  }
   async iniciar() {
     await this.ejecutar(async () => {
       const codigoAcceso = this.codigo.trim();

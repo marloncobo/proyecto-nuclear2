@@ -284,8 +284,9 @@ test('al cambiar de cuenta se reinician consultas y programación', async ({ pag
   await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
 
   await pagina.getByRole('button', { name: 'Biblioteca de casos', exact: true }).click();
-  await pagina.getByLabel('Consultar un caso existente').fill('caso-primera-cuenta');
+  await pagina.getByLabel('Buscar casos por nombre o tema').fill('consulta de la primera cuenta');
   await pagina.getByRole('button', { name: 'Sesiones', exact: true }).click();
+  await pagina.getByLabel('Buscar sesiones').fill('sesión de la primera cuenta');
   await pagina.getByRole('button', { name: 'Programar sesión' }).click();
   await pagina.getByLabel('Lugar').fill('Aula de la primera cuenta');
   await pagina.getByLabel('Mensaje de convocatoria').fill('Mensaje privado de la primera cuenta');
@@ -303,8 +304,9 @@ test('al cambiar de cuenta se reinician consultas y programación', async ({ pag
   await expect(pagina.getByText('Segunda cuenta', { exact: true })).toBeVisible();
 
   await pagina.getByRole('button', { name: 'Biblioteca de casos', exact: true }).click();
-  await expect(pagina.getByLabel('Consultar un caso existente')).toHaveValue('');
+  await expect(pagina.getByLabel('Buscar casos por nombre o tema')).toHaveValue('');
   await pagina.getByRole('button', { name: 'Sesiones', exact: true }).click();
+  await expect(pagina.getByLabel('Buscar sesiones')).toHaveValue('');
   await pagina.getByRole('button', { name: 'Programar sesión' }).click();
   await expect(pagina.getByLabel('Lugar')).toHaveValue('');
   await expect(pagina.getByLabel('Mensaje de convocatoria')).toHaveValue('');
@@ -333,6 +335,8 @@ test('un 401 de la cuenta activa cierra la sesión y un 403 no lo hace', async (
       });
     if (['/api/academico/espacios', '/api/casos', '/api/sesiones'].includes(url.pathname))
       return ruta.fulfill({ json: [] });
+    if (url.pathname === '/api/notificaciones' && estado === 'valida')
+      return ruta.fulfill({ json: [] });
     if (estado === 'prohibida') return ruta.fulfill({ status: 403, json: {} });
     if (estado === 'revocada') return ruta.fulfill({ status: 401, json: {} });
     return ruta.fulfill({ json: {} });
@@ -340,19 +344,18 @@ test('un 401 de la cuenta activa cierra la sesión y un 403 no lo hace', async (
   await pagina.goto('/ingreso');
   await completarFormulario(pagina);
   await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
-  await pagina.getByRole('button', { name: 'Biblioteca de casos', exact: true }).click();
-  await pagina.getByLabel('Consultar un caso existente').fill('caso-prueba');
+  await pagina.getByRole('button', { name: /Notificaciones/ }).click();
 
   estado = 'prohibida';
-  await pagina.getByRole('button', { name: /^Consultar/ }).click();
+  await pagina.getByRole('button', { name: 'Actualizar' }).click();
   await expect(pagina.getByRole('alert')).toHaveText(
     'Tu cuenta no tiene permiso para esta operación.',
   );
-  await expect(pagina).toHaveURL(/vista=casos/);
+  await expect(pagina).toHaveURL(/vista=notificaciones/);
   await expect(pagina.getByRole('navigation')).toBeVisible();
 
   estado = 'revocada';
-  await pagina.getByRole('button', { name: /^Consultar/ }).click();
+  await pagina.getByRole('button', { name: 'Actualizar' }).click();
   await expect(pagina).toHaveURL(/\/ingreso$/);
   await expect(pagina.getByRole('navigation')).toHaveCount(0);
 });
