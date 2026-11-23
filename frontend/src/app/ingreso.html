@@ -1,12 +1,245 @@
 @if (sesionEstudiante() !== null) {
-  <main class="ingreso-estudiante">
-    <a href="/ingreso"><img src="/logo-psicoapp.png" alt="Psicoapp, inicio" /></a>
+  <main class="ingreso-estudiante" id="principal">
+    <header class="cabecera-estudiante">
+      <a class="marca-estudiante" href="/ingreso">
+        <img src="/logo-psicoapp.png" alt="Psicoapp, inicio" />
+      </a>
+      @if (simulacion(); as caso) {
+        <div class="identidad-actividad">
+          <span>Actividad académica</span>
+          <strong>{{ caso.nombre }}</strong>
+        </div>
+        <a class="acceso-notificaciones" href="#titulo-notificaciones">
+          Notificaciones
+          @if (notificacionesNoLeidas()) {
+            <span aria-label="Notificaciones sin leer">{{ notificacionesNoLeidas() }}</span>
+          }
+        </a>
+      } @else {
+        <span class="entorno-seguro">Acceso de estudiantes</span>
+      }
+    </header>
     @if (simulacion(); as caso) {
-      <h1>{{ caso.nombre }}</h1>
+      @if (intento()?.estado === 'EN_PROGRESO') {
+        <section class="actividad-estudiante" aria-labelledby="titulo-actividad">
+          <div class="encabezado-actividad">
+            <div>
+              <h1 id="titulo-actividad">{{ caso.nombre }}</h1>
+              <p>Avanza con calma. Tus respuestas se guardan al seleccionar cada opción.</p>
+            </div>
+            <div class="resumen-progreso" aria-live="polite">
+              <strong
+                >{{ respondidas() }} de {{ caso.preguntas.length }} preguntas respondidas</strong
+              >
+              <span>{{ porcentajeProgreso() }}% completado</span>
+            </div>
+          </div>
+          <div class="barra-progreso" aria-hidden="true">
+            <span [style.width.%]="porcentajeProgreso()"></span>
+          </div>
+          @if (segundosRestantes() === 0) {
+            <p class="aviso-tiempo" role="status">
+              Se agotó el tiempo. Estamos consultando el resultado.
+            </p>
+          }
+          @if (pregunta(); as actual) {
+            <div class="disposicion-actividad">
+              <aside class="panel-progreso" aria-label="Progreso de la actividad">
+                <div class="tiempo-actividad">
+                  <span>Tiempo restante</span>
+                  <strong role="timer">{{ tiempoRestante() }}</strong>
+                  <small>Hasta las {{ intento()?.limite | date: 'shortTime' }}</small>
+                </div>
+                <div class="modo-actividad">
+                  <span>Modo de navegación</span>
+                  <strong>{{ restringida() ? 'Secuencial' : 'Flexible' }}</strong>
+                </div>
+                <ol class="mapa-preguntas" aria-label="Estado de las preguntas">
+                  @for (item of caso.preguntas; track item.id; let numero = $index) {
+                    <li
+                      [class.actual]="numero === indice()"
+                      [class.respondida]="preguntaRespondida(item.id)"
+                      [attr.aria-current]="numero === indice() ? 'step' : null"
+                    >
+                      <span>{{ numero + 1 }}</span>
+                      <small>{{
+                        preguntaRespondida(item.id) ? 'Respondida' : 'Por responder'
+                      }}</small>
+                    </li>
+                  }
+                </ol>
+              </aside>
+              <article class="panel-pregunta">
+                <p class="posicion-pregunta">
+                  Pregunta {{ indice() + 1 }} de {{ caso.preguntas.length }}
+                </p>
+                <h2>{{ actual.escenario }}</h2>
+                <p class="contexto-pregunta">{{ actual.contexto }}</p>
+                <fieldset [disabled]="ocupado() || segundosRestantes() === 0">
+                  <legend>{{ actual.enunciado }}</legend>
+                  <div class="opciones-respuesta">
+                    @for (opcion of actual.opciones; track opcion.id) {
+                      <label
+                        [class.seleccionada]="intento()?.respuestas?.[actual.id] === opcion.id"
+                      >
+                        <input
+                          type="radio"
+                          name="respuesta"
+                          [checked]="intento()?.respuestas?.[actual.id] === opcion.id"
+                          (change)="responder(actual.id, opcion.id)"
+                        />
+                        <span>{{ opcion.texto }}</span>
+                      </label>
+                    }
+                  </div>
+                </fieldset>
+                <footer class="acciones-actividad">
+                  <button
+                    class="boton-estudiante secundario"
+                    type="button"
+                    [disabled]="
+                      ocupado() || segundosRestantes() === 0 || restringida() || indice() === 0
+                    "
+                    (click)="operar('retroceder')"
+                  >
+                    <span aria-hidden="true">←</span> Anterior
+                  </button>
+                  <div>
+                    <button
+                      class="boton-estudiante entregar"
+                      type="button"
+                      [disabled]="ocupado() || segundosRestantes() === 0"
+                      (click)="confirmarEntrega.set(true)"
+                    >
+                      Entregar intento
+                    </button>
+                    <button
+                      class="boton-estudiante primario"
+                      type="button"
+                      [disabled]="
+                        ocupado() ||
+                        segundosRestantes() === 0 ||
+                        indice() === caso.preguntas.length - 1 ||
+                        (restringida() && !intento()?.respuestas?.[actual.id])
+                      "
+                      (click)="operar('avanzar')"
+                    >
+                      Siguiente <span aria-hidden="true">→</span>
+                    </button>
+                  </div>
+                </footer>
+                @if (confirmarEntrega()) {
+                  <div
+                    class="confirmacion-entrega"
+                    role="alertdialog"
+                    aria-labelledby="titulo-entrega"
+                  >
+                    <div>
+                      <h3 id="titulo-entrega">¿Entregar tus respuestas?</h3>
+                      <p>
+                        Has respondido {{ respondidas() }} de {{ caso.preguntas.length }} preguntas.
+                        Después de confirmar no podrás cambiar el intento.
+                      </p>
+                    </div>
+                    <div>
+                      <button
+                        class="boton-estudiante primario"
+                        type="button"
+                        [disabled]="ocupado() || segundosRestantes() === 0"
+                        (click)="operar('finalizar')"
+                      >
+                        Confirmar entrega
+                      </button>
+                      <button
+                        class="boton-estudiante secundario"
+                        type="button"
+                        [disabled]="ocupado()"
+                        (click)="confirmarEntrega.set(false)"
+                      >
+                        Seguir respondiendo
+                      </button>
+                    </div>
+                  </div>
+                }
+              </article>
+            </div>
+          }
+        </section>
+      } @else if (resultado(); as nota) {
+        <section class="resultado-estudiante" aria-labelledby="titulo-resultado">
+          <div class="encabezado-resultado">
+            <div>
+              <h1 id="titulo-resultado">Tu <em>resultado.</em></h1>
+              <p>Revisa la retroalimentación para fortalecer tu aprendizaje.</p>
+            </div>
+            <h2 class="calificacion-resultado">
+              <span>Calificación</span>
+              <strong>{{ nota.calificacion }}</strong>
+            </h2>
+          </div>
+          <div class="lista-resultados">
+            @for (detalle of nota.detalles; track detalle.idPregunta) {
+              <article
+                [class.correcta]="detalle.contestada && detalle.correcta"
+                [class.incorrecta]="detalle.contestada && !detalle.correcta"
+                [class.sin-responder]="!detalle.contestada"
+              >
+                <div class="estado-resultado-pregunta">
+                  <span aria-hidden="true">{{
+                    !detalle.contestada ? '—' : detalle.correcta ? '✓' : '×'
+                  }}</span>
+                  <strong>{{
+                    !detalle.contestada
+                      ? 'Sin responder'
+                      : detalle.correcta
+                        ? 'Correcta'
+                        : 'Incorrecta'
+                  }}</strong>
+                </div>
+                @if (enunciadoResultado(detalle.idPregunta); as enunciado) {
+                  <h3>{{ enunciado }}</h3>
+                }
+                <p>{{ detalle.retroalimentacion }}</p>
+              </article>
+            }
+          </div>
+          @if (valoraciones().length) {
+            <section class="valoraciones-docente" aria-labelledby="titulo-valoraciones">
+              <h2 id="titulo-valoraciones">Valoración docente</h2>
+              @for (valoracion of valoraciones(); track valoracion.id) {
+                <blockquote>{{ valoracion.mensaje }}</blockquote>
+              }
+            </section>
+          }
+          <button
+            class="boton-estudiante primario actualizar-resultado"
+            type="button"
+            [disabled]="ocupado()"
+            (click)="consultarResultado()"
+          >
+            {{ ocupado() ? 'Actualizando…' : 'Actualizar resultado' }}
+          </button>
+        </section>
+      } @else {
+        <section class="espera-resultado" aria-labelledby="titulo-espera">
+          <span aria-hidden="true">✓</span>
+          <h1 id="titulo-espera">Intento entregado.</h1>
+          <p>
+            Tu actividad fue recibida. Consulta de nuevo cuando la calificación esté disponible.
+          </p>
+          <button
+            class="boton-estudiante primario"
+            type="button"
+            [disabled]="ocupado()"
+            (click)="consultarResultado()"
+          >
+            Consultar calificación
+          </button>
+        </section>
+      }
       <section class="bandeja-notificaciones" aria-labelledby="titulo-notificaciones">
         <div class="encabezado-notificaciones">
           <div>
-            <p class="etiqueta-notificaciones">TU ACTIVIDAD</p>
             <h2 id="titulo-notificaciones">Notificaciones</h2>
             <p aria-live="polite">
               @if (notificacionesNoLeidas()) {
@@ -17,6 +250,7 @@
             </p>
           </div>
           <button
+            class="boton-estudiante secundario"
             type="button"
             [disabled]="cargandoNotificaciones()"
             (click)="cargarNotificaciones()"
@@ -42,6 +276,7 @@
                 </div>
                 @if (!notificacion.leida) {
                   <button
+                    class="boton-estudiante secundario"
                     type="button"
                     [disabled]="marcandoNotificacion() !== null"
                     (click)="marcarNotificacionLeida(notificacion)"
@@ -60,109 +295,67 @@
           </div>
         }
       </section>
-      @if (intento()?.estado === 'EN_PROGRESO') {
-        <p>Tiempo restante <span role="timer">{{ tiempoRestante() }}</span></p>
-        <p>Hora límite {{ intento()?.limite | date: 'shortTime' }}</p>
-        <p>{{ respondidas() }} de {{ caso.preguntas.length }} preguntas respondidas</p>
-        @if (segundosRestantes() === 0) {
-          <p role="status">Se agotó el tiempo. Estamos consultando el resultado.</p>
-        }
-        @if (pregunta(); as actual) {
-          <p>Pregunta {{ indice() + 1 }} de {{ caso.preguntas.length }}</p>
-          <h2>{{ actual.escenario }}</h2>
-          <p>{{ actual.contexto }}</p>
-          <fieldset [disabled]="ocupado() || segundosRestantes() === 0">
-            <legend>{{ actual.enunciado }}</legend>
-            @for (opcion of actual.opciones; track opcion.id) {
-              <label>
-                <input
-                  type="radio"
-                  name="respuesta"
-                  [checked]="intento()?.respuestas?.[actual.id] === opcion.id"
-                  (change)="responder(actual.id, opcion.id)"
-                />
-                {{ opcion.texto }}
-              </label>
-            }
-          </fieldset>
-          <footer>
-            <button
-              type="button"
-              [disabled]="ocupado() || segundosRestantes() === 0 || restringida() || indice() === 0"
-              (click)="operar('retroceder')"
-            >
-              Anterior
-            </button>
-            <button
-              type="button"
-              [disabled]="
-                ocupado() || segundosRestantes() === 0 || indice() === caso.preguntas.length - 1 ||
-                (restringida() && !intento()?.respuestas?.[actual.id])
-              "
-              (click)="operar('avanzar')"
-            >
-              Siguiente
-            </button>
-            <button type="button" [disabled]="ocupado() || segundosRestantes() === 0" (click)="confirmarEntrega.set(true)">
-              Entregar intento
-            </button>
-          </footer>
-          @if (confirmarEntrega()) {
-            <p>¿Confirmas la entrega de tus respuestas?</p>
-            <button type="button" [disabled]="ocupado() || segundosRestantes() === 0" (click)="operar('finalizar')">
-              Confirmar entrega
-            </button>
-            <button type="button" [disabled]="ocupado()" (click)="confirmarEntrega.set(false)">
-              Seguir respondiendo
-            </button>
-          }
-        }
-      } @else if (resultado(); as nota) {
-        <h2>Calificación {{ nota.calificacion }}</h2>
-        <ul>
-          @for (detalle of nota.detalles; track detalle.idPregunta) {
-            <li>
-              @if (enunciadoResultado(detalle.idPregunta); as enunciado) {
-                <strong>{{ enunciado }}</strong>
-              }
-              <p>{{ !detalle.contestada ? 'Sin responder' : detalle.correcta ? 'Correcta' : 'Incorrecta' }}</p>
-              <p>{{ detalle.retroalimentacion }}</p>
-            </li>
-          }
-        </ul>
-        @for (valoracion of valoraciones(); track valoracion.id) {
-          <blockquote>{{ valoracion.mensaje }}</blockquote>
-        }
-        <button type="button" [disabled]="ocupado()" (click)="consultarResultado()">
-          Actualizar resultado
-        </button>
-      } @else {
-        <p>Intento entregado.</p>
-        <button type="button" [disabled]="ocupado()" (click)="consultarResultado()">
-          Consultar calificación
-        </button>
-      }
     } @else {
-      <h1>Ingreso a la sesión</h1>
-      <form #convocatoria="ngForm" (ngSubmit)="convocatoria.valid && iniciar()">
-        <label
-          >Correo institucional
-          <input type="email" name="correo" [(ngModel)]="correo" required email
-        /></label>
-        <label
-          >Identificador de sesión <input name="sesion" [(ngModel)]="idSesion" required
-        /></label>
-        <label
-          >Código de convocatoria
-          <input type="password" name="codigo" [(ngModel)]="codigo" required
-        /></label>
-        <button type="submit" [disabled]="ocupado() || convocatoria.invalid">
-          Entrar a la simulación
-        </button>
-      </form>
+      <section class="acceso-estudiante" aria-labelledby="titulo-acceso-estudiante">
+        <div class="introduccion-acceso">
+          <h1 id="titulo-acceso-estudiante">Ingreso a la <em>sesión.</em></h1>
+          <p>Usa el correo y el código que recibiste en tu convocatoria académica.</p>
+        </div>
+        <form #convocatoria="ngForm" (ngSubmit)="convocatoria.valid && iniciar()" novalidate>
+          <label for="correo-estudiante">
+            Correo institucional
+            <input
+              id="correo-estudiante"
+              type="email"
+              name="correo"
+              autocomplete="username"
+              inputmode="email"
+              placeholder="tu.correo@institucion.edu.co"
+              [(ngModel)]="correo"
+              required
+              email
+            />
+          </label>
+          <label for="sesion-estudiante">
+            Referencia de sesión
+            <input
+              id="sesion-estudiante"
+              name="sesion"
+              aria-label="Identificador de sesión"
+              [(ngModel)]="idSesion"
+              required
+            />
+            <small>La referencia suele venir incluida en el enlace de tu docente.</small>
+          </label>
+          <label for="codigo-estudiante">
+            Código de convocatoria
+            <input
+              id="codigo-estudiante"
+              type="password"
+              name="codigo"
+              autocomplete="one-time-code"
+              placeholder="Ingresa el código"
+              [(ngModel)]="codigo"
+              required
+            />
+          </label>
+          <button
+            class="boton-estudiante primario boton-iniciar-estudiante"
+            type="submit"
+            [disabled]="ocupado() || convocatoria.invalid"
+          >
+            {{ ocupado() ? 'Ingresando…' : 'Entrar a la simulación' }}
+            <span aria-hidden="true">→</span>
+          </button>
+        </form>
+        <aside class="nota-acceso-estudiante">
+          <strong>Antes de comenzar</strong>
+          <p>Comprueba que tienes tiempo suficiente y una conexión estable.</p>
+        </aside>
+      </section>
     }
     @if (error()) {
-      <p role="alert">{{ error() }}</p>
+      <p class="error-estudiante" role="alert">{{ error() }}</p>
     }
   </main>
 } @else {

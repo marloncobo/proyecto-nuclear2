@@ -200,7 +200,7 @@ nav button.activo {
 main {
   max-width: 1510px;
   margin: auto;
-  padding: 39px 46px 0;
+  padding: 24px 46px 0;
 }
 .sobretitulo {
   font-size: 9px;
@@ -641,7 +641,7 @@ footer i {
   align-items: center;
   justify-content: space-between;
   gap: 25px;
-  margin: 22px 0 30px;
+  margin: 8px 0 30px;
 }
 .encabezado-pagina h1 {
   font-size: 38px;
@@ -856,9 +856,10 @@ footer i {
 .encabezado-espacios h1 {
   margin-bottom: 8px;
 }
-.filtros-espacios {
+.filtros-espacios,
+.filtros-listado {
   display: grid;
-  grid-template-columns: minmax(220px, 1.5fr) minmax(170px, 0.7fr) auto;
+  grid-template-columns: minmax(220px, 1.5fr) repeat(2, minmax(150px, 0.75fr)) auto;
   gap: 14px;
   align-items: end;
   padding: 18px;
@@ -867,11 +868,17 @@ footer i {
   border-radius: 12px;
   background: #f1f5ef;
 }
+.filtros-espacios {
+  grid-template-columns: minmax(220px, 1.5fr) minmax(170px, 0.7fr) auto;
+}
+.filtros-listado label,
 .filtros-espacios label {
   gap: 7px;
   font-size: 13px;
   font-weight: 500;
 }
+.filtros-listado input,
+.filtros-listado select,
 .filtros-espacios input,
 .filtros-espacios select {
   min-height: 44px;
@@ -889,6 +896,28 @@ footer i {
 }
 .boton-limpiar-espacios:hover:not(:disabled) {
   background: #e3ecdf;
+}
+.resumen-listado {
+  margin: 0 0 12px;
+  color: #526d5f;
+  font-size: 13px;
+}
+.filtros-resultados,
+.filtros-notificaciones {
+  grid-template-columns: minmax(210px, 1.4fr) minmax(170px, 0.8fr) auto;
+}
+.filtros-resultados {
+  margin: 20px 0 12px;
+}
+.filtros-notificaciones {
+  margin: 0;
+  border-width: 0 0 1px;
+  border-radius: 0;
+}
+.panel-notificaciones-docente > .resumen-listado {
+  padding: 12px 26px;
+  margin: 0;
+  border-bottom: 1px solid var(--borde);
 }
 .resumen-espacios {
   display: flex;
@@ -927,16 +956,13 @@ footer i {
   font-weight: 600;
 }
 .tabla-espacios thead th:first-child {
-  width: 29%;
+  width: 45%;
 }
 .tabla-espacios thead th:nth-child(2) {
-  width: 13%;
-}
-.tabla-espacios thead th:nth-child(3) {
-  width: 24%;
+  width: 20%;
 }
 .tabla-espacios thead th:last-child {
-  width: 34%;
+  width: 35%;
 }
 .fila-espacio > th,
 .fila-espacio > td {
@@ -1666,7 +1692,7 @@ footer i {
 }
 @media (min-width: 1500px) {
   main {
-    padding-top: 55px;
+    padding-top: 30px;
   }
   .bienvenida {
     min-height: 345px;
@@ -1709,7 +1735,7 @@ footer i {
     width: calc(100% - 215px);
   }
   main {
-    padding: 28px 28px 0;
+    padding: 20px 28px 0;
   }
   .cabecera {
     padding: 0 28px;
@@ -1867,24 +1893,23 @@ footer i {
     padding: 8px;
     font-size: 9px;
   }
-  .filtros-espacios {
+  .filtros-espacios,
+  .filtros-listado {
     grid-template-columns: minmax(0, 1fr) minmax(170px, 0.7fr);
   }
-  .boton-limpiar-espacios {
+  .filtros-listado .boton-limpiar-espacios,
+  .filtros-espacios .boton-limpiar-espacios {
     grid-column: 1/-1;
     justify-self: start;
   }
   .tabla-espacios thead th:first-child {
-    width: 30%;
+    width: 44%;
   }
   .tabla-espacios thead th:nth-child(2) {
-    width: 14%;
-  }
-  .tabla-espacios thead th:nth-child(3) {
-    width: 22%;
+    width: 18%;
   }
   .tabla-espacios thead th:last-child {
-    width: 34%;
+    width: 38%;
   }
   .fila-espacio > th,
   .fila-espacio > td {
@@ -2123,13 +2148,15 @@ footer i {
   .encabezado-espacios .boton {
     width: 100%;
   }
-  .filtros-espacios {
+  .filtros-espacios,
+  .filtros-listado {
     grid-template-columns: 1fr;
     gap: 12px;
     padding: 12px;
     margin-bottom: 12px;
   }
-  .boton-limpiar-espacios {
+  .filtros-listado .boton-limpiar-espacios,
+  .filtros-espacios .boton-limpiar-espacios {
     grid-column: auto;
     width: 100%;
   }

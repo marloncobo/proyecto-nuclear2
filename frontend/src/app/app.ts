@@ -60,24 +60,40 @@ export class Aplicacion {
     const periodo = this.periodoEspacios();
     return this.espacios().filter(
       (espacio) =>
-        (!consulta ||
-          espacio.nombre.toLocaleLowerCase('es').includes(consulta) ||
-          espacio.id.toLocaleLowerCase('es').includes(consulta)) &&
+        (!consulta || espacio.nombre.toLocaleLowerCase('es').includes(consulta)) &&
         (!periodo || espacio.periodo === periodo),
     );
   });
   readonly busqueda = signal('');
   readonly filtro = signal('TODOS');
-  readonly casosVisibles = computed(() =>
-    this.casos().filter(
+  readonly casosVisibles = computed(() => {
+    const consulta = this.busqueda().trim().toLocaleLowerCase('es');
+    return this.casos().filter(
       (caso) =>
-        caso.nombre.toLocaleLowerCase().includes(this.busqueda().toLocaleLowerCase()) &&
+        (!consulta ||
+          caso.nombre.toLocaleLowerCase('es').includes(consulta) ||
+          caso.contexto.toLocaleLowerCase('es').includes(consulta)) &&
         (this.filtro() === 'TODOS' || caso.estado === this.filtro()),
-    ),
-  );
+    );
+  });
   readonly publicados = computed(
     () => this.casos().filter((caso) => caso.estado === 'PUBLICADO').length,
   );
+  readonly busquedaSesiones = signal('');
+  readonly estadoSesiones = signal('');
+  readonly espacioSesiones = signal('');
+  readonly sesionesVisibles = computed(() => {
+    const consulta = this.busquedaSesiones().trim().toLocaleLowerCase('es');
+    return this.sesiones().filter((sesion) => {
+      const nombreCaso = this.nombreCaso(sesion.idCaso).toLocaleLowerCase('es');
+      const lugar = sesion.lugar.toLocaleLowerCase('es');
+      return (
+        (!consulta || nombreCaso.includes(consulta) || lugar.includes(consulta)) &&
+        (!this.estadoSesiones() || sesion.estado === this.estadoSesiones()) &&
+        (!this.espacioSesiones() || sesion.idEspacio === this.espacioSesiones())
+      );
+    });
+  });
   readonly modal = signal('');
   readonly seleccionado = signal<Caso | null>(null);
   readonly sesionPendiente = signal<Sesion | null>(null);
@@ -90,10 +106,8 @@ export class Aplicacion {
   readonly espacioEditado = signal<Espacio | null>(null);
   readonly estudianteEncontrado = signal<Usuario | null>(null);
   correoBusqueda = '';
-  identificadorCaso = '';
-  identificadorSesion = '';
-  identificadorReporte = '';
   readonly estudiantes = signal<Usuario[]>([]);
+  identificadorReporte = '';
   readonly cargandoEstudiantes = signal(false);
   readonly reporteSesion = signal<FilaReporteSesion[] | null>(null);
   readonly notificaciones = signal<AvisoNotificacion[]>([]);
@@ -103,8 +117,38 @@ export class Aplicacion {
   readonly notificacionesNoLeidas = computed(
     () => this.notificaciones().filter((notificacion) => !notificacion.leida).length,
   );
+  readonly estadoNotificaciones = signal('');
+  readonly tipoNotificaciones = signal('');
+  readonly tiposNotificaciones = computed(() => [
+    ...new Set(this.notificaciones().map((notificacion) => notificacion.tipo)),
+  ]);
+  readonly notificacionesVisibles = computed(() =>
+    this.notificaciones().filter(
+      (notificacion) =>
+        (!this.estadoNotificaciones() ||
+          (this.estadoNotificaciones() === 'NO_LEIDA'
+            ? !notificacion.leida
+            : notificacion.leida)) &&
+        (!this.tipoNotificaciones() || notificacion.tipo === this.tipoNotificaciones()),
+    ),
+  );
   idSesionReporte = '';
   nombreEstudianteReporte = '';
+  readonly busquedaResultados = signal('');
+  readonly estadoResultados = signal('');
+  readonly estadosResultados = computed(() => [
+    ...new Set((this.reporteSesion() ?? []).map((fila) => fila.estado)),
+  ]);
+  readonly reporteSesionVisible = computed(() => {
+    const consulta = this.busquedaResultados().trim().toLocaleLowerCase('es');
+    return (this.reporteSesion() ?? []).filter(
+      (fila) =>
+        (!consulta ||
+          fila.nombreEstudiante.toLocaleLowerCase('es').includes(consulta) ||
+          fila.correoEstudiante.toLocaleLowerCase('es').includes(consulta)) &&
+        (!this.estadoResultados() || fila.estado === this.estadoResultados()),
+    );
+  });
   valoraciones: Record<string, string> = {};
   altaEstudiante = { nombre: '', correo: '' };
   convocadosSeleccionados: string[] = [];
@@ -286,19 +330,28 @@ export class Aplicacion {
     this.estudianteEncontrado.set(null);
     this.espacioEditado.set(null);
     this.correoBusqueda = '';
-    this.identificadorCaso = '';
-    this.identificadorSesion = '';
-    this.identificadorReporte = '';
+    this.busquedaSesiones.set('');
+    this.estadoSesiones.set('');
+    this.espacioSesiones.set('');
+    this.busquedaEspacios.set('');
+    this.periodoEspacios.set('');
+    this.busqueda.set('');
+    this.filtro.set('TODOS');
     this.idEstudiante = '';
     this.nombreEspacio = '';
     this.periodo = '2026-2';
     this.borrador = null;
     this.estudiantes.set([]);
     this.notificaciones.set([]);
+    this.estadoNotificaciones.set('');
+    this.tipoNotificaciones.set('');
     this.errorNotificaciones.set('');
     this.reporteSesion.set(null);
     this.idSesionReporte = '';
+    this.identificadorReporte = '';
     this.nombreEstudianteReporte = '';
+    this.busquedaResultados.set('');
+    this.estadoResultados.set('');
     this.valoraciones = {};
     this.altaEstudiante = { nombre: '', correo: '' };
     this.convocadosSeleccionados = [];
@@ -462,25 +515,10 @@ export class Aplicacion {
       );
     });
   }
-  async consultarId(tipo: 'casos' | 'sesiones') {
-    await this.ejecutar(async () => {
-      const identificador =
-        tipo === 'casos' ? this.identificadorCaso.trim() : this.identificadorSesion.trim();
-      if (!identificador) throw new Error('Escribe un identificador.');
-      const dato = await this.api.consultar<Caso & Sesion>(
-        `/${tipo}/${encodeURIComponent(identificador)}`,
-      );
-      if (tipo === 'casos')
-        this.casos.update((casos) => [dato, ...casos.filter((caso) => caso.id !== dato.id)]);
-      else
-        this.sesiones.update((sesiones) => [
-          dato,
-          ...sesiones.filter((sesion) => sesion.id !== dato.id),
-        ]);
-      if (tipo === 'casos') this.identificadorCaso = '';
-      else this.identificadorSesion = '';
-      this.aviso.set('Consulta completada.');
-    });
+  limpiarFiltrosSesiones() {
+    this.busquedaSesiones.set('');
+    this.estadoSesiones.set('');
+    this.espacioSesiones.set('');
   }
   editarEspacio(espacio: Espacio) {
     this.abrir('espacio');
@@ -491,6 +529,14 @@ export class Aplicacion {
   limpiarFiltrosEspacios() {
     this.busquedaEspacios.set('');
     this.periodoEspacios.set('');
+  }
+  limpiarFiltrosResultados() {
+    this.busquedaResultados.set('');
+    this.estadoResultados.set('');
+  }
+  limpiarFiltrosNotificaciones() {
+    this.estadoNotificaciones.set('');
+    this.tipoNotificaciones.set('');
   }
   async cargarEstudiantes() {
     if (this.cargandoEstudiantes()) return;
@@ -679,6 +725,7 @@ export class Aplicacion {
 
   async consultarReporteSesion() {
     await this.ejecutar(async () => {
+      this.limpiarFiltrosResultados();
       this.reporteSesion.set(null);
       this.resultado.set(null);
       this.nombreEstudianteReporte = '';
@@ -753,7 +800,11 @@ export class Aplicacion {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   nombreCaso(id: string) {
-    return this.casos().find((caso) => caso.id === id)?.nombre ?? 'Caso ' + id;
+    return this.casos().find((caso) => caso.id === id)?.nombre ?? 'Caso no disponible';
+  }
+  nombreEspacioAcademico(id: string) {
+    const espacio = this.espacios().find((actual) => actual.id === id);
+    return espacio ? `${espacio.nombre} · ${espacio.periodo}` : 'Espacio no disponible';
   }
   estadoLegible(estado: string) {
     return (
