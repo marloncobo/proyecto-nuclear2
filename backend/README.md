@@ -346,6 +346,7 @@ Configura estas variables en `.env` (sin versionar secretos):
 | `PSICOAPP_CLAVE_ADMINISTRADOR` | Clave inicial de al menos 8 caracteres y hasta 72 bytes |
 | `PSICOAPP_DOMINIOS_INSTITUCIONALES` | Dominios institucionales exactos separados por comas |
 | `PSICOAPP_JWT_CLAVE` | Clave HS256 Base64 de 32 bytes o más; vacía genera una clave efímera |
+| `PSICOAPP_CORS_ORIGENES` | Orígenes web exactos permitidos, separados por comas; vacío deshabilita CORS |
 | `PSICOAPP_NOTIFICACIONES_CLAVE_CIFRADO` | Clave AES-256-GCM Base64 para cifrar notificaciones |
 | `PSICOAPP_NOTIFICACIONES_AVISOS_DOCENTE` | Habilita o pausa la generación de nuevos avisos docentes; predeterminado `true` |
 | `PSICOAPP_NOTIFICACIONES_RECORDATORIO_HORAS` | Anticipación del recordatorio de sesión, en horas; rango 1–168, predeterminado `24` |

@@ -1,5 +1,8 @@
 # Psicoapp
 
+La guía para el despliegue provisional del backend y MySQL en Railway y del frontend
+en Firebase Hosting está en [docs/despliegue.md](docs/despliegue.md).
+
 Consulta las [correcciones vigentes y su validacion](docs/pruebas/correcciones-revision.md):
 edicion y archivado de casos, convocatorias iniciales y reglas de inicio de sesiones.
 

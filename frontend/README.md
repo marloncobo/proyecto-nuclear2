@@ -70,7 +70,12 @@ Las escrituras envían el JWT Bearer y solo actualizan los datos visibles tras u
 
 `src/app/servicio-api.ts` centraliza el ingreso JWT, `/api/identidad/yo` y la cabecera Bearer para cada solicitud protegida. No usa HTTP Basic, cookies de autenticación ni CSRF. Credenciales y token solo permanecen en memoria; no se guardan en el almacenamiento del navegador. Los errores y tiempos de espera aparecen en pantalla.
 
-En producción, publicar `dist/psicoapp/browser` mediante HTTPS, configurar fallback a `index.html` y un proxy de mismo origen para `/api`. Google Fonts proporciona DM Sans y Manrope, con fuentes de sistema como respaldo.
+En producción, publicar `dist/psicoapp/browser` mediante HTTPS y configurar fallback a
+`index.html`. El despliegue provisional en Firebase usa `npm run build:firebase` y la
+variable `PSICOAPP_API_URL` para apuntar al origen HTTPS de Railway; el backend debe
+autorizar el origen de Firebase mediante CORS. Consulta la
+[guía de despliegue](../docs/despliegue.md). Google Fonts proporciona DM Sans y
+Manrope, con fuentes de sistema como respaldo.
 
 Accesibilidad: foco visible, ventanas con contención de foco, cierre con Escape y retorno al control de origen, etiquetas de formularios y movimiento reducido. Verificar además contraste y uso con lector de pantalla antes de una publicación institucional.
 

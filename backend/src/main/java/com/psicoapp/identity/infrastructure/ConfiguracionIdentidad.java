@@ -1,6 +1,8 @@
 package com.psicoapp.identity.infrastructure;
 
 import com.psicoapp.identity.application.ServicioUsuarios;
+import java.util.Arrays;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
@@ -13,6 +15,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
@@ -24,17 +28,36 @@ public class ConfiguracionIdentidad {
     }
 
     @Bean
+    UrlBasedCorsConfigurationSource configuracionCors(
+            @Value("${psicoapp.web.origenes-permitidos:}") String origenesConfigurados) {
+        var configuracion = new CorsConfiguration();
+        configuracion.setAllowedOrigins(Arrays.stream(origenesConfigurados.split(","))
+                .map(String::trim)
+                .filter(origen -> !origen.isEmpty())
+                .toList());
+        configuracion.setAllowedMethods(List.of("GET", "POST", "PUT", "OPTIONS"));
+        configuracion.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
+        configuracion.setAllowCredentials(false);
+        configuracion.setMaxAge(3600L);
+        var fuente = new UrlBasedCorsConfigurationSource();
+        fuente.registerCorsConfiguration("/api/**", configuracion);
+        return fuente;
+    }
+
+    @Bean
     SecurityFilterChain seguridadIdentidad(HttpSecurity http, ProveedorAutenticacionIdentidad proveedor,
-            ServicioJwt tokens) throws Exception {
+            ServicioJwt tokens, UrlBasedCorsConfigurationSource fuenteCors) throws Exception {
         return http.authenticationProvider(proveedor)
                 .sessionManagement(sesion -> sesion.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(fuenteCors))
                 .exceptionHandling(errores -> errores.accessDeniedHandler(
                         (solicitud, respuesta, excepcion) -> respuesta.setStatus(403)))
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .oauth2ResourceServer(recurso -> recurso.jwt(jwt -> jwt.decoder(tokens::decodificar)
                         .jwtAuthenticationConverter(tokens::autenticar)))
                 .authorizeHttpRequests(acceso -> acceso
+                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/identidad/ingreso").permitAll()
                         .requestMatchers("/api/identidad/yo").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/identidad/estudiantes").hasRole("DOCENTE")
