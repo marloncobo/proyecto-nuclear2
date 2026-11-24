@@ -13,7 +13,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Verifica correo/usuario + codigo. Participation debe autorizar la sesion concreta en su transaccion. */
+/** Verifica la convocatoria de la cuenta autenticada para la sesion concreta. */
 @Service
 @Transactional(readOnly = true)
 public class VerificadorConvocatorias implements VerificadorAccesoEstudiante, AutorizacionConvocatorias {
@@ -45,11 +45,17 @@ public class VerificadorConvocatorias implements VerificadorAccesoEstudiante, Au
 
     @Override
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
-    public void exigirAcceso(UUID estudiante, UUID idSesion, String codigo) {
-        var sesion = exigirConvocatoria(estudiante, idSesion, codigo);
+    public void exigirAcceso(UUID estudiante, UUID idSesion) {
+        var sesion = exigirConvocatoria(estudiante, idSesion);
         if (!permiteIngreso(sesion)) {
             throw new AccesoDenegado("El estado o la ventana de ingreso no permite iniciar participacion");
         }
+    }
+
+    @Override
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public void exigirAcceso(UUID estudiante, UUID idSesion, String codigoIgnorado) {
+        exigirAcceso(estudiante, idSesion);
     }
 
     public boolean permiteIngreso(Sesion sesion) {
@@ -75,11 +81,14 @@ public class VerificadorConvocatorias implements VerificadorAccesoEstudiante, Au
 
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
     public Sesion exigirConvocatoria(UUID estudiante, UUID idSesion, String codigo) {
+        return exigirConvocatoria(estudiante, idSesion);
+    }
+
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public Sesion exigirConvocatoria(UUID estudiante, UUID idSesion) {
         identidades.exigirEstudiante(estudiante);
         var sesion = sesiones.bloquearPorId(idSesion).orElseThrow(() -> new NoEncontrado("Sesion no encontrada"));
-        if (codigo == null || !codigo.matches("[0-9a-f]{32}")) throw new AccesoDenegado("Codigo invalido");
-        var convocatoria = convocatorias.buscarAutorizada(estudiante, Convocatoria.resumir(codigo));
-        if (convocatoria.isEmpty() || !convocatoria.get().idSesion().equals(idSesion)) {
+        if (convocatorias.buscarAutorizada(estudiante, idSesion).isEmpty()) {
             throw new AccesoDenegado("No esta autorizado para esta sesion");
         }
         return sesion;

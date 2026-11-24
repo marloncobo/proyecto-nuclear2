@@ -17,6 +17,7 @@ public interface RepositorioIntentos {
     Optional<Intento> buscarActivo(UUID idSesion, UUID idEstudiante);
     java.util.List<UUID> listarActivosDeSesion(UUID idSesion);
     Optional<Intento> buscarUltimo(UUID idSesion, UUID idEstudiante);
+    default java.util.List<Intento> listarPorEstudiante(UUID idEstudiante) { return java.util.List.of(); }
     void actualizar(Intento intento);
     Optional<Intento> bloquearPorId(UUID id);
     java.util.List<Intento> buscarVencidos(java.time.Instant ahora);

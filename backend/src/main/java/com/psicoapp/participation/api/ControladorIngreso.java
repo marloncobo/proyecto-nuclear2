@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/participaciones/ingreso")
 public class ControladorIngreso {
-    public record Solicitud(@NotNull UUID idSesion, @NotBlank String codigoAcceso) { }
+    public record Solicitud(@NotNull UUID idSesion, String codigoAcceso) { }
     public record OpcionVisible(UUID id, String texto) { }
     public record PreguntaVisible(UUID id, String escenario, String contexto, String enunciado,
             List<OpcionVisible> opciones) { }
@@ -39,14 +39,13 @@ public class ControladorIngreso {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public Simulacion ingresar(Principal principal, @Valid @RequestBody Solicitud solicitud) {
         UUID estudiante = UUID.fromString(principal.getName());
-        var sesion = acceso.exigirConvocatoria(estudiante, solicitud.idSesion(), solicitud.codigoAcceso());
+        var sesion = acceso.exigirConvocatoria(estudiante, solicitud.idSesion());
         var caso = casos.buscarPorId(sesion.idCaso()).orElseThrow(() -> new NoEncontrado("Caso no encontrado"));
         var preguntas = caso.escenarios().stream().flatMap(escenario -> escenario.preguntas().stream()
                 .map(pregunta -> new PreguntaVisible(pregunta.id(), escenario.titulo(),
                         escenario.contextoSituacional(), pregunta.enunciado(), pregunta.opciones().stream()
                         .map(opcion -> new OpcionVisible(opcion.id(), opcion.texto())).toList()))).toList();
-        var intento = participaciones.entrar(estudiante, solicitud.idSesion(), solicitud.codigoAcceso(),
-                acceso.permiteIngreso(sesion));
+        var intento = participaciones.consultarParaSesion(estudiante, solicitud.idSesion());
         return new Simulacion(caso.nombre(), preguntas, intento);
     }
 }

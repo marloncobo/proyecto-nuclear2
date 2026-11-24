@@ -128,6 +128,15 @@ public class RepositorioIntentosJdbc implements RepositorioIntentos, Repositorio
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Intento> listarPorEstudiante(UUID idEstudiante) {
+        return jdbc.sql("""
+                SELECT * FROM intento WHERE id_estudiante = ?
+                ORDER BY fecha_inicio DESC, id_intento DESC
+                """).param(idEstudiante.toString()).query(this::mapear).list();
+    }
+
+    @Override
     public void actualizar(Intento intento) {
         if (jdbc.sql("""
                 UPDATE intento SET posicion_actual=?, estado=?, fecha_limite=?, fecha_fin=?

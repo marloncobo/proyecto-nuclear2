@@ -9,5 +9,7 @@ public interface RepositorioConvocatorias {
     void actualizar(Convocatoria convocatoria);
     void guardar(Convocatoria convocatoria);
     List<Convocatoria> listarPorSesion(UUID idSesion);
+    List<Convocatoria> listarPorEstudiante(UUID idEstudiante);
+    Optional<Convocatoria> buscarAutorizada(UUID idEstudiante, UUID idSesion);
     Optional<Convocatoria> buscarAutorizada(UUID idEstudiante, String resumenCodigo);
 }

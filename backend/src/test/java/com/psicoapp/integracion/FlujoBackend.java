@@ -38,7 +38,7 @@ abstract class FlujoBackend {
         mvc.perform(put("/api/identidad/roles/DOCENTE/creacion-casos").with(portador(mvc, admin, clave))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"habilitado\":true}")).andExpect(status().isNoContent());
         String idEstudiante = id(mvc.perform(post("/api/identidad/estudiantes").with(portador(mvc, docente, clave))
-                .contentType(MediaType.APPLICATION_JSON).content("{\"correo\":\""+estudiante+"\",\"nombre\":\"Alumno\"}"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"correo\":\""+estudiante+"\",\"nombre\":\"Alumno\",\"clave\":\""+clave+"\"}"))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
         String idEspacio = id(mvc.perform(post("/api/academico/espacios").with(portador(mvc, docente, clave))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Psicologia\",\"periodo\":\"2026-2\"}"))
@@ -102,11 +102,11 @@ abstract class FlujoBackend {
         assertNotEquals(codigo, JsonPath.read(segunda,"$.convocatorias[0].codigoAcceso"));
         assertEquals(32,codigo.length());
         assertNotEquals(codigo,convocatorias.listarPorSesion(UUID.fromString(sesion)).getFirst().resumenCodigo());
-        mvc.perform(get("/api/identidad/yo").with(portador(mvc, estudiante,codigo))).andExpect(status().isOk());
+        mvc.perform(get("/api/identidad/yo").with(portador(mvc, estudiante,clave))).andExpect(status().isOk());
         mvc.perform(post("/api/sesiones/{id}/iniciar",sesion).with(portador(mvc, docente,clave)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("EN_CURSO"));
-        mvc.perform(get("/api/identidad/yo").with(portador(mvc, estudiante,codigo))).andExpect(status().isOk());
-        mvc.perform(get("/api/casos/{id}",caso).with(portador(mvc, estudiante,codigo))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/identidad/yo").with(portador(mvc, estudiante,clave))).andExpect(status().isOk());
+        mvc.perform(get("/api/casos/{id}",caso).with(portador(mvc, estudiante,clave))).andExpect(status().isForbidden());
         rechazaIngreso(estudiante, "incorrecto");
         rechazaIngreso(docente, "incorrecta");
         mvc.perform(get("/api/sesiones/{id}",sesion).with(portador(mvc, docente,clave)))
@@ -129,7 +129,7 @@ abstract class FlujoBackend {
         assertEquals(2,cerradas);
         assertEquals(0,repetidas);
         assertEquals("FINALIZADO",sesiones.buscarPorId(UUID.fromString(sesion)).orElseThrow().estado().codigo().name());
-        mvc.perform(get("/api/identidad/yo").with(portador(mvc, estudiante,codigo))).andExpect(status().isOk());
+        mvc.perform(get("/api/identidad/yo").with(portador(mvc, estudiante,clave))).andExpect(status().isOk());
     }
 
     private String id(String cuerpo) { return JsonPath.read(cuerpo,"$.id"); }

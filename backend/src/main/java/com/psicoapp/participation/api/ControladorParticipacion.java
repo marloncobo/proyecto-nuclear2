@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/participaciones")
 public class ControladorParticipacion {
-    public record SolicitudInicio(@NotNull UUID idSesion, @NotBlank String codigoAcceso) { }
+    public record SolicitudInicio(@NotNull UUID idSesion, String codigoAcceso) { }
     public record SolicitudRespuesta(@NotNull UUID idPregunta, @NotNull UUID idOpcion) { }
 
     private final ServicioGestionParticipacion participaciones;
@@ -32,8 +32,7 @@ public class ControladorParticipacion {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public DatosIntento iniciar(Principal principal, @Valid @RequestBody SolicitudInicio solicitud) {
-        return participaciones.iniciar(UUID.fromString(principal.getName()), solicitud.idSesion(),
-                solicitud.codigoAcceso());
+        return participaciones.iniciar(UUID.fromString(principal.getName()), solicitud.idSesion());
     }
 
     @GetMapping("/{id}")

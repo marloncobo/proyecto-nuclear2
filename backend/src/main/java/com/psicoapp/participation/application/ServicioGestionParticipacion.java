@@ -42,8 +42,8 @@ public class ServicioGestionParticipacion {
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    public DatosIntento iniciar(UUID idEstudiante, UUID idSesion, String codigo) {
-        autorizacion.exigirAcceso(idEstudiante, idSesion, codigo);
+    public DatosIntento iniciar(UUID idEstudiante, UUID idSesion) {
+        autorizacion.exigirAcceso(idEstudiante, idSesion);
         ConsultaSesiones.SesionEnCurso sesion = sesiones.exigirEnCurso(idSesion);
         intentos.bloquearEstudiante(idEstudiante);
         if (intentos.existeActivo(idEstudiante)) {
@@ -60,6 +60,10 @@ public class ServicioGestionParticipacion {
         return representar(intento);
     }
 
+    public DatosIntento iniciar(UUID idEstudiante, UUID idSesion, String codigoIgnorado) {
+        return iniciar(idEstudiante, idSesion);
+    }
+
     public DatosIntento entrar(UUID estudiante, UUID sesion, String codigo, boolean ventanaAbierta) {
         var activo = intentos.buscarActivo(sesion, estudiante);
         if (activo.isPresent()) return representar(activo.get());
@@ -68,7 +72,13 @@ public class ServicioGestionParticipacion {
         if (ultimo.isPresent() && (!ventanaAbierta || !intentos.tienePermisoReintento(ultimo.get().id()))) {
             return representar(ultimo.get());
         }
-        return iniciar(estudiante, sesion, codigo);
+        return iniciar(estudiante, sesion);
+    }
+
+    @Transactional(readOnly = true)
+    public DatosIntento consultarParaSesion(UUID estudiante, UUID sesion) {
+        return intentos.buscarActivo(sesion, estudiante).or(() -> intentos.buscarUltimo(sesion, estudiante))
+                .map(this::representar).orElse(null);
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)

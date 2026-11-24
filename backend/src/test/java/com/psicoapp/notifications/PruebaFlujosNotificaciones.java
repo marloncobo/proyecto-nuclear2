@@ -83,7 +83,8 @@ class PruebaFlujosNotificaciones {
         docente = identidades.registrarDocente(administrador, "docente-" + sufijo + "@universidad.example", "Docente", "clave-ficticia").id();
         identidades.configurarCreacionCasos(administrador, Rol.DOCENTE, true);
         correoEstudiante = "alumno-" + sufijo + "@universidad.example";
-        estudiante = identidades.registrarEstudiante(docente, correoEstudiante, "Estudiante").id();
+        estudiante = identidades.registrarEstudiante(docente, correoEstudiante, "Estudiante", "clave-estudiante").id();
+        identidades.cambiarClaveInicial(estudiante, "clave-estudiante-personal");
         espacio = academico.crearEspacio(docente, "Psicologia", "2026-2").id();
         var datos = DatosPruebaCasos.completo(docente);
         pregunta = datos.escenarios().getFirst().preguntas().getFirst().id();
@@ -137,7 +138,7 @@ class PruebaFlujosNotificaciones {
         UUID id = ids().getFirst();
         String guardado = contenido(id);
         assertFalse(guardado.contains(codigo));
-        assertTrue(cifrador.descifrar(guardado).contains(codigo));
+        assertFalse(cifrador.descifrar(guardado).contains(codigo));
         verifyNoInteractions(correo);
         var reconstruido = new RepositorioNotificacionesJdbc(jdbc,
                 new CifradorNotificaciones("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="));
@@ -145,7 +146,7 @@ class PruebaFlujosNotificaciones {
         new TransactionTemplate(gestor).executeWithoutResult(estadoTransaccion -> servicio.entregar(id));
         entrega.entregar(id);
         verify(correo, times(1)).enviar(eq(correoEstudiante), eq("Convocatoria academica"), argThat(
-                texto -> texto.contains(codigo) && texto.contains("Conflicto") && texto.contains("Mensaje del docente")
+                texto -> !texto.contains(codigo) && texto.contains("Conflicto") && texto.contains("Mensaje del docente")
                         && texto.contains("https://universidad.example/ingreso")));
         assertEquals("ENVIADA", estado(id));
         assertEquals("", contenido(id));
@@ -304,8 +305,13 @@ class PruebaFlujosNotificaciones {
         mvc.perform(post("/api/participaciones/ingreso").with(user(estudiante.toString()).roles("ESTUDIANTE"))
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                         .content("{\"idSesion\":\"" + sesion + "\",\"codigoAcceso\":\"" + codigo + "\"}"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.intento.estado").value("EN_PROGRESO"))
-                .andExpect(jsonPath("$.intento.id").value(org.hamcrest.Matchers.not(anterior.id().toString())));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.intento.estado").value("FINALIZADO"))
+                .andExpect(jsonPath("$.intento.id").value(anterior.id().toString()));
+        mvc.perform(post("/api/participaciones").with(user(estudiante.toString()).roles("ESTUDIANTE"))
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"idSesion\":\"" + sesion + "\"}"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.estado").value("EN_PROGRESO"))
+                .andExpect(jsonPath("$.id").value(org.hamcrest.Matchers.not(anterior.id().toString())));
         assertEquals(opcion, participacion.consultar(estudiante, anterior.id()).respuestas().get(pregunta));
         assertThrows(Conflicto.class, () -> participacion.iniciar(estudiante, sesion, codigo));
     }
@@ -321,7 +327,7 @@ class PruebaFlujosNotificaciones {
         despachar();
         assertEquals(2, avisos.listar(estudiante, 20, 0).size());
         UUID aviso = avisos.listar(estudiante, 20, 0).getFirst().id();
-        mvc.perform(get("/api/notificaciones").with(portador(mvc, correoEstudiante, codigo)))
+        mvc.perform(get("/api/notificaciones").with(portador(mvc, correoEstudiante, "clave-estudiante-personal")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2));
         mvc.perform(get("/api/notificaciones")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/notificaciones").with(user(docente.toString()).roles("DOCENTE")))
@@ -334,7 +340,7 @@ class PruebaFlujosNotificaciones {
         for (int vez = 0; vez < 2; vez++) mvc.perform(put("/api/notificaciones/{id}/leida", aviso)
                 .with(user(estudiante.toString()).roles("ESTUDIANTE"))).andExpect(status().isNoContent());
         assertTrue(avisos.listar(estudiante, 20, 0).stream().filter(a -> a.id().equals(aviso)).findFirst().orElseThrow().leida());
-        mvc.perform(get("/api/evaluaciones/{id}/valoraciones", intento.id()).with(portador(mvc, correoEstudiante, codigo)))
+        mvc.perform(get("/api/evaluaciones/{id}/valoraciones", intento.id()).with(portador(mvc, correoEstudiante, "clave-estudiante-personal")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].mensaje").value("Sugerencia formativa"));
     }
 
@@ -415,7 +421,7 @@ class PruebaFlujosNotificaciones {
         var recibidos = avisos.listar(estudiante, 20, 0);
         assertEquals(1, recibidos.stream().filter(a -> "VALORACION".equals(a.tipo())).count());
         assertEquals(1, recibidos.stream().filter(a -> "RESULTADO".equals(a.tipo())).count());
-        mvc.perform(get("/api/evaluaciones/{id}/valoraciones", intento.id()).with(portador(mvc, correoEstudiante, codigo)))
+        mvc.perform(get("/api/evaluaciones/{id}/valoraciones", intento.id()).with(portador(mvc, correoEstudiante, "clave-estudiante-personal")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].mensaje").value("Revisa las perspectivas del grupo"));
     }
 
