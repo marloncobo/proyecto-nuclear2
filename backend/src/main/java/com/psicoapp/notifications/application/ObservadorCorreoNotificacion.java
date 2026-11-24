@@ -18,7 +18,7 @@ public class ObservadorCorreoNotificacion implements ObservadorNotificacion {
             return List.of(new SolicitudNotificacion(evento.idEvento(), evento.idEstudiante(),
                     cambio.idSesion(), null, CORREO, "RETIRO", "Retiro de convocatoria",
                     "Has sido retirado de la convocatoria de la sesion " + cambio.idSesion()
-                            + ". Su codigo de acceso ya no autoriza esta participacion.", evento.instante()));
+                            + ". Ya no puedes iniciar ni continuar esa actividad.", evento.instante()));
         }
         return List.of();
     }
@@ -29,7 +29,6 @@ public class ObservadorCorreoNotificacion implements ObservadorNotificacion {
         return new SolicitudNotificacion(evento.idEvento(), evento.idEstudiante(), sesion.idSesion(), null,
                 CORREO, "CONVOCATORIA", "Convocatoria academica", "Caso: " + sesion.nombreCaso()
                 + "\n" + sesion.mensaje() + "\nAcceso: " + enlace
-                + "\nSesión: " + sesion.idSesion()
-                + "\nCodigo: " + sesion.codigoAcceso(), evento.instante());
+                + "\nSesión: " + sesion.idSesion(), evento.instante());
     }
 }

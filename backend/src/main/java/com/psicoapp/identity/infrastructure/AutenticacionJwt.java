@@ -18,6 +18,6 @@ public class AutenticacionJwt implements Autenticacion {
     public DatosToken ingresar(String correo, String clave) {
         var identidad = proveedor.authenticate(UsernamePasswordAuthenticationToken.unauthenticated(correo, clave));
         var token = tokens.emitir(identidad, clave);
-        return new DatosToken(token.getTokenValue(), "Bearer", token.getExpiresAt());
+        return new DatosToken(token.getTokenValue(), "Bearer", token.getExpiresAt(), Boolean.TRUE.equals(token.getClaimAsBoolean("claveInicial")));
     }
 }

@@ -4,6 +4,9 @@ import java.util.UUID;
 
 /** Ingreso inicial: el consumidor debe mantener esta misma transaccion al crear el intento. */
 public interface AutorizacionConvocatorias {
-    void exigirAcceso(UUID estudiante, UUID sesion, String codigo);
+    default void exigirAcceso(UUID estudiante, UUID sesion) {
+        exigirAcceso(estudiante, sesion, null);
+    }
+    void exigirAcceso(UUID estudiante, UUID sesion, String codigoIgnorado);
     void exigirParticipacionVigente(UUID estudiante, UUID sesion);
 }

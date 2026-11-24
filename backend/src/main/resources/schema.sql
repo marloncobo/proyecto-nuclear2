@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS usuario (
     nombre VARCHAR(120) NOT NULL,
     correo VARCHAR(180) NOT NULL UNIQUE,
     contrasena_hash VARCHAR(255) NULL,
+    clave_inicial BOOLEAN NOT NULL DEFAULT FALSE,
     activo BOOLEAN NOT NULL,
     fecha_creacion TIMESTAMP NOT NULL,
     id_rol CHAR(36) NOT NULL,

@@ -23,11 +23,14 @@ las rutas requieren `Authorization: Bearer <token>` y cuerpos JSON con
 
 | Método y ruta | Acceso | Entrada | Resultado |
 | --- | --- | --- | --- |
-| `POST /api/identidad/ingreso` | Público | `correo`, `clave` | Token JWT Bearer, tipo y vencimiento. La clave también puede ser un código de convocatoria estudiantil. |
+| `POST /api/identidad/ingreso` | Público | `correo`, `clave` | Token JWT Bearer, tipo, vencimiento y estado de cambio de contraseña inicial. |
 | `GET /api/identidad/yo` | Autenticado | — | Identidad y rol de la cuenta actual. |
+| `PUT /api/identidad/clave-inicial` | Estudiante pendiente | `clave` | Sustituye la contraseña inicial e invalida el token temporal. |
 | `GET /api/identidad/usuarios` | Administrador | Filtros opcionales `rol`, `activo`, `busqueda` | Usuarios administrables ordenados. |
 | `GET /api/identidad/usuarios/{idUsuario}` | Administrador | — | Detalle del usuario, sin credenciales. |
 | `POST /api/identidad/docentes` | Administrador | `correo`, `nombre`, `clave` | Docente creado. |
+| `POST /api/identidad/estudiantes` | Docente o administrador | `correo`, `nombre`, `clave` | Estudiante creado con contraseña inicial, sin exponer credenciales. |
+| `PUT /api/identidad/estudiantes/{id}/clave-inicial` | Docente o administrador | `clave` | Asigna contraseña inicial solo a una cuenta estudiantil que aún no tiene. |
 | `PUT /api/identidad/docentes/{idUsuario}` | Administrador | `correo`, `nombre` | Docente actualizado. |
 | `PUT /api/identidad/usuarios/{idUsuario}/estado` | Administrador | `activo` | Usuario activado o desactivado. |
 | `PUT /api/identidad/usuarios/{idUsuario}/rol` | Administrador | `rol` | Usuario con el rol actualizado. |
@@ -77,8 +80,11 @@ se conserva en los DTO de `ServicioCreacionCaso`.
 
 | Método y ruta | Acceso | Entrada | Resultado |
 | --- | --- | --- | --- |
-| `POST /api/participaciones/ingreso` | Estudiante convocado | `idSesion`, `codigoAcceso` | Caso visible sin claves de corrección e intento nuevo o recuperado. |
-| `POST /api/participaciones` | Estudiante convocado | `idSesion`, `codigoAcceso` | Intento creado con las preguntas ordenadas del caso. |
+| `GET /api/estudiante/actividades` | Estudiante | — | Convocatorias propias con acción disponible; no crea intentos. |
+| `GET /api/estudiante/actividades/{idSesion}` | Estudiante convocado | — | Caso visible e intento existente, sin claves de corrección ni creación implícita. |
+| `POST /api/estudiante/actividades/{idSesion}/iniciar` | Estudiante convocado | — | Intento creado explícitamente con las preguntas ordenadas del caso. |
+| `GET /api/estudiante/resultados` | Estudiante | — | Intentos finalizados propios, soluciones, explicaciones y valoraciones. |
+| `POST /api/participaciones` | Estudiante convocado | `idSesion` | Contrato de inicio compatible sin código de convocatoria. |
 | `GET /api/participaciones/{id}` | Estudiante propietario | — | Estado y progreso del intento. |
 | `PUT /api/participaciones/{id}/respuestas` | Estudiante propietario | `idPregunta`, `idOpcion` | Intento con la respuesta guardada. |
 | `POST /api/participaciones/{id}/avanzar` | Estudiante propietario | — | Intento situado en la siguiente pregunta. |
@@ -88,7 +94,7 @@ se conserva en los DTO de `ServicioCreacionCaso`.
 
 El docente responsable puede usar `PUT /api/sesiones/{sesion}/reintentos/{estudiante}`
 para autorizar un reintento de un estudiante convocado con un intento anterior
-cerrado. El estudiante vuelve a entrar con su código dentro de la ventana
+cerrado. El estudiante vuelve a iniciar explícitamente dentro de la ventana
 vigente. Cada autorización se consume con el siguiente intento. Solo puede
 existir un intento activo por estudiante entre todas las sesiones.
 

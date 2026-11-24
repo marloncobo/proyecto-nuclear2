@@ -6,7 +6,13 @@ import java.util.Objects;
 import java.util.UUID;
 
 public record Usuario(UUID id, String correo, String nombre, Rol rol, String hashClave,
-                   boolean activo, Instant fechaCreacion) {
+                   boolean activo, Instant fechaCreacion, boolean claveInicial) {
+    public Usuario(UUID id, String correo, String nombre, Rol rol, String hashClave,
+            boolean activo, Instant fechaCreacion) {
+        this(id, correo, nombre, rol, hashClave, activo, fechaCreacion, false);
+    }
+
+    @Override public String toString() { return "Usuario[id=" + id + "]"; }
     public Usuario {
         Objects.requireNonNull(id, "El identificador es obligatorio");
         correo = normalizarCorreo(correo);
@@ -29,6 +35,6 @@ public record Usuario(UUID id, String correo, String nombre, Rol rol, String has
     }
 
     public Usuario conRol(Rol rol) {
-        return new Usuario(id, correo, nombre, rol, hashClave, activo, fechaCreacion);
+        return new Usuario(id, correo, nombre, rol, hashClave, activo, fechaCreacion, claveInicial);
     }
 }

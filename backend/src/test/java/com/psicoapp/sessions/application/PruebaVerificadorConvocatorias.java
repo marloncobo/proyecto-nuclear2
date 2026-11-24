@@ -12,7 +12,7 @@ import static org.mockito.Mockito.*;
 
 class PruebaVerificadorConvocatorias {
     @Test
-    void codigoSeAsociaAEstudianteYSesionYRespetaMitadDelHorario() {
+    void cuentaSeAsociaASesionYRespetaMitadDelHorario() {
         var convocatorias = mock(RepositorioConvocatorias.class);
         var sesiones = mock(RepositorioSesiones.class);
         var identidades = mock(DirectorioIdentidad.class);
@@ -22,6 +22,7 @@ class PruebaVerificadorConvocatorias {
         String codigo = UUID.randomUUID().toString().replace("-", "");
         var convocatoria = new Convocatoria(UUID.randomUUID(), sesion.id(), estudiante, Convocatoria.resumir(codigo), true);
         when(convocatorias.buscarAutorizada(estudiante, Convocatoria.resumir(codigo))).thenReturn(Optional.of(convocatoria));
+        when(convocatorias.buscarAutorizada(estudiante, sesion.id())).thenReturn(Optional.of(convocatoria));
         when(sesiones.buscarPorId(sesion.id())).thenReturn(Optional.of(sesion));
         when(sesiones.bloquearPorId(sesion.id())).thenReturn(Optional.of(sesion));
         var verificador = new VerificadorConvocatorias(convocatorias, sesiones, reloj, identidades);
@@ -39,7 +40,7 @@ class PruebaVerificadorConvocatorias {
     }
 
     @Test
-    void codigoDeOtraConvocatoriaNoAutorizaLaSesionSolicitada() {
+    void cuentaAjenaNoAutorizaLaSesionSolicitada() {
         var convocatorias = mock(RepositorioConvocatorias.class);
         var sesiones = mock(RepositorioSesiones.class);
         var identidades = mock(DirectorioIdentidad.class);
@@ -47,8 +48,6 @@ class PruebaVerificadorConvocatorias {
         UUID estudiante = UUID.randomUUID();
         String codigo = UUID.randomUUID().toString().replace("-", "");
         when(sesiones.bloquearPorId(sesion.id())).thenReturn(Optional.of(sesion));
-        when(convocatorias.buscarAutorizada(estudiante, Convocatoria.resumir(codigo)))
-                .thenReturn(Optional.of(new Convocatoria(UUID.randomUUID(), UUID.randomUUID(), estudiante, Convocatoria.resumir(codigo), true)));
         var verificador = new VerificadorConvocatorias(convocatorias, sesiones,
                 Clock.fixed(DatosPruebaSesiones.INICIO, ZoneOffset.UTC), identidades);
         assertThrows(AccesoDenegado.class, () -> verificador.exigirAcceso(estudiante, sesion.id(), codigo));

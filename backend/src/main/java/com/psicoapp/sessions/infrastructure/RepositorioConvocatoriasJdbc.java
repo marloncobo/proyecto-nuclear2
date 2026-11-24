@@ -37,6 +37,18 @@ public class RepositorioConvocatoriasJdbc implements RepositorioConvocatorias {
     }
 
     @Override
+    public List<Convocatoria> listarPorEstudiante(UUID idEstudiante) {
+        return jdbc.sql("SELECT * FROM convocatoria WHERE id_estudiante=? ORDER BY id_sesion")
+                .param(idEstudiante.toString()).query(this::mapear).list();
+    }
+
+    @Override
+    public Optional<Convocatoria> buscarAutorizada(UUID idEstudiante, UUID idSesion) {
+        return jdbc.sql("SELECT * FROM convocatoria WHERE id_estudiante=? AND id_sesion=? AND estado='AUTORIZADA'")
+                .params(idEstudiante.toString(), idSesion.toString()).query(this::mapear).optional();
+    }
+
+    @Override
     public Optional<Convocatoria> buscarAutorizada(UUID idEstudiante, String resumenCodigo) {
         return jdbc.sql("SELECT * FROM convocatoria WHERE id_estudiante=? AND codigo_acceso=? AND estado='AUTORIZADA'")
                 .params(idEstudiante.toString(), resumenCodigo).query(this::mapear).optional();

@@ -66,16 +66,28 @@ public class RepositorioUsuariosJdbc implements RepositorioUsuarios {
                     .params(usuario.rol().name(), usuario.id().toString()).update();
         } else {
             jdbc.sql("""
-                    INSERT INTO usuario (id_usuario, correo, nombre, id_rol, contrasena_hash, activo, fecha_creacion)
-                    VALUES (?, ?, ?, (SELECT id_rol FROM rol WHERE nombre = ?), ?, ?, ?)
+                    INSERT INTO usuario (id_usuario, correo, nombre, id_rol, contrasena_hash, activo, fecha_creacion, clave_inicial)
+                    VALUES (?, ?, ?, (SELECT id_rol FROM rol WHERE nombre = ?), ?, ?, ?, ?)
                     """).param(usuario.id().toString()).param(usuario.correo()).param(usuario.nombre()).param(usuario.rol().name())
-                    .param(usuario.hashClave()).param(usuario.activo()).param(Timestamp.from(usuario.fechaCreacion())).update();
+                    .param(usuario.hashClave()).param(usuario.activo()).param(Timestamp.from(usuario.fechaCreacion())).param(usuario.claveInicial()).update();
         }
+    }
+
+    @Override
+    public boolean actualizarClaveEstudiante(UUID id, String hashAnterior, String hashNuevo, boolean inicial) {
+        return jdbc.sql("""
+                UPDATE usuario SET contrasena_hash = :nuevo, clave_inicial = :inicial
+                WHERE id_usuario = :id AND activo = TRUE
+                  AND id_rol = (SELECT id_rol FROM rol WHERE nombre = 'ESTUDIANTE')
+                  AND ((:anterior IS NULL AND contrasena_hash IS NULL)
+                    OR (:anterior IS NOT NULL AND clave_inicial = TRUE AND contrasena_hash = :anterior))
+                """).param("nuevo", hashNuevo).param("inicial", inicial)
+                .param("id", id.toString()).param("anterior", hashAnterior, java.sql.Types.VARCHAR).update() == 1;
     }
 
     private Usuario mapear(ResultSet fila, int indice) throws SQLException {
         return new Usuario(UUID.fromString(fila.getString("id_usuario")), fila.getString("correo"), fila.getString("nombre"),
                 Rol.valueOf(fila.getString("rol")), fila.getString("contrasena_hash"), fila.getBoolean("activo"),
-                fila.getTimestamp("fecha_creacion").toInstant());
+                fila.getTimestamp("fecha_creacion").toInstant(), fila.getBoolean("clave_inicial"));
     }
 }

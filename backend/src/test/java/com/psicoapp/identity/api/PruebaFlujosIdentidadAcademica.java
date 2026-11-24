@@ -239,22 +239,21 @@ class PruebaFlujosIdentidadAcademica {
     }
 
     @Test
-    @DisplayName("CP-ID-010: alta y reutilización en mayúsculas devuelven 201 y el mismo UUID")
+    @DisplayName("RF-28/RN-21: el correo único no se duplica ni reemplaza credenciales")
     void registraYReutilizaEstudiantePorHttp() throws Exception {
-        String id = null;
-        for (String correo : new String[]{"nuevo@universidad.example", "NUEVO@UNIVERSIDAD.EXAMPLE"}) {
-            String respuesta = modificar(post("/api/identidad/estudiantes"), DOCENTE,
-                    "{\"correo\":\"" + correo + "\",\"nombre\":\"Estudiante nuevo\"}")
-                    .andExpect(status().isCreated()).andExpect(jsonPath("$.rol").value("ESTUDIANTE"))
-                    .andExpect(jsonPath("$.correo").value("nuevo@universidad.example"))
-                    .andExpect(jsonPath("$.clave").doesNotExist()).andExpect(jsonPath("$.hashClave").doesNotExist())
-                    .andReturn().getResponse().getContentAsString();
-            String obtenido = JsonPath.read(respuesta, "$.id");
-            if (id == null) id = obtenido;
-            else assertEquals(id, obtenido);
-        }
+        String respuesta = modificar(post("/api/identidad/estudiantes"), DOCENTE,
+                "{\"correo\":\"nuevo@universidad.example\",\"nombre\":\"Estudiante nuevo\",\"clave\":\"ClaveInicial2026!\"}")
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.rol").value("ESTUDIANTE"))
+                .andExpect(jsonPath("$.correo").value("nuevo@universidad.example"))
+                .andExpect(jsonPath("$.clave").doesNotExist()).andExpect(jsonPath("$.hashClave").doesNotExist())
+                .andReturn().getResponse().getContentAsString();
+        String id = JsonPath.read(respuesta, "$.id");
+        modificar(post("/api/identidad/estudiantes"), DOCENTE,
+                "{\"correo\":\"NUEVO@UNIVERSIDAD.EXAMPLE\",\"nombre\":\"Otro\",\"clave\":\"NoSobrescribir2026!\"}")
+                .andExpect(status().isConflict());
         assertEquals(5, cuentas.size());
-        assertNull(cuentas.get(UUID.fromString(id)).hashClave());
+        assertNotNull(cuentas.get(UUID.fromString(id)).hashClave());
+        assertTrue(cuentas.get(UUID.fromString(id)).claveInicial());
         verify(usuarios, times(1)).guardar(any());
     }
 
@@ -264,7 +263,7 @@ class PruebaFlujosIdentidadAcademica {
     void rechazaCorreoEstudiantilPorHttp(String correo) throws Exception {
         var inicial = Map.copyOf(cuentas);
         modificar(post("/api/identidad/estudiantes"), DOCENTE,
-                "{\"correo\":\"" + correo + "\",\"nombre\":\"Prueba\"}")
+                "{\"correo\":\"" + correo + "\",\"nombre\":\"Prueba\",\"clave\":\"ClaveInicial2026!\"}")
                 .andExpect(status().is(correo.equals(DOCENTE) ? 409 : 400));
         assertEquals(inicial, cuentas);
         verify(usuarios, never()).guardar(any());

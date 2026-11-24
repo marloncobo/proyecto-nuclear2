@@ -82,7 +82,11 @@ public class ServicioJwt {
         var datos = JwtClaimsSet.builder().issuer(EMISOR).audience(List.of(EMISOR))
                 .subject(usuario.id().toString()).issuedAt(ahora).expiresAt(ahora.plus(duracion))
                 .id(UUID.randomUUID().toString()).claim("rol", usuario.rol().name());
-        if (usuario.rol() == Rol.ESTUDIANTE) datos.claim("convocatoria", resumir(credencial));
+        if (usuario.rol() == Rol.ESTUDIANTE) {
+            if (!(identidad.getDetails() instanceof Usuario autenticado)
+                    || !java.util.Objects.equals(autenticado.hashClave(), usuario.hashClave())) throw invalido();
+            datos.claim("claveInicial", usuario.claveInicial());
+        }
         return codificador.encode(JwtEncoderParameters.from(
                 JwsHeader.with(MacAlgorithm.HS256).build(), datos.build()));
     }
@@ -100,25 +104,18 @@ public class ServicioJwt {
         }
         var usuario = usuarios.buscarPorId(id).filter(Usuario::activo).orElseThrow(this::invalido);
         if (!usuario.rol().name().equals(token.getClaimAsString("rol"))) throw invalido();
+        String autoridad = "ROLE_" + usuario.rol().name();
         if (usuario.rol() == Rol.ESTUDIANTE) {
-            var verificador = accesoEstudiantil.getIfAvailable();
-            if (verificador == null || !verificador.verificarResumen(id, token.getClaimAsString("convocatoria")))
-                throw invalido();
+            if (usuario.hashClave() == null || !Boolean.valueOf(usuario.claveInicial())
+                    .equals(token.getClaimAsBoolean("claveInicial"))) throw invalido();
+            if (usuario.claveInicial()) autoridad = "CAMBIO_CLAVE_INICIAL";
         }
         return new JwtAuthenticationToken(token,
-                List.of(new SimpleGrantedAuthority("ROLE_" + usuario.rol().name())), id.toString());
+                List.of(new SimpleGrantedAuthority(autoridad)), id.toString());
     }
 
     private InvalidBearerTokenException invalido() {
         return new InvalidBearerTokenException("Token invalido");
     }
 
-    private String resumir(String valor) {
-        try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                    .digest(valor.getBytes(StandardCharsets.UTF_8)));
-        } catch (java.security.NoSuchAlgorithmException excepcion) {
-            throw new IllegalStateException(excepcion);
-        }
-    }
 }

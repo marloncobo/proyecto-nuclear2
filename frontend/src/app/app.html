@@ -1,5 +1,5 @@
-@if (sesionEstudiante() !== null && (!api.conectado() || api.usuario()?.rol === 'ESTUDIANTE')) {
-  <psico-ingreso [sesionEstudiante]="sesionEstudiante()" />
+@if (api.conectado() && api.usuario()?.rol === 'ESTUDIANTE') {
+  <psico-espacio-estudiante [sesionDestino]="destinoEstudiante() ?? sesionEstudiante()" />
 } @else if (!api.conectado() && !demostracion()) {
   <psico-ingreso (autenticado)="completarIngreso()" (explorar)="iniciarDemostracion()" />
 } @else {
@@ -1300,6 +1300,16 @@
                   required
                   email
                   maxlength="180"
+              /></label>
+              <label
+                >Contraseña inicial<input
+                  name="clave"
+                  type="password"
+                  [(ngModel)]="altaEstudiante.clave"
+                  required
+                  minlength="8"
+                  maxlength="72"
+                  autocomplete="new-password"
               /></label>
               <button class="boton primario" [disabled]="ocupado() || alta.invalid">
                 Registrar y agregar

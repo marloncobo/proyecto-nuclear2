@@ -38,19 +38,15 @@ public class ProveedorAutenticacionIdentidad implements AuthenticationProvider {
         }
         Usuario usuario = usuarios.buscarPorCorreo(correo).filter(Usuario::activo).orElseThrow(this::credencialesInvalidas);
         String secreto = autenticacion.getCredentials() == null ? "" : autenticacion.getCredentials().toString();
-        boolean valido;
-        if (usuario.rol() == Rol.ESTUDIANTE) {
-            VerificadorAccesoEstudiante verificador = accesoEstudiantil.getIfAvailable();
-            valido = verificador != null && verificador.verificar(usuario.id(), secreto);
-        } else {
-            valido = secreto.getBytes(StandardCharsets.UTF_8).length <= 72
-                    && claves.matches(secreto, usuario.hashClave());
-        }
+        boolean valido = usuario.hashClave() != null && secreto.getBytes(StandardCharsets.UTF_8).length <= 72
+                && claves.matches(secreto, usuario.hashClave());
         if (!valido) {
             throw credencialesInvalidas();
         }
-        return UsernamePasswordAuthenticationToken.authenticated(usuario.id().toString(), null,
+        var identidad = UsernamePasswordAuthenticationToken.authenticated(usuario.id().toString(), null,
                 List.of(new SimpleGrantedAuthority("ROLE_" + usuario.rol().name())));
+        identidad.setDetails(usuario);
+        return identidad;
     }
 
     @Override

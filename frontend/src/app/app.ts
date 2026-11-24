@@ -6,6 +6,7 @@ import { Ingreso } from './ingreso';
 import { EditorCaso } from './editor-caso';
 import { SelectorEstudiantes } from './selector-estudiantes';
 import { Administracion } from './administracion';
+import { EspacioEstudiante } from './espacio-estudiante';
 import {
   ServicioApi,
   Caso,
@@ -21,12 +22,13 @@ import {
 import { nombreEtiqueta } from './etiqueta-usuario';
 @Component({
   selector: 'psico-raiz',
-  imports: [FormsModule, DatePipe, Administracion, Ingreso, EditorCaso, SelectorEstudiantes],
+  imports: [FormsModule, DatePipe, Administracion, Ingreso, EditorCaso, SelectorEstudiantes, EspacioEstudiante],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
 export class Aplicacion {
   readonly sesionEstudiante = signal<string | null>(null);
+  readonly destinoEstudiante = signal<string | null>(null);
   readonly api = inject(ServicioApi);
   private readonly enrutador = inject(Router);
   readonly demostracion = signal(false);
@@ -150,7 +152,7 @@ export class Aplicacion {
     );
   });
   valoraciones: Record<string, string> = {};
-  altaEstudiante = { nombre: '', correo: '' };
+  altaEstudiante = { nombre: '', correo: '', clave: '' };
   convocadosSeleccionados: string[] = [];
   idEstudiante = '';
   nombreEspacio = '';
@@ -183,11 +185,17 @@ export class Aplicacion {
     this.enrutador.events.subscribe((evento) => {
       if (!(evento instanceof NavigationEnd)) return;
       const direccion = this.enrutador.parseUrl(evento.urlAfterRedirects);
+      const segmentos = direccion.root.children['primary']?.segments.map((segmento) => segmento.path) ?? [];
       const sesion = direccion.queryParams['sesion'];
       this.sesionEstudiante.set(
         direccion.root.children['primary']?.segments[0]?.path === 'ingreso' &&
           typeof sesion === 'string'
           ? sesion
+          : null,
+      );
+      this.destinoEstudiante.set(
+        segmentos[0] === 'estudiante' && segmentos[1] === 'actividades' && segmentos[2]
+          ? segmentos[2]
           : null,
       );
       if (
@@ -198,7 +206,12 @@ export class Aplicacion {
       this.demostracion.set(!this.api.conectado() && direccion.queryParams['demostracion'] === '1');
       if (!this.api.conectado() && !this.demostracion()) {
         if (evento.urlAfterRedirects !== '/ingreso')
-          void this.enrutador.navigate(['/ingreso'], { replaceUrl: true });
+          void this.enrutador.navigate(['/ingreso'], {
+            replaceUrl: true,
+            queryParams: segmentos[0] === 'estudiante' && segmentos[1] === 'actividades' && segmentos[2]
+              ? { sesion: segmentos[2] }
+              : undefined,
+          });
         return;
       }
       const vista = direccion.queryParams['vista'] ?? this.menu()[0].id;
@@ -353,7 +366,7 @@ export class Aplicacion {
     this.busquedaResultados.set('');
     this.estadoResultados.set('');
     this.valoraciones = {};
-    this.altaEstudiante = { nombre: '', correo: '' };
+    this.altaEstudiante = { nombre: '', correo: '', clave: '' };
     this.convocadosSeleccionados = [];
     this.programacion = {
       idCaso: '',
@@ -389,7 +402,13 @@ export class Aplicacion {
       this.reiniciarDatosDeCuenta();
       this.modal.set('');
       this.aviso.set('Conexión establecida.');
-      if (this.api.usuario()?.rol === 'ADMINISTRADOR') {
+      if (this.api.usuario()?.rol === 'ESTUDIANTE') {
+        const destino = this.sesionEstudiante();
+        await this.enrutador.navigate(
+          destino ? ['/estudiante', 'actividades', destino] : ['/estudiante', 'actividades'],
+          { replaceUrl: true },
+        );
+      } else if (this.api.usuario()?.rol === 'ADMINISTRADOR') {
         this.aviso.set('');
         this.navegar('administracion');
       } else {
@@ -555,11 +574,19 @@ export class Aplicacion {
 
   async registrarEstudiante() {
     await this.ejecutar(async () => {
-      const estudiante = await this.api.enviar<Usuario>(
-        '/identidad/estudiantes',
-        this.altaEstudiante,
-      );
-      this.altaEstudiante = { nombre: '', correo: '' };
+      let estudiante: Usuario;
+      let existente = false;
+      try {
+        estudiante = await this.api.registrarEstudiante(this.altaEstudiante);
+      } catch (error) {
+        try {
+          estudiante = await this.api.buscarEstudiante(this.altaEstudiante.correo);
+          existente = true;
+        } catch {
+          throw error;
+        }
+      }
+      this.altaEstudiante = { nombre: '', correo: '', clave: '' };
       this.estudiantes.update((lista) =>
         lista.some((actual) => actual.id === estudiante.id) ? lista : [...lista, estudiante],
       );
@@ -567,7 +594,11 @@ export class Aplicacion {
         ...new Set([...this.programacion.estudiantes, estudiante.id]),
       ];
       this.abrir('programar');
-      this.aviso.set('Estudiante registrado y agregado a la convocatoria.');
+      this.aviso.set(
+        existente
+          ? 'La cuenta ya existía y fue seleccionada sin cambiar sus credenciales.'
+          : 'Estudiante registrado y agregado a la convocatoria.',
+      );
     });
   }
 

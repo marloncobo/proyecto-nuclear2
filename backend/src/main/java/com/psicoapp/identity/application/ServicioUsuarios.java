@@ -64,7 +64,7 @@ public class ServicioUsuarios implements DirectorioIdentidad {
             throw new Conflicto("El correo ya esta registrado");
         }
         Usuario actualizado = new Usuario(anterior.id(), normalizado, nombre, anterior.rol(), anterior.hashClave(),
-                anterior.activo(), anterior.fechaCreacion());
+                anterior.activo(), anterior.fechaCreacion(), anterior.claveInicial());
         usuarios.actualizarDatosDocente(idUsuario, actualizado.correo(), actualizado.nombre());
         return representarAdministrado(actualizado);
     }
@@ -74,7 +74,7 @@ public class ServicioUsuarios implements DirectorioIdentidad {
         if (idActor.equals(idUsuario) && !activo) throw new Conflicto("No puede desactivar su propia cuenta");
         Usuario anterior = buscarUsuario(idUsuario);
         Usuario actualizado = new Usuario(anterior.id(), anterior.correo(), anterior.nombre(), anterior.rol(),
-                anterior.hashClave(), activo, anterior.fechaCreacion());
+                anterior.hashClave(), activo, anterior.fechaCreacion(), anterior.claveInicial());
         usuarios.actualizarEstado(idUsuario, activo);
         return representarAdministrado(actualizado);
     }
@@ -93,7 +93,7 @@ public class ServicioUsuarios implements DirectorioIdentidad {
 
     @Transactional(readOnly = true)
     public DatosUsuario buscarEstudiante(UUID idActor, String correo) {
-        exigirRol(idActor, Rol.DOCENTE);
+        exigirGestorEstudiantes(idActor);
         return usuarios.buscarPorCorreo(validarCorreoInstitucional(correo))
                 .filter(u -> u.activo() && u.rol() == Rol.ESTUDIANTE).map(this::representarUsuario)
                 .orElseThrow(() -> new NoEncontrado("Estudiante no encontrado"));
@@ -101,7 +101,7 @@ public class ServicioUsuarios implements DirectorioIdentidad {
 
     @Transactional(readOnly = true)
     public List<DatosUsuario> listarEstudiantes(UUID idActor) {
-        exigirRol(idActor, Rol.DOCENTE);
+        exigirGestorEstudiantes(idActor);
         return usuarios.listar(Rol.ESTUDIANTE, true).stream()
                 .filter(usuario -> dominioInstitucional(usuario.correo()))
                 .map(this::representarUsuario).toList();
@@ -199,21 +199,63 @@ public class ServicioUsuarios implements DirectorioIdentidad {
         }
     }
 
+    public DatosUsuario registrarEstudiante(UUID actor, String correo, String nombre, String clave) {
+        exigirGestorEstudiantes(actor);
+        return crearUsuario(validarCorreoInstitucional(correo), nombre, Rol.ESTUDIANTE, clave);
+    }
+
+    public void asignarClaveInicial(UUID actor, UUID estudiante, String clave) {
+        exigirGestorEstudiantes(actor);
+        exigirEstudiante(estudiante);
+        if (!usuarios.actualizarClaveEstudiante(estudiante, null, codificarClave(clave), true)) {
+            throw new Conflicto("La cuenta ya tiene contraseña");
+        }
+    }
+
+    public void cambiarClaveInicial(UUID estudiante, String clave) {
+        exigirEstudiante(estudiante);
+        var cuenta = buscarUsuario(estudiante);
+        if (!cuenta.claveInicial() || cuenta.hashClave() == null) {
+            throw new AccesoDenegado("La cuenta no tiene un cambio de contraseña pendiente");
+        }
+        String nuevo = codificarClave(clave);
+        if (claves.matches(clave, cuenta.hashClave())) {
+            throw new IllegalArgumentException("La nueva contraseña debe ser distinta de la inicial");
+        }
+        if (!usuarios.actualizarClaveEstudiante(estudiante, cuenta.hashClave(), nuevo, false)) {
+            throw new Conflicto("La contraseña inicial ya fue cambiada");
+        }
+    }
+
+    private void exigirGestorEstudiantes(UUID actor) {
+        var usuario = buscarUsuario(actor);
+        if (!usuario.activo() || (usuario.rol() != Rol.DOCENTE && usuario.rol() != Rol.ADMINISTRADOR)) {
+            throw new AccesoDenegado("El rol no permite gestionar estudiantes");
+        }
+    }
+
+    private String codificarClave(String clave) {
+        if (clave == null || clave.isBlank() || clave.length() < 8
+                || clave.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) {
+            throw new IllegalArgumentException("La contraseña debe tener al menos 8 caracteres y hasta 72 bytes");
+        }
+        return claves.encode(clave);
+    }
+
     private DatosUsuario crearUsuario(String correo, String nombre, Rol rol, String clave) {
         String normalizado = Usuario.normalizarCorreo(correo);
         if (usuarios.buscarPorCorreo(normalizado).isPresent()) {
             throw new Conflicto("El correo ya está registrado");
         }
-        String resumen = null;
-        if (rol != Rol.ESTUDIANTE) {
-            if (clave == null || clave.length() < 8 || clave.length() > 72
-                    || clave.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) {
-                throw new IllegalArgumentException("La contraseña debe tener al menos 8 caracteres y hasta 72 bytes");
-            }
-            resumen = claves.encode(clave);
+        boolean inicial = rol == Rol.ESTUDIANTE && clave != null;
+        String resumen = rol != Rol.ESTUDIANTE || inicial ? codificarClave(clave) : null;
+        Usuario usuario = new Usuario(UUID.randomUUID(), normalizado, nombre, rol, resumen, true,
+                java.time.Instant.now(), inicial);
+        try {
+            usuarios.guardar(usuario);
+        } catch (org.springframework.dao.DuplicateKeyException excepcion) {
+            throw new Conflicto("El correo ya está registrado");
         }
-        Usuario usuario = new Usuario(UUID.randomUUID(), normalizado, nombre, rol, resumen, true, java.time.Instant.now());
-        usuarios.guardar(usuario);
         return representarUsuario(usuario);
     }
 
