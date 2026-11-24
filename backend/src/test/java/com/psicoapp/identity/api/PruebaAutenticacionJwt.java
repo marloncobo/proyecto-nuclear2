@@ -95,18 +95,38 @@ class PruebaAutenticacionJwt {
     }
 
     @Test
-    void retiroDeConvocatoriaInvalidaTokenEstudiantil() throws Exception {
+    void tokenEstudiantilDependeDeLaCuentaYNoDeUnCodigoDeConvocatoria() throws Exception {
         var estudiante = new Usuario(UUID.randomUUID(), "alumna@example.test", "Alumna", Rol.ESTUDIANTE,
-                null, true, Instant.now());
+                claves.encode("clave-estudiante"), true, Instant.now());
         when(usuarios.buscarPorCorreo(estudiante.correo())).thenReturn(Optional.of(estudiante));
         when(usuarios.buscarPorId(estudiante.id())).thenReturn(Optional.of(estudiante));
-        String codigo = "0123456789abcdef0123456789abcdef";
-        when(convocatorias.verificar(estudiante.id(), codigo)).thenReturn(true);
-        when(convocatorias.verificarResumen(eq(estudiante.id()), anyString())).thenReturn(true);
-        String token = ingresar(estudiante.correo(), codigo);
+        String token = ingresar(estudiante.correo(), "clave-estudiante");
         mvc.perform(get("/api/identidad/yo").header("Authorization", "Bearer " + token)).andExpect(status().isOk());
-        when(convocatorias.verificarResumen(eq(estudiante.id()), anyString())).thenReturn(false);
-        mvc.perform(get("/api/identidad/yo").header("Authorization", "Bearer " + token)).andExpect(status().isUnauthorized());
+        verifyNoInteractions(convocatorias);
+    }
+
+    @Test
+    void claveInicialSoloPermiteIdentidadYCambioEInvalidaElTokenTemporal() throws Exception {
+        var estudiante = new Usuario(UUID.randomUUID(), "inicial@example.test", "Inicial", Rol.ESTUDIANTE,
+                claves.encode("ClaveInicial2026!"), true, Instant.now(), true);
+        when(usuarios.buscarPorCorreo(estudiante.correo())).thenReturn(Optional.of(estudiante));
+        when(usuarios.buscarPorId(estudiante.id())).thenReturn(Optional.of(estudiante));
+        String token = ingresar(estudiante.correo(), "ClaveInicial2026!");
+
+        mvc.perform(get("/api/identidad/yo").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/notificaciones").header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+        mvc.perform(put("/api/identidad/clave-inicial").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"clave\":\"ClavePersonal2026!\"}"))
+                .andExpect(status().isNoContent());
+        verify(identidades).cambiarClaveInicial(estudiante.id(), "ClavePersonal2026!");
+
+        when(usuarios.buscarPorId(estudiante.id())).thenReturn(Optional.of(new Usuario(estudiante.id(),
+                estudiante.correo(), estudiante.nombre(), estudiante.rol(), claves.encode("ClavePersonal2026!"),
+                true, estudiante.fechaCreacion(), false)));
+        mvc.perform(get("/api/identidad/yo").header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized());
     }
 
     private String ingresar(String correo, String clave) throws Exception {

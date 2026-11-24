@@ -66,24 +66,20 @@ class PruebaProveedorAutenticacionIdentidad {
     }
 
     @Test
-    @DisplayName("RF-01 / RN-04: estudiante requiere codigo aprobado por el contrato de convocatorias")
-    void autenticaEstudianteSoloConCodigoVerificado() {
+    @DisplayName("RF-01 / RN-20: estudiante se autentica con su contraseña almacenada")
+    void autenticaEstudianteConClave() {
         Usuario estudiante = usuario(Rol.ESTUDIANTE, true);
         when(usuarios.buscarPorCorreo(estudiante.correo())).thenReturn(Optional.of(estudiante));
-        when(proveedorVerificador.getIfAvailable()).thenReturn(verificador);
-        when(verificador.verificar(estudiante.id(), "codigo-ficticio")).thenReturn(true);
-        assertTrue(proveedor.authenticate(credenciales(estudiante.correo(), "codigo-ficticio")).isAuthenticated());
-        verify(verificador).verificar(estudiante.id(), "codigo-ficticio");
+        assertTrue(proveedor.authenticate(credenciales(estudiante.correo(), "clave-ficticia")).isAuthenticated());
+        verifyNoInteractions(proveedorVerificador, verificador);
     }
 
     @Test
-    @DisplayName("RF-01 / RN-04: codigo invalido o integracion ausente deniega acceso")
-    void rechazaEstudianteSinConvocatoriaVerificada() {
+    @DisplayName("RF-01: una contraseña estudiantil incorrecta deniega acceso")
+    void rechazaClaveEstudiantilIncorrecta() {
         Usuario estudiante = usuario(Rol.ESTUDIANTE, true);
         when(usuarios.buscarPorCorreo(estudiante.correo())).thenReturn(Optional.of(estudiante));
-        assertThrows(BadCredentialsException.class, () -> proveedor.authenticate(credenciales(estudiante.correo(), "codigo")));
-        when(proveedorVerificador.getIfAvailable()).thenReturn(verificador);
-        assertThrows(BadCredentialsException.class, () -> proveedor.authenticate(credenciales(estudiante.correo(), "codigo")));
+        assertThrows(BadCredentialsException.class, () -> proveedor.authenticate(credenciales(estudiante.correo(), "incorrecta")));
     }
 
     private UsernamePasswordAuthenticationToken credenciales(String correo, String secreto) {
@@ -92,6 +88,6 @@ class PruebaProveedorAutenticacionIdentidad {
 
     private Usuario usuario(Rol rol, boolean activo) {
         return new Usuario(UUID.randomUUID(), "usuario@universidad.edu.co", "Usuario ficticio", rol,
-                rol == Rol.ESTUDIANTE ? null : claves.encode("clave-ficticia"), activo, Instant.now());
+                claves.encode("clave-ficticia"), activo, Instant.now());
     }
 }

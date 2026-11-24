@@ -195,22 +195,25 @@ class PruebaPersistenciaMysqlIT {
     }
 
     @Test
-    @DisplayName("CP-ID-010/014: estudiante reutilizado conserva UUID y contraseña nula; sin convocatoria recibe 401")
-    void reutilizaEstudiantePersistido() throws Exception {
-        String id = null;
-        for (String correo : new String[]{"alumno@universidad.example", "ALUMNO@UNIVERSIDAD.EXAMPLE"}) {
-            String respuesta = modificar(post("/api/identidad/estudiantes"), DOCENTE,
-                    "{\"correo\":\"" + correo + "\",\"nombre\":\"Alumno\"}")
-                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-            String obtenido = JsonPath.read(respuesta, "$.id");
-            if (id == null) id = obtenido;
-            else assertEquals(id, obtenido);
-        }
-        assertEquals(1, jdbc.sql("SELECT COUNT(*) FROM usuario WHERE correo=? AND contrasena_hash IS NULL")
-                .param("alumno@universidad.example").query(Integer.class).single());
+    @DisplayName("CP-ID-010/014: alta estudiantil persiste BCrypt y un duplicado no cambia la cuenta")
+    void duplicadoNoModificaEstudiantePersistido() throws Exception {
+        String correo = "alumno@universidad.example";
+        modificar(post("/api/identidad/estudiantes"), DOCENTE,
+                "{\"correo\":\"" + correo + "\",\"nombre\":\"Alumno\",\"clave\":\"" + CLAVE + "\"}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.rol").value("ESTUDIANTE"))
+                .andExpect(jsonPath("$.clave").doesNotExist());
+        var anterior = cuentas();
+        String hash = jdbc.sql("SELECT contrasena_hash FROM usuario WHERE correo = ? AND clave_inicial = TRUE")
+                .param(correo).query(String.class).single();
+        assertTrue(claves.matches(CLAVE, hash));
+        modificar(post("/api/identidad/estudiantes"), ADMINISTRADOR,
+                "{\"correo\":\"ALUMNO@UNIVERSIDAD.EXAMPLE\",\"nombre\":\"Otro nombre\",\"clave\":\"OtraClave2026!\"}")
+                .andExpect(status().isConflict());
+        assertEquals(anterior, cuentas());
         assertEquals(4, cuentas().size());
         mvc.perform(post("/api/identidad/ingreso").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"correo\":\"alumno@universidad.example\",\"clave\":\"CodigoNoVerificable\"}"))
+                        .content("{\"correo\":\"" + correo + "\",\"clave\":\"OtraClave2026!\"}"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -220,7 +223,7 @@ class PruebaPersistenciaMysqlIT {
     void rechazaCorreoEstudianteSinPersistir(String correo) throws Exception {
         var anterior = cuentas();
         modificar(post("/api/identidad/estudiantes"), DOCENTE,
-                "{\"correo\":\"" + correo + "\",\"nombre\":\"Alumno\"}")
+                "{\"correo\":\"" + correo + "\",\"nombre\":\"Alumno\",\"clave\":\"" + CLAVE + "\"}")
                 .andExpect(status().is(correo.equals(DOCENTE) ? 409 : 400));
         assertEquals(anterior, cuentas());
     }

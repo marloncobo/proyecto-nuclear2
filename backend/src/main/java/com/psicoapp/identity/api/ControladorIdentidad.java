@@ -81,8 +81,22 @@ public class ControladorIdentidad {
             return "SolicitudDocente[clave=PROTEGIDA]";
         }
     }
-    public record SolicitudEstudiante(@NotBlank @Email @Size(max = 180) String correo,
-            @NotBlank @Size(max = 120) String nombre) { }
+    public record SolicitudClave(@NotBlank @Size(min = 8, max = 72) String clave) {
+        @Override public String toString() { return "SolicitudClave[PROTEGIDA]"; }
+    }
+
+    @PutMapping("/estudiantes/{id}/clave-inicial")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void asignarClaveInicial(Principal principal, @PathVariable UUID id,
+            @Valid @RequestBody SolicitudClave solicitud) {
+        identidades.asignarClaveInicial(UUID.fromString(principal.getName()), id, solicitud.clave());
+    }
+
+    @PutMapping("/clave-inicial")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void cambiarClaveInicial(Principal principal, @Valid @RequestBody SolicitudClave solicitud) {
+        identidades.cambiarClaveInicial(UUID.fromString(principal.getName()), solicitud.clave());
+    }
     public record SolicitudRol(@NotNull Rol rol) { }
     public record SolicitudPermiso(@NotNull Boolean habilitado) { }
 
@@ -105,8 +119,8 @@ public class ControladorIdentidad {
 
     @PostMapping("/estudiantes")
     @ResponseStatus(HttpStatus.CREATED)
-    public DatosUsuario registrarEstudiante(Principal principal, @Valid @RequestBody SolicitudEstudiante solicitud) {
-        return identidades.registrarEstudiante(UUID.fromString(principal.getName()), solicitud.correo(), solicitud.nombre());
+    public DatosUsuario registrarEstudiante(Principal principal, @Valid @RequestBody SolicitudDocente solicitud) {
+        return identidades.registrarEstudiante(UUID.fromString(principal.getName()), solicitud.correo(), solicitud.nombre(), solicitud.clave());
     }
 
     @PutMapping("/usuarios/{idUsuario}/rol")

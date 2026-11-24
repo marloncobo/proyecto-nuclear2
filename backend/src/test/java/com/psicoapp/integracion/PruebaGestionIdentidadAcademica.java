@@ -237,7 +237,7 @@ class PruebaGestionIdentidadAcademica {
                     .andExpect(status().isBadRequest());
         }
         mvc.perform(comoAdministrador(get("/api/identidad/estudiantes").param("correo", correoEstudiante)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
         assertThrows(com.psicoapp.shared.exceptions.AccesoDenegado.class, () -> identidades.listarUsuarios(docente, null, null));
         assertThrows(com.psicoapp.shared.exceptions.AccesoDenegado.class, () -> identidades.editarDocente(docente, docente, correoDocente, "Cambio"));
         assertThrows(com.psicoapp.shared.exceptions.AccesoDenegado.class, () -> identidades.cambiarEstado(docente, estudiante, false));
