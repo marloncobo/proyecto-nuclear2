@@ -390,6 +390,43 @@
         @if (error()) {
           <div #avisoError class="error-ingreso" role="alert" tabindex="-1">{{ error() }}</div>
         }
+        @if (requiereCambioClave()) {
+          <form #cambio="ngForm" (ngSubmit)="cambiarClaveInicial(cambio)" novalidate>
+            <p class="instruccion">
+              Por seguridad, define una contraseña personal antes de entrar a tu espacio.
+            </p>
+            <div class="campo">
+              <label for="nueva-clave">Nueva contraseña</label>
+              <input
+                id="nueva-clave"
+                name="nuevaClave"
+                type="password"
+                autocomplete="new-password"
+                [(ngModel)]="nuevaClave"
+                required
+                minlength="8"
+                maxlength="72"
+              />
+            </div>
+            <div class="campo">
+              <label for="confirmar-clave">Confirmar contraseña</label>
+              <input
+                id="confirmar-clave"
+                name="confirmarNuevaClave"
+                type="password"
+                autocomplete="new-password"
+                [(ngModel)]="confirmarNuevaClave"
+                required
+                minlength="8"
+                maxlength="72"
+              />
+            </div>
+            <button class="boton-ingresar" type="submit" [disabled]="ocupado() || cambio.invalid">
+              <span>{{ ocupado() ? 'Guardando…' : 'Guardar y continuar' }}</span>
+              <span aria-hidden="true">↗</span>
+            </button>
+          </form>
+        } @else {
         <form
           #formulario="ngForm"
           (ngSubmit)="ingresar(formulario)"
@@ -469,8 +506,9 @@
             administrador de tu institución.
           </p>
         </form>
+        }
         <p class="ayuda-acceso">
-          <a href="/ingreso?sesion=">Ingresar con código de convocatoria</a>
+          Estudiantes, docentes y administradores usan este mismo acceso.
         </p>
         <div class="separador"><span>¿Quieres conocer Psicoapp?</span></div>
         <button

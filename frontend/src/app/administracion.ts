@@ -50,6 +50,7 @@ export class Administracion implements OnInit {
   readonly seleccionado = signal<UsuarioAdministrado | null>(null);
   readonly vistaModal = signal<'' | 'detalle' | 'registro' | 'rol' | 'estado'>('');
   nuevoDocente = { nombre: '', correo: '', clave: '' };
+  tipoRegistro: 'DOCENTE' | 'ESTUDIANTE' = 'DOCENTE';
   nuevoRol: Rol = 'DOCENTE';
   confirmarCambio = false;
   mostrarClave = false;
@@ -184,6 +185,10 @@ export class Administracion implements OnInit {
       ventana.querySelector<HTMLElement>('#detalle-usuario')?.focus();
     });
   }
+  abrirRegistro(tipo: 'DOCENTE' | 'ESTUDIANTE', evento: Event) {
+    this.tipoRegistro = tipo;
+    this.abrirVentana('registro', evento);
+  }
   cerrarDetalle(evento?: Event) {
     evento?.preventDefault();
     if (this.ocupado()) return;
@@ -305,16 +310,22 @@ export class Administracion implements OnInit {
       return;
     }
     await this.ejecutar(async () => {
-      await this.api.registrarDocente({
+      const datos = {
         nombre: this.nuevoDocente.nombre.trim(),
         correo: this.nuevoDocente.correo.trim(),
         clave,
-      });
+      };
+      if (this.tipoRegistro === 'ESTUDIANTE') await this.api.registrarEstudiante(datos);
+      else await this.api.registrarDocente(datos);
       await this.refrescarListado();
     });
     if (!this.error()) {
       this.cerrarDetalle();
-      this.aviso.set('Docente registrado. Puedes encontrar su cuenta con el filtro de docentes.');
+      this.aviso.set(
+        this.tipoRegistro === 'ESTUDIANTE'
+          ? 'Estudiante registrado con contraseña inicial.'
+          : 'Docente registrado. Puedes encontrar su cuenta con el filtro de docentes.',
+      );
     }
   }
   async cambiarRol() {

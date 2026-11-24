@@ -8,9 +8,12 @@
       <button
         class="boton"
         [disabled]="ocupado() || !cargado()"
-        (click)="abrirVentana('registro', $event)"
+        (click)="abrirRegistro('DOCENTE', $event)"
       >
         <span aria-hidden="true">＋</span> Registrar docente
+      </button>
+      <button class="boton secundario" [disabled]="ocupado() || !cargado()" (click)="abrirRegistro('ESTUDIANTE', $event)">
+        <span aria-hidden="true">＋</span> Agregar estudiante
       </button>
       <button
         id="actualizar-usuarios"
@@ -325,9 +328,9 @@
     }
   } @else if (vistaModal() === 'registro') {
     <p class="sobretitulo">AMPLIAR NUESTRA COMUNIDAD</p>
-    <h2 id="detalle-usuario" class="titulo-modal" tabindex="-1">Registrar docente</h2>
+    <h2 id="detalle-usuario" class="titulo-modal" tabindex="-1">Registrar {{ tipoRegistro === 'ESTUDIANTE' ? 'estudiante' : 'docente' }}</h2>
     <p class="descripcion-modal">
-      Crea una cuenta para que un docente ingrese con su correo y contraseña.
+      Crea una cuenta para que {{ tipoRegistro === 'ESTUDIANTE' ? 'el estudiante' : 'el docente' }} ingrese con su correo y contraseña.
     </p>
     <form
       #registro="ngForm"
@@ -335,7 +338,7 @@
       [attr.aria-busy]="ocupado()"
     >
       <label
-        >Nombre del docente<input
+        >Nombre {{ tipoRegistro === 'ESTUDIANTE' ? 'del estudiante' : 'del docente' }}<input
           name="nombreNuevo"
           [(ngModel)]="nuevoDocente.nombre"
           maxlength="120"
@@ -344,7 +347,7 @@
           autocomplete="off"
       /></label>
       <label
-        >Correo del docente<input
+        >Correo {{ tipoRegistro === 'ESTUDIANTE' ? 'del estudiante' : 'del docente' }}<input
           name="correoNuevo"
           type="email"
           email
@@ -384,7 +387,7 @@
       >
       <div class="acciones pie-detalle">
         <button class="boton" [disabled]="ocupado() || registro.invalid">
-          {{ ocupado() ? 'Registrando…' : 'Crear cuenta docente' }}</button><button
+          {{ ocupado() ? 'Registrando…' : 'Crear cuenta ' + (tipoRegistro === 'ESTUDIANTE' ? 'estudiantil' : 'docente') }}</button><button
           type="button"
           class="boton secundario"
           [disabled]="ocupado()"

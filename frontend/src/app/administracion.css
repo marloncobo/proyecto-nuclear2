@@ -651,13 +651,14 @@ p {
   }
   .barra-administracion {
     width: 100%;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 8px;
   }
   .barra-administracion .boton {
-    flex: 1;
+    flex: 1 1 calc(50% - 8px);
+    min-width: 0;
     padding: 10px 12px;
-    white-space: nowrap;
+    white-space: normal;
     font-size: 13px;
   }
   .filtros.panel {

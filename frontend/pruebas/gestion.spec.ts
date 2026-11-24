@@ -329,12 +329,10 @@ test('administración móvil: filtros, teclado y contenido sin desbordamiento', 
   await pagina.screenshot({ path: 'capturas/detalle-usuario-escritorio.png' });
 });
 
-test('el ingreso de estudiantes no abre funciones del personal', async ({ page: pagina }) => {
+test('el ingreso de estudiantes abre su espacio y no funciones del personal', async ({ page: pagina }) => {
   await simularApi(pagina, 'ESTUDIANTE');
   await ingresar(pagina, 'alumna@example.test');
-  await expect(pagina.getByRole('alert')).toHaveText(
-    'Esta interfaz está disponible para docentes y administradores.',
-  );
+  await expect(pagina.getByRole('heading', { name: '¡Bienvenido!' })).toBeVisible();
   await expect(pagina.getByRole('heading', { name: 'Administración de usuarios.' })).toHaveCount(0);
 });
 
@@ -619,86 +617,44 @@ test('administración: fallo de lectura tras guardar no vuelve a enviar la escri
   expect(estado.solicitudes.filter((s) => s.metodo === 'PUT')).toHaveLength(1);
 });
 
-test('el código de convocatoria abre la simulación sin entrar al panel del personal', async ({
+test('un enlace de convocatoria conserva el destino y el inicio es explícito', async ({
   page: pagina,
 }) => {
   await pagina.clock.install({ time: new Date('2026-11-30T11:59:40Z') });
-  await simularApi(pagina, 'ESTUDIANTE');
-  await pagina.route('**/api/participaciones/intento', (ruta) =>
-    ruta.fulfill({ json: { id: 'intento', estado: 'VENCIDO', respuestas: {} } }),
+  const estado = await simularApi(pagina, 'ESTUDIANTE');
+  const actividad = {
+    idSesion: 'sesion-prueba', idCaso: 'caso', nombreCaso: 'Simulación de prueba',
+    contexto: 'Psicología social', inicioPrevisto: '2026-11-30T11:00:00Z',
+    finPrevisto: '2026-11-30T13:00:00Z', duracionMaximaMin: 30,
+    modoNavegacion: 'RESTRINGIDA', estadoSesion: 'EN_CURSO', lugar: 'Virtual',
+    mensaje: 'Responde con calma', idIntento: null, estadoIntento: null, accion: 'INICIAR',
+  };
+  const preguntas = [
+    { id: 'p1', escenario: 'Escenario', contexto: 'Contexto', enunciado: '¿Qué harías?', opciones: [{ id: 'o1', texto: 'Escuchar al grupo' }] },
+    { id: 'p2', escenario: 'Escenario', contexto: 'Contexto', enunciado: '¿Qué sigue?', opciones: [] },
+  ];
+  const intento = {
+    id: 'intento', idSesion: 'sesion-prueba', inicio: '2026-11-30T11:59:40Z',
+    limite: '2026-11-30T12:30:00Z', fin: null, estado: 'EN_PROGRESO',
+    modoNavegacion: 'RESTRINGIDA', preguntas: ['p1', 'p2'], preguntaActual: 'p1', respuestas: {},
+  };
+  await pagina.route('**/api/estudiante/actividades', (ruta) => ruta.fulfill({ json: [actividad] }));
+  await pagina.route('**/api/estudiante/actividades/sesion-prueba', (ruta) =>
+    ruta.fulfill({ json: { actividad, preguntas, intento: null } }),
+  );
+  await pagina.route('**/api/estudiante/actividades/sesion-prueba/iniciar', (ruta) =>
+    ruta.fulfill({ status: 201, json: intento }),
   );
   await pagina.route('**/api/participaciones/intento/respuestas', (ruta) =>
-    ruta.fulfill({
-      json: {
-        id: 'intento',
-        limite: '2026-11-30T12:00:00Z',
-        estado: 'EN_PROGRESO',
-        modoNavegacion: 'RESTRINGIDA',
-        preguntaActual: 'p1',
-        respuestas: { p1: 'o1' },
-      },
-    }),
+    ruta.fulfill({ json: { ...intento, respuestas: { p1: 'o1' } } }),
   );
-  await pagina.route('**/api/evaluaciones/intento', (ruta) =>
-    ruta.fulfill({
-      json: {
-        resultado: {
-          calificacion: 0,
-          detalles: [
-            {
-              idPregunta: 'p1',
-              contestada: false,
-              correcta: false,
-              retroalimentacion: 'Sin selección',
-            },
-          ],
-        },
-      },
-    }),
-  );
-  await pagina.route('**/api/evaluaciones/intento/valoraciones', (ruta) =>
-    ruta.fulfill({ json: [] }),
-  );
-  await pagina.route('**/api/participaciones/ingreso', async (ruta) => {
-    expect(ruta.request().postDataJSON()).toEqual({
-      idSesion: 'sesion-prueba',
-      codigoAcceso: '123456',
-    });
-    await ruta.fulfill({
-      json: {
-        nombre: 'Simulación de prueba',
-        intento: {
-          id: 'intento',
-          limite: '2026-11-30T12:00:00Z',
-          estado: 'EN_PROGRESO',
-          modoNavegacion: 'RESTRINGIDA',
-          preguntaActual: 'p1',
-          respuestas: {},
-        },
-        preguntas: [
-          {
-            id: 'p1',
-            escenario: 'Escenario',
-            contexto: 'Contexto',
-            enunciado: '¿Qué harías?',
-            opciones: [{ id: 'o1', texto: 'Escuchar al grupo' }],
-          },
-          {
-            id: 'p2',
-            escenario: 'Escenario',
-            contexto: 'Contexto',
-            enunciado: '¿Qué sigue?',
-            opciones: [],
-          },
-        ],
-      },
-    });
-  });
   await pagina.goto('/ingreso?sesion=sesion-prueba');
-  await expect(pagina.getByLabel('Identificador de sesión')).toHaveValue('sesion-prueba');
   await pagina.getByLabel('Correo institucional').fill('alumna+grupo@example.test');
-  await pagina.getByLabel('Código de convocatoria').fill('123456');
-  await pagina.getByRole('button', { name: 'Entrar a la simulación' }).click();
+  await pagina.getByLabel('Contraseña', { exact: true }).fill('clave-ficticia');
+  await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
+  await expect(pagina).toHaveURL(/\/estudiante\/actividades\/sesion-prueba/);
+  expect(estado.solicitudes.filter((solicitud) => solicitud.metodo === 'POST')).toHaveLength(1);
+  await pagina.getByRole('button', { name: 'Iniciar actividad' }).click();
   await expect(pagina.getByRole('heading', { name: 'Simulación de prueba' })).toBeVisible();
   await expect(pagina.getByRole('navigation', { name: 'Navegación principal' })).toHaveCount(0);
   await expect(pagina.getByRole('timer')).toBeVisible();
@@ -707,12 +663,4 @@ test('el código de convocatoria abre la simulación sin entrar al panel del per
   await pagina.getByRole('radio', { name: 'Escuchar al grupo' }).check();
   await expect(pagina.getByText('1 de 2 preguntas respondidas')).toBeVisible();
   await expect(pagina.getByRole('button', { name: 'Siguiente' })).toBeEnabled();
-
-  const evaluacionRecibida = pagina.waitForResponse('**/api/evaluaciones/intento');
-  const valoracionesRecibidas = pagina.waitForResponse('**/api/evaluaciones/intento/valoraciones');
-  await pagina.clock.runFor(20_000);
-  await Promise.all([evaluacionRecibida, valoracionesRecibidas]);
-  await expect(pagina.getByRole('heading', { name: 'Calificación 0' })).toBeVisible();
-  await expect(pagina.getByText('Sin responder', { exact: true })).toBeVisible();
-  await expect(pagina.getByText('¿Qué harías?', { exact: true })).toBeVisible();
 });

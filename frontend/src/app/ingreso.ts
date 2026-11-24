@@ -47,9 +47,12 @@ export class Ingreso {
   readonly ocupado = signal(false);
   readonly error = signal('');
   readonly mostrarClave = signal(false);
+  readonly requiereCambioClave = signal(false);
   readonly avisoError = viewChild<ElementRef<HTMLElement>>('avisoError');
   correo = '';
   clave = '';
+  nuevaClave = '';
+  confirmarNuevaClave = '';
 
   readonly sesionEstudiante = input<string | null>(null);
   codigo = '';
@@ -245,14 +248,45 @@ export class Ingreso {
     }
     this.ocupado.set(true);
     try {
-      await this.api.ingresar(this.correo.trim(), this.clave);
+      const ingreso = await this.api.ingresar(this.correo.trim(), this.clave);
       this.clave = '';
+      if (ingreso.cambioClaveInicial) {
+        this.requiereCambioClave.set(true);
+        return;
+      }
       this.autenticado.emit();
     } catch (error) {
       this.clave = '';
       this.mostrarClave.set(false);
       this.error.set(error instanceof Error ? error.message : 'No fue posible iniciar sesión.');
       setTimeout(() => this.avisoError()?.nativeElement.focus());
+    } finally {
+      this.ocupado.set(false);
+    }
+  }
+
+  async cambiarClaveInicial(formulario: NgForm) {
+    if (this.ocupado()) return;
+    this.error.set('');
+    if (formulario.invalid || this.nuevaClave !== this.confirmarNuevaClave) {
+      formulario.control.markAllAsTouched();
+      if (this.nuevaClave !== this.confirmarNuevaClave)
+        this.error.set('Las contraseñas nuevas no coinciden.');
+      return;
+    }
+    this.ocupado.set(true);
+    const nuevaClave = this.nuevaClave;
+    try {
+      await this.api.cambiarClaveInicial(nuevaClave);
+      this.api.salir();
+      const ingreso = await this.api.ingresar(this.correo.trim(), nuevaClave);
+      if (ingreso.cambioClaveInicial) throw new Error('No fue posible completar el cambio de contraseña.');
+      this.nuevaClave = '';
+      this.confirmarNuevaClave = '';
+      this.requiereCambioClave.set(false);
+      this.autenticado.emit();
+    } catch (error) {
+      this.error.set(error instanceof Error ? error.message : 'No fue posible cambiar la contraseña.');
     } finally {
       this.ocupado.set(false);
     }

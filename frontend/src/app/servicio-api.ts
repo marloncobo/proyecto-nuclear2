@@ -92,6 +92,68 @@ export interface AvisoNotificacion {
   fechaCreacion: string;
   leida: boolean;
 }
+export interface ActividadEstudiante {
+  idSesion: string;
+  idCaso: string;
+  nombreCaso: string;
+  contexto: string;
+  inicioPrevisto: string;
+  finPrevisto: string;
+  duracionMaximaMin: number;
+  modoNavegacion: 'FLEXIBLE' | 'RESTRINGIDA';
+  estadoSesion: string;
+  lugar: string | null;
+  mensaje: string | null;
+  idIntento: string | null;
+  estadoIntento: string | null;
+  accion: 'ESPERAR' | 'INICIAR' | 'CONTINUAR' | 'RESULTADO';
+}
+export interface IntentoEstudiante {
+  id: string;
+  idSesion: string;
+  inicio: string;
+  limite: string;
+  fin: string | null;
+  estado: string;
+  modoNavegacion: 'FLEXIBLE' | 'RESTRINGIDA';
+  preguntas: string[];
+  preguntaActual: string;
+  respuestas: Record<string, string>;
+}
+export interface SimulacionEstudiante {
+  actividad: ActividadEstudiante;
+  preguntas: {
+    id: string;
+    escenario: string;
+    contexto: string;
+    enunciado: string;
+    opciones: { id: string; texto: string }[];
+  }[];
+  intento: IntentoEstudiante | null;
+}
+export interface ResultadoEstudiante {
+  idIntento: string;
+  idSesion: string;
+  nombreCaso: string;
+  estadoIntento: string;
+  inicio: string;
+  fin: string | null;
+  calificacion: number | null;
+  fechaEvaluacion: string | null;
+  respuestas: {
+    idPregunta: string;
+    enunciado: string;
+    idOpcion: string | null;
+    respuesta: string | null;
+    contestada: boolean;
+    correcta: boolean;
+    puntos: number;
+    retroalimentacion: string;
+    respuestasCorrectas: string[];
+    explicaciones: string[];
+  }[];
+  valoraciones: { id: string; mensaje: string; fecha: string }[];
+}
 @Injectable({ providedIn: 'root' })
 export class ServicioApi {
   private readonly enrutador = inject(Router);
@@ -99,15 +161,19 @@ export class ServicioApi {
   readonly conectado = signal(false);
   private autorizacion = '';
   private generacionSesion = 0;
-  async ingresar(correo: string, clave: string, estudiante = false) {
+  async ingresar(correo: string, clave: string, _estudiante = false) {
     const generacionAnterior = this.generacionSesion;
     const generacionIngreso = ++this.generacionSesion;
     const anterior = this.autorizacion;
     try {
-      const ingreso = await this.peticion<{ token: string }>('/identidad/ingreso', 'POST', {
+      const ingreso = await this.peticion<{ token: string; cambioClaveInicial?: boolean }>(
+        '/identidad/ingreso',
+        'POST',
+        {
         correo,
         clave,
-      });
+        },
+      );
       if (this.generacionSesion !== generacionIngreso)
         throw new Error('La cuenta cambió. Vuelve a intentar la operación.');
       if (typeof ingreso.token !== 'string' || ingreso.token.trim() === '')
@@ -118,18 +184,9 @@ export class ServicioApi {
       const usuario = await this.consultar<Usuario>('/identidad/yo');
       if (this.generacionSesion !== generacionIngreso)
         throw new Error('La cuenta cambió. Vuelve a intentar la operación.');
-      if (
-        estudiante
-          ? usuario.rol !== 'ESTUDIANTE'
-          : !['DOCENTE', 'ADMINISTRADOR'].includes(usuario.rol)
-      )
-        throw new Error(
-          estudiante
-            ? 'Usa la cuenta estudiantil indicada en la convocatoria.'
-            : 'Esta interfaz está disponible para docentes y administradores.',
-        );
       this.usuario.set(usuario);
-      this.conectado.set(true);
+      this.conectado.set(!ingreso.cambioClaveInicial);
+      return { usuario, cambioClaveInicial: Boolean(ingreso.cambioClaveInicial) };
     } catch (error) {
       if (this.generacionSesion === generacionIngreso) {
         this.autorizacion = anterior;
@@ -137,6 +194,9 @@ export class ServicioApi {
       }
       throw error;
     }
+  }
+  cambiarClaveInicial(clave: string) {
+    return this.enviar<void>('/identidad/clave-inicial', { clave }, 'PUT');
   }
   salir() {
     this.generacionSesion++;
@@ -159,6 +219,9 @@ export class ServicioApi {
   }
   registrarDocente(datos: { nombre: string; correo: string; clave: string }) {
     return this.enviar<Usuario>('/identidad/docentes', datos);
+  }
+  registrarEstudiante(datos: { nombre: string; correo: string; clave: string }) {
+    return this.enviar<Usuario>('/identidad/estudiantes', datos);
   }
   cambiarRolUsuario(id: string, rol: Rol) {
     return this.enviar<Usuario>(
@@ -210,6 +273,23 @@ export class ServicioApi {
   }
   marcarNotificacionLeida(id: string) {
     return this.enviar<void>(`/notificaciones/${encodeURIComponent(id)}/leida`, undefined, 'PUT');
+  }
+  listarActividadesEstudiante() {
+    return this.consultar<ActividadEstudiante[]>('/estudiante/actividades');
+  }
+  consultarActividadEstudiante(idSesion: string) {
+    return this.consultar<SimulacionEstudiante>(
+      `/estudiante/actividades/${encodeURIComponent(idSesion)}`,
+    );
+  }
+  iniciarActividadEstudiante(idSesion: string) {
+    return this.enviar<IntentoEstudiante>(
+      `/estudiante/actividades/${encodeURIComponent(idSesion)}/iniciar`,
+      undefined,
+    );
+  }
+  listarResultadosEstudiante() {
+    return this.consultar<ResultadoEstudiante[]>('/estudiante/resultados');
   }
   async enviar<T>(ruta: string, datos: unknown, metodo = 'POST'): Promise<T> {
     return this.peticion<T>(ruta, metodo, datos);
