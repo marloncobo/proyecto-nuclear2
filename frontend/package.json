@@ -5,6 +5,8 @@
     "ng": "ng",
     "start": "ng serve --port 3000 --proxy-config proxy.conf.json",
     "build": "ng build",
+    "build:firebase": "ng build && node scripts/configurar-api.mjs",
+    "deploy:firebase": "npm run build:firebase && firebase deploy --only hosting",
     "watch": "ng build --watch --configuration development",
     "test": "playwright test",
     "test:ui": "playwright test --ui",

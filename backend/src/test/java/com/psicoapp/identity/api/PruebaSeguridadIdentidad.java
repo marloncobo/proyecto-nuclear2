@@ -29,7 +29,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = {ControladorIdentidad.class, ControladorEspaciosAcademicos.class}, properties = {
-        "psicoapp.identidad.correo-administrador=", "psicoapp.identidad.clave-administrador="
+        "psicoapp.identidad.correo-administrador=", "psicoapp.identidad.clave-administrador=",
+        "psicoapp.web.origenes-permitidos=https://psicoapp.web.app"
 })
 @Import({ConfiguracionIdentidad.class, ProveedorAutenticacionIdentidad.class})
 class PruebaSeguridadIdentidad {
@@ -44,6 +45,17 @@ class PruebaSeguridadIdentidad {
     void solicitudAnonimaNoEstaAutorizada() throws Exception {
         mvc.perform(get("/api/identidad/yo")).andExpect(status().isUnauthorized());
         verifyNoInteractions(identidades);
+    }
+
+    @Test
+    @DisplayName("El frontend publicado puede completar la solicitud CORS previa")
+    void permiteCorsDelFrontendConfigurado() throws Exception {
+        mvc.perform(options("/api/identidad/ingreso")
+                        .header("Origin", "https://psicoapp.web.app")
+                        .header("Access-Control-Request-Method", "POST")
+                        .header("Access-Control-Request-Headers", "content-type"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "https://psicoapp.web.app"));
     }
 
     @Test

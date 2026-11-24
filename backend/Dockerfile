@@ -24,6 +24,6 @@ USER psicoapp
 EXPOSE 8080
 
 HEALTHCHECK --interval=15s --timeout=3s --start-period=40s --retries=5 \
-  CMD nc -z 127.0.0.1 8080 || exit 1
+  CMD nc -z 127.0.0.1 "${PORT:-8080}" || exit 1
 
 ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-jar", "/app/aplicacion.jar"]

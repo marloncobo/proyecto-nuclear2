@@ -1,5 +1,15 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+
+declare global {
+  interface Window {
+    configuracionPsicoapp?: { urlApi?: string };
+  }
+}
+
+function obtenerUrlApi(): string {
+  return (window.configuracionPsicoapp?.urlApi ?? '').trim().replace(/\/$/, '');
+}
 export interface Opcion {
   id: string;
   texto: string;
@@ -95,6 +105,7 @@ export interface AvisoNotificacion {
 @Injectable({ providedIn: 'root' })
 export class ServicioApi {
   private readonly enrutador = inject(Router);
+  private readonly urlApi = obtenerUrlApi();
   readonly usuario = signal<Usuario | null>(null);
   readonly conectado = signal(false);
   private autorizacion = '';
@@ -224,7 +235,7 @@ export class ServicioApi {
     const generacionSesion = this.generacionSesion;
     let respuesta: Response;
     try {
-      respuesta = await fetch('/api' + ruta, {
+      respuesta = await fetch(this.urlApi + '/api' + ruta, {
         method: metodo,
         credentials: 'omit',
         signal: AbortSignal.timeout(15000),
@@ -238,7 +249,7 @@ export class ServicioApi {
       });
     } catch {
       throw new Error(
-        'No se pudo conectar. Comprueba que el backend está disponible en el puerto 8080.',
+        'No se pudo conectar con el servicio. Comprueba que el backend está disponible.',
       );
     }
     const tipoContenido = respuesta.headers.get('content-type')?.toLowerCase() ?? '';
