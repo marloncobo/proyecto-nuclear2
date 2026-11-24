@@ -37,17 +37,18 @@ rutas implementadas, sus roles, entradas y resultados por módulo.
 
 ## Autenticación JWT
 
-`POST /api/identidad/ingreso` recibe `{"correo":"docente@example.test","clave":"contraseña-o-codigo"}`
-y devuelve `token`, `tipo` (`Bearer`) y `venceEn` (fecha UTC). No requiere autenticación
+`POST /api/identidad/ingreso` recibe `{"correo":"usuario@example.test","clave":"contraseña"}`
+y devuelve `token`, `tipo` (`Bearer`), `venceEn` (fecha UTC) y `cambioClaveInicial`. No requiere autenticación
 ni CSRF; las credenciales incorrectas devuelven 401 y los campos inválidos 400.
 La respuesta usa `Cache-Control: no-store`. Enviar luego `Authorization: Bearer <token>`.
 El frontend ya utiliza este flujo y conserva el token únicamente en memoria.
 
 Los tokens HS256 duran 900 segundos, validan firma, emisor, audiencia y caducidad.
 Cada petición consulta la cuenta: desactivarla, eliminarla o cambiar su rol invalida
-el token. Para estudiantes se valida además el resumen de la convocatoria vigente;
-el JWT no contiene la contraseña ni el código original. Los permisos de negocio
-y la autorización de la sesión concreta siguen comprobándose en sus servicios.
+el token. Los estudiantes también usan una contraseña BCrypt. Si es inicial, el JWT
+solo permite consultar la identidad y ejecutar `PUT /api/identidad/clave-inicial`;
+al sustituirla, ese token deja de ser válido. La autorización de la sesión concreta
+se comprueba contra la convocatoria vigente de la cuenta autenticada.
 
 Configurar `PSICOAPP_JWT_CLAVE` con al menos 32 bytes aleatorios codificados en Base64,
 sin versionarla y usando una clave distinta de la de notificaciones. Alternativamente
@@ -116,10 +117,10 @@ incluidas sesiones nunca iniciadas. Las transiciones usan bloqueo transaccional.
 Rutas docentes: `GET /api/sesiones`, `POST /api/sesiones`, `GET /api/sesiones/{id}`,
 `POST /api/sesiones/{id}/iniciar` y `POST /api/sesiones/{id}/finalizar`.
 Usan JWT Bearer. Programar exige una lista no vacia de UUID
-`estudiantes` institucionales existentes y devuelve codigos iniciales de convocatoria.
+`estudiantes` institucionales existentes. La autorización se asocia directamente a cada cuenta.
 La programacion registra correos pendientes en su misma transaccion.
 `PUT /api/sesiones/{id}/convocados` recibe listas `agregar` y `retirar`,
-actualiza autorizaciones y registra avisos por correo. Reincorporar rota el codigo.
+actualiza autorizaciones y registra avisos por correo.
 El reporte de una sesión cerrada incluye como ausentes con nota cero a los
 estudiantes convocados que no iniciaron ningún intento.
 Consulta [reglas, tiempo, integraciones y pruebas](../docs/pruebas/sesiones.md).
@@ -135,8 +136,11 @@ convocatoria y la ventana de ingreso se delegan a `sessions`. Un planificador
 marca automaticamente como vencidos los intentos cuyo limite individual se
 agota. La finalizacion voluntaria y por vencimiento solicita evaluacion y
 registro del aviso de resultado en la misma transaccion mediante eventos.
-`POST /api/participaciones/ingreso` usa el código y la sesión para iniciar
-o recuperar un intento y entrega las preguntas sin claves de corrección.
+`GET /api/estudiante/actividades/{idSesion}` recupera la actividad y el intento existente
+sin crear uno. `POST /api/estudiante/actividades/{idSesion}/iniciar` es la acción explícita
+que crea el intento y comienza el tiempo. Las preguntas activas no incluyen claves de
+corrección. `GET /api/estudiante/resultados` expone soluciones, explicaciones y valoraciones
+únicamente para intentos finalizados.
 
 ## Evaluacion — calificacion
 
@@ -160,15 +164,15 @@ Un error del canal no revierte la operacion academica.
 
 Rutas para estudiantes y docentes: `GET /api/notificaciones?limite=20&desplazamiento=0`
 y `PUT /api/notificaciones/{id}/leida`. No se acepta un destinatario
-ajeno en el cuerpo. La autenticacion valida codigo no retirado aun despues del
-cierre de la sesion para permitir consultas; iniciar participacion conserva sus
+ajeno en el cuerpo. La autenticacion identifica la cuenta; iniciar o continuar
+participacion conserva sus
 controles independientes de convocatoria, estado y ventana temporal.
 
 Se agregan las tablas `notificacion` y `valoracion_docente` al esquema.
 La dependencia nueva `spring-boot-starter-mail` implementa el puerto SMTP.
 **Antes de convocar:** configurar clave AES persistente, URL de acceso y SMTP
 segun la [guia de notificaciones](../docs/pruebas/notificaciones.md).
-El correo incluye el enlace de ingreso, la sesión y el código de convocatoria.
+El correo incluye el enlace de ingreso, la sesión, el caso y el mensaje docente, sin contraseñas ni códigos.
 Los avisos docentes se reconstruyen de forma idempotente desde sesiones, intentos
 y evaluaciones persistidos: recordatorio próximo, finalización, estudiantes que no
 completaron, evaluaciones disponibles y reporte disponible.
@@ -364,8 +368,12 @@ modificar sus registros. El esquema no migra tablas preexistentes incompatibles.
 Antes de arrancar esta versión con una base creada sin `intento.fecha_fin`, aplica
 una vez [001-fecha-fin-intento.sql](migraciones/001-fecha-fin-intento.sql) en esa base.
 Aplica después [002-autorizacion-reintento.sql](migraciones/002-autorizacion-reintento.sql)
-si la base aún no tiene la tabla `autorizacion_reintento`. Las instalaciones
-nuevas ya incluyen ambos cambios en `schema.sql`. Los intentos
+si la base aún no tiene la tabla `autorizacion_reintento` y
+[003-clave-inicial-estudiante.sql](migraciones/003-clave-inicial-estudiante.sql)
+para incorporar el indicador de cambio obligatorio. Las cuentas estudiantiles antiguas
+sin contraseña se conservan y un docente o administrador puede asignarles una inicial
+mediante la API, sin duplicarlas. Las instalaciones nuevas ya incluyen los cambios en
+`schema.sql`. Los intentos
 cerrados antes del cambio conservan su fecha de fin como desconocida.
 
 ## API mínima
@@ -373,7 +381,7 @@ cerrados antes del cambio conservan su fecha de fin como desconocida.
 La ampliacion de gestion del 18-11-2026 agrega las consultas y ediciones de la
 tabla siguiente. No requiere migraciones: utiliza las tablas y columnas existentes.
 
-`POST /api/identidad/ingreso` utiliza el correo y la contraseña o código para emitir JWT.
+`POST /api/identidad/ingreso` utiliza el correo y la contraseña para emitir JWT.
 El identificador del actor siempre procede de la autenticación del backend.
 Para usarla fuera de localhost, servir la API mediante HTTPS.
 
