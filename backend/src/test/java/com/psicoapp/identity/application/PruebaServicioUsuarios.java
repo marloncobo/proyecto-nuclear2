@@ -184,6 +184,25 @@ class PruebaServicioUsuarios {
     }
 
     @Test
+    @DisplayName("Rechaza dominios no institucionales al crear, editar o asignar el rol docente")
+    void rechazaCorreoNoInstitucionalParaDocente() {
+        Usuario cuentaExterna = usuario(Rol.ADMINISTRADOR, "otra@universidade.edu.co");
+        when(usuarios.buscarPorId(administrador.id())).thenReturn(Optional.of(administrador));
+        when(usuarios.buscarPorId(docente.id())).thenReturn(Optional.of(docente));
+        when(usuarios.buscarPorId(cuentaExterna.id())).thenReturn(Optional.of(cuentaExterna));
+
+        assertThrows(IllegalArgumentException.class, () -> servicio.registrarDocente(
+                administrador.id(), cuentaExterna.correo(), "Docente", "clave-ficticia"));
+        assertThrows(IllegalArgumentException.class, () -> servicio.editarDocente(
+                administrador.id(), docente.id(), cuentaExterna.correo(), "Docente"));
+        assertThrows(IllegalArgumentException.class, () -> servicio.cambiarRol(
+                administrador.id(), cuentaExterna.id(), Rol.DOCENTE));
+
+        verify(usuarios, never()).guardar(any());
+        verify(usuarios, never()).actualizarDatosDocente(any(), anyString(), anyString());
+    }
+
+    @Test
     @DisplayName("RF-04: reutiliza estudiante existente sin duplicar su identidad")
     void reutilizaEstudianteExistente() {
         Usuario estudiante = usuario(Rol.ESTUDIANTE, "estudiante@universidad.edu.co");

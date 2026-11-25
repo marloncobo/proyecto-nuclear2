@@ -14,6 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
@@ -65,9 +66,14 @@ class PruebaRepositorioCasosJdbc {
     private final UUID docente = UUID.randomUUID();
 
     @BeforeEach
-    void preparar() {
-        fuente = new SingleConnectionDataSource("jdbc:h2:mem:" + UUID.randomUUID() + ";MODE=MySQL", "sa", "", true);
-        new ResourceDatabasePopulator(new ClassPathResource("schema.sql")).execute(fuente);
+    void preparar() throws java.sql.SQLException {
+        String url = "jdbc:h2:mem:" + UUID.randomUUID() + ";MODE=MySQL";
+        fuente = new SingleConnectionDataSource(url, "sa", "", true);
+        // Mantiene la base abierta mientras se inicializa el esquema con otra conexión física.
+        try (var conexion = fuente.getConnection()) {
+            new ResourceDatabasePopulator(new ClassPathResource("schema.sql"))
+                    .execute(new DriverManagerDataSource(url, "sa", ""));
+        }
         jdbc = JdbcClient.create(fuente);
         transaccion = new TransactionTemplate(new DataSourceTransactionManager(fuente));
         repositorio = new RepositorioCasosJdbc(jdbc);

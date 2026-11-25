@@ -2,10 +2,12 @@ import { Component, ElementRef, OnInit, effect, inject, signal, viewChild } from
 import { FormsModule } from '@angular/forms';
 import { ServicioApi, Rol, UsuarioAdministrado } from './servicio-api';
 import { EtiquetaUsuario, nombreEtiqueta } from './etiqueta-usuario';
+import { TutorialGuiado } from './tutorial-guiado';
+import { pasosModalesAdministracion } from './pasos-tutorial';
 
 @Component({
   selector: 'psico-administracion',
-  imports: [FormsModule, EtiquetaUsuario],
+  imports: [FormsModule, EtiquetaUsuario, TutorialGuiado],
   templateUrl: './administracion.html',
   styleUrl: './administracion.css',
 })
@@ -20,6 +22,7 @@ export class Administracion implements OnInit {
   readonly estadoAplicado = signal('');
   readonly usuariosVisibles = this.usuarios;
   readonly nombreEtiqueta = nombreEtiqueta;
+  readonly pasosTutorial = pasosModalesAdministracion;
   readonly permisoDocente = signal<boolean | null>(null);
   readonly confirmarPermiso = signal(false);
   readonly errorPermiso = signal('');
@@ -49,7 +52,7 @@ export class Administracion implements OnInit {
   readonly roles = signal<Rol[]>([]);
   readonly seleccionado = signal<UsuarioAdministrado | null>(null);
   readonly vistaModal = signal<'' | 'detalle' | 'registro' | 'rol' | 'estado'>('');
-  nuevoDocente = { nombre: '', correo: '', clave: '' };
+  nuevoPerfil = { nombre: '', correo: '', clave: '' };
   tipoRegistro: 'DOCENTE' | 'ESTUDIANTE' = 'DOCENTE';
   nuevoRol: Rol = 'DOCENTE';
   confirmarCambio = false;
@@ -170,7 +173,8 @@ export class Administracion implements OnInit {
     if (evento && !this.vistaModal()) this.origenDetalle = evento.currentTarget as HTMLElement;
     if (usuario) this.seleccionado.set(usuario);
     if (tipo === 'registro') {
-      this.nuevoDocente = { nombre: '', correo: '', clave: '' };
+      this.tipoRegistro = 'DOCENTE';
+      this.nuevoPerfil = { nombre: '', correo: '', clave: '' };
       this.mostrarClave = false;
     }
     if (tipo === 'rol' && this.seleccionado()) this.nuevoRol = this.seleccionado()!.rol as Rol;
@@ -185,17 +189,13 @@ export class Administracion implements OnInit {
       ventana.querySelector<HTMLElement>('#detalle-usuario')?.focus();
     });
   }
-  abrirRegistro(tipo: 'DOCENTE' | 'ESTUDIANTE', evento: Event) {
-    this.tipoRegistro = tipo;
-    this.abrirVentana('registro', evento);
-  }
   cerrarDetalle(evento?: Event) {
     evento?.preventDefault();
     if (this.ocupado()) return;
     this.ventanaDetalle()?.nativeElement.close();
     this.vistaModal.set('');
     this.seleccionado.set(null);
-    this.nuevoDocente = { nombre: '', correo: '', clave: '' };
+    this.nuevoPerfil = { nombre: '', correo: '', clave: '' };
     this.mostrarClave = false;
     this.confirmarCambio = false;
     this.editando = false;
@@ -227,7 +227,7 @@ export class Administracion implements OnInit {
       ventana.querySelectorAll<HTMLElement>(
         'button:not(:disabled), input:not(:disabled), select:not(:disabled)',
       ),
-    );
+    ).filter((elemento) => !elemento.closest('dialog:not([open])'));
     const primero = controles[0];
     const ultimo = controles.at(-1);
     if (!primero) {
@@ -300,9 +300,9 @@ export class Administracion implements OnInit {
       );
     }
   }
-  async registrarDocente() {
+  async registrarPerfil() {
     if (this.ocupado()) return;
-    const clave = this.nuevoDocente.clave;
+    const clave = this.nuevoPerfil.clave;
     if (clave.length < 8 || clave.length > 72 || new TextEncoder().encode(clave).length > 72) {
       this.error.set(
         'La contraseña debe tener al menos 8 caracteres y ocupar como máximo 72 bytes.',
@@ -311,8 +311,8 @@ export class Administracion implements OnInit {
     }
     await this.ejecutar(async () => {
       const datos = {
-        nombre: this.nuevoDocente.nombre.trim(),
-        correo: this.nuevoDocente.correo.trim(),
+        nombre: this.nuevoPerfil.nombre.trim(),
+        correo: this.nuevoPerfil.correo.trim(),
         clave,
       };
       if (this.tipoRegistro === 'ESTUDIANTE') await this.api.registrarEstudiante(datos);

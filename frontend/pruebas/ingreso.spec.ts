@@ -1,4 +1,5 @@
-﻿import { test, expect, Page } from '@playwright/test';
+﻿import { Page } from '@playwright/test';
+import { test, expect } from './soporte/sin-tutorial-automatico';
 
 async function simularCuenta(pagina: Page, rol = 'DOCENTE') {
   await pagina.route('**/api/**', (ruta) => {
@@ -346,7 +347,7 @@ test('un 401 de la cuenta activa cierra la sesión y un 403 no lo hace', async (
   await expect(pagina.getByRole('navigation')).toHaveCount(0);
 });
 
-test('la recarga exige autenticación sin guardar credenciales en el navegador', async ({
+test('la recarga restaura la vista con el token de la pestaña hasta cerrar sesión', async ({
   page: pagina,
 }) => {
   await simularCuenta(pagina);
@@ -354,6 +355,17 @@ test('la recarga exige autenticación sin guardar credenciales en el navegador',
   await completarFormulario(pagina);
   await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
   await expect(pagina.getByRole('button', { name: 'Mi cuenta' })).toBeVisible();
+  await pagina.getByRole('button', { name: /Notificaciones/ }).click();
+  await expect(pagina).toHaveURL(/vista=notificaciones/);
+  expect(await pagina.evaluate(() => sessionStorage.getItem('psicoapp.token'))).toBe(
+    'ficticio-personal@example.test',
+  );
+  await pagina.reload();
+  await expect(pagina).toHaveURL(/vista=notificaciones/);
+  await expect(pagina.getByRole('button', { name: 'Mi cuenta' })).toBeVisible();
+  await pagina.getByLabel('Cerrar sesión').click();
+  await expect(pagina).toHaveURL(/\/ingreso$/);
+  expect(await pagina.evaluate(() => sessionStorage.getItem('psicoapp.token'))).toBeNull();
   await pagina.reload();
   await expect(pagina).toHaveURL(/\/ingreso$/);
   await expect(pagina.getByLabel('Contraseña', { exact: true })).toHaveValue('');

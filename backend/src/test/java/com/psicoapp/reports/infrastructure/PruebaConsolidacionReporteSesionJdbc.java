@@ -123,8 +123,13 @@ class PruebaConsolidacionReporteSesionJdbc {
         assertEquals(primeraPregunta, filaAusente.ausencia().detalles().getFirst().idPregunta());
         assertNull(filaAusente.preguntasRespondidas());
         assertNull(filaAusente.preguntasTotales());
+        assertNull(filaAusente.inicioIntento());
+        assertNull(filaAusente.preguntasCorrectas());
         assertEquals(1, filas.get(1).preguntasRespondidas());
         assertEquals(2, filas.get(1).preguntasTotales());
+        assertEquals(1, filas.get(1).preguntasCorrectas());
+        assertNotNull(filas.get(1).inicioIntento());
+        assertNull(filas.get(1).finIntento());
         assertNull(filas.get(1).ausencia());
         assertEquals("EN_PROGRESO", filas.get(1).estado());
         verify(autorizacion).exigirResponsable(docente, sesion);

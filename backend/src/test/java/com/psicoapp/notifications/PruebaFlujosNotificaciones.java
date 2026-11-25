@@ -42,7 +42,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "psicoapp.notificaciones.url-acceso=https://universidad.example/ingreso",
     "psicoapp.notificaciones.despacho-habilitado=false",
     "psicoapp.notificaciones.avisos-docente-habilitados=false",
-    "psicoapp.sesiones.cierre-automatico-habilitado=false",
+    "psicoapp.sesiones.apertura-automatica-habilitada=false",
+        "psicoapp.sesiones.cierre-automatico-habilitado=false",
     "psicoapp.participacion.cierre-automatico-habilitado=false"
 })
 @AutoConfigureMockMvc
@@ -130,12 +131,19 @@ class PruebaFlujosNotificaciones {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(recibidos.size()));
         mvc.perform(put("/api/notificaciones/{id}/leida", aviso)
                 .with(user(docente.toString()).roles("DOCENTE"))).andExpect(status().isNoContent());
+        mvc.perform(put("/api/notificaciones/leidas")).andExpect(status().isUnauthorized());
+        for (int vez = 0; vez < 2; vez++) {
+            mvc.perform(put("/api/notificaciones/leidas").with(user(docente.toString()).roles("DOCENTE")))
+                    .andExpect(status().isNoContent());
+        }
+        assertEquals(7, avisos.listar(docente, 100, 0).stream().filter(RepositorioAvisos.Aviso::leida).count());
+        assertTrue(avisos.listar(estudiante, 100, 0).stream().anyMatch(avisoEstudiante -> !avisoEstudiante.leida()));
     }
 
     // CP-NO-001/004: RF-20/21, CU-14. Entrega real sustituida por puerto de correo.
     @Test
     void convocatoriaCifradaSobreviveReconstruccionYSeEntregaUnaVez() {
-        UUID id = ids().getFirst();
+        UUID id = correoConvocatoria();
         String guardado = contenido(id);
         assertFalse(guardado.contains(codigo));
         assertFalse(cifrador.descifrar(guardado).contains(codigo));
@@ -150,12 +158,18 @@ class PruebaFlujosNotificaciones {
                         && texto.contains("https://universidad.example/ingreso")));
         assertEquals("ENVIADA", estado(id));
         assertEquals("", contenido(id));
+        despachar();
+        var aviso = avisos.listar(estudiante, 20, 0).getFirst();
+        assertEquals("CONVOCATORIA", aviso.tipo());
+        assertEquals(sesion, aviso.idSesion());
+        assertTrue(aviso.mensaje().contains("08/11/2026 a las 10:00 (hora de Colombia)"));
+        assertFalse(aviso.mensaje().contains(codigo));
     }
 
     // CP-NO-005: fallos de SMTP no cambian datos academicos y se reintentan con espera.
     @Test
     void falloSmtpConservaConvocatoriaYReintentaSinFiltrarError() {
-        UUID id = ids().getFirst();
+        UUID id = correoConvocatoria();
         doThrow(new IllegalStateException("dato secreto " + codigo)).doNothing()
                 .when(correo).enviar(anyString(), anyString(), anyString());
         entrega.entregar(id);
@@ -177,7 +191,7 @@ class PruebaFlujosNotificaciones {
         UUID[] creada = new UUID[1];
         new TransactionTemplate(gestor).executeWithoutResult(estadoTransaccion -> {
             creada[0] = sesiones.programar(docente, programacion).id();
-            assertEquals(1, cantidad(creada[0]));
+            assertEquals(2, cantidad(creada[0]));
             estadoTransaccion.setRollbackOnly();
         });
         assertEquals(0, cantidad(creada[0]));
@@ -188,15 +202,15 @@ class PruebaFlujosNotificaciones {
     @Test
     void repetirEventoNoCreaOtraEntrega() {
         var evento = new SesionProgramada(UUID.randomUUID(), AHORA, estudiante, sesion,
-                "Caso", "Mensaje", URI.create("https://universidad.example/ingreso"), "codigo-ficticio");
+                AHORA, "Caso", "Mensaje", URI.create("https://universidad.example/ingreso"), "codigo-ficticio");
         new TransactionTemplate(gestor).executeWithoutResult(estadoTransaccion -> { eventos.publicar(evento); eventos.publicar(evento); });
-        assertEquals(1, jdbc.sql("SELECT COUNT(*) FROM notificacion WHERE id_evento=?")
+        assertEquals(2, jdbc.sql("SELECT COUNT(*) FROM notificacion WHERE id_evento=?")
                 .param(evento.idEvento().toString()).query(Integer.class).single());
     }
 
     @Test
     void trabajadoresConcurrentesNoEntreganDosVeces() throws Exception {
-        UUID id = ids().getFirst();
+        UUID id = correoConvocatoria();
         try (var trabajadores = Executors.newFixedThreadPool(2)) {
             var primero = trabajadores.submit(() -> entrega.entregar(id));
             var segundo = trabajadores.submit(() -> entrega.entregar(id));
@@ -208,13 +222,13 @@ class PruebaFlujosNotificaciones {
     // CP-NO-003: retiro revoca acceso y cancela correo pendiente con codigo obsoleto.
     @Test
     void retiroYReingresoRotanCodigoYNotifican() {
-        UUID inicial = ids().getFirst();
+        UUID inicial = correoConvocatoria();
         sesiones.modificarConvocados(docente, sesion, new ServicioGestionSesiones.CambioConvocados(List.of(), List.of(estudiante)));
         assertEquals("CANCELADA", estado(inicial)); assertEquals("", contenido(inicial));
         var nuevo = sesiones.modificarConvocados(docente, sesion,
                 new ServicioGestionSesiones.CambioConvocados(List.of(estudiante), List.of()));
         assertNotEquals(codigo, nuevo.convocatorias().getFirst().codigoAcceso());
-        assertEquals(3, cantidad(sesion));
+        assertEquals(5, cantidad(sesion));
     }
 
     @Test
@@ -238,7 +252,8 @@ class PruebaFlujosNotificaciones {
         assertEquals(0, evaluaciones.consultar(estudiante, intento.id()).resultado().calificacion().compareTo(new java.math.BigDecimal("5")));
         evaluaciones.evaluar(estudiante, intento.id()); // No duplica aviso ni calificacion.
         despachar();
-        var recibidos = avisos.listar(estudiante, 20, 0);
+        var recibidos = avisos.listar(estudiante, 20, 0).stream()
+                .filter(aviso -> "RESULTADO".equals(aviso.tipo())).toList();
         assertEquals(1, recibidos.size());
         assertEquals(intento.id(), recibidos.getFirst().idIntento());
         assertEquals("RESULTADO", recibidos.getFirst().tipo());
@@ -254,7 +269,8 @@ class PruebaFlujosNotificaciones {
         assertEquals(0, participacion.finalizarVencidos(reloj.instant()));
         assertEquals(0, evaluaciones.consultar(estudiante, intento.id()).resultado().calificacion().signum());
         despachar();
-        assertEquals(1, avisos.listar(estudiante, 20, 0).size());
+        assertEquals(1, avisos.listar(estudiante, 20, 0).stream()
+                .filter(aviso -> "RESULTADO".equals(aviso.tipo())).count());
     }
 
     @Test
@@ -325,10 +341,10 @@ class PruebaFlujosNotificaciones {
         valoraciones.registrar(docente, intento.id(), "Sugerencia formativa");
         sesiones.finalizar(docente, sesion);
         despachar();
-        assertEquals(2, avisos.listar(estudiante, 20, 0).size());
+        assertEquals(3, avisos.listar(estudiante, 20, 0).size());
         UUID aviso = avisos.listar(estudiante, 20, 0).getFirst().id();
         mvc.perform(get("/api/notificaciones").with(portador(mvc, correoEstudiante, "clave-estudiante-personal")))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(3));
         mvc.perform(get("/api/notificaciones")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/notificaciones").with(user(docente.toString()).roles("DOCENTE")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
@@ -360,11 +376,11 @@ class PruebaFlujosNotificaciones {
         var intento = participacion.iniciar(estudiante, sesion, codigo);
         new TransactionTemplate(gestor).executeWithoutResult(estadoTransaccion -> {
             participacion.finalizar(estudiante, intento.id());
-            assertEquals(2, cantidad(sesion));
+            assertEquals(3, cantidad(sesion));
             estadoTransaccion.setRollbackOnly();
         });
         assertEquals("EN_PROGRESO", participacion.consultar(estudiante, intento.id()).estado());
-        assertEquals(1, cantidad(sesion));
+        assertEquals(2, cantidad(sesion));
         assertThrows(NoEncontrado.class, () -> evaluaciones.consultar(estudiante, intento.id()));
         participacion.finalizar(estudiante, intento.id());
         new TransactionTemplate(gestor).executeWithoutResult(estadoTransaccion -> {
@@ -372,7 +388,7 @@ class PruebaFlujosNotificaciones {
             estadoTransaccion.setRollbackOnly();
         });
         assertTrue(valoraciones.consultar(estudiante, intento.id()).isEmpty());
-        assertEquals(2, cantidad(sesion));
+        assertEquals(3, cantidad(sesion));
     }
 
     @Test
@@ -469,6 +485,10 @@ class PruebaFlujosNotificaciones {
     }
 
     private void despachar() { for (UUID id : ids()) entrega.entregar(id); }
+    private UUID correoConvocatoria() {
+        return jdbc.sql("SELECT id_notificacion FROM notificacion WHERE id_sesion=? AND canal='CORREO' AND tipo='CONVOCATORIA'")
+                .param(sesion.toString()).query((fila, indice) -> UUID.fromString(fila.getString(1))).single();
+    }
     private List<UUID> ids() {
         return jdbc.sql("SELECT id_notificacion FROM notificacion WHERE id_sesion=? ORDER BY id_notificacion")
                 .param(sesion.toString()).query((fila, indice) -> UUID.fromString(fila.getString(1))).list();

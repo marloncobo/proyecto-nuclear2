@@ -59,7 +59,7 @@ public class ServicioUsuarios implements DirectorioIdentidad {
         exigirRol(idActor, Rol.ADMINISTRADOR);
         Usuario anterior = buscarUsuario(idUsuario);
         if (anterior.rol() != Rol.DOCENTE) throw new Conflicto("La cuenta no tiene rol docente");
-        String normalizado = Usuario.normalizarCorreo(correo);
+        String normalizado = validarCorreoInstitucional(correo);
         if (usuarios.buscarPorCorreo(normalizado).filter(u -> !u.id().equals(idUsuario)).isPresent()) {
             throw new Conflicto("El correo ya esta registrado");
         }
@@ -114,7 +114,7 @@ public class ServicioUsuarios implements DirectorioIdentidad {
     }
     public DatosUsuario registrarDocente(UUID idActor, String correo, String nombre, String clave) {
         exigirRol(idActor, Rol.ADMINISTRADOR);
-        return crearUsuario(correo, nombre, Rol.DOCENTE, clave);
+        return crearUsuario(validarCorreoInstitucional(correo), nombre, Rol.DOCENTE, clave);
     }
 
     public DatosUsuario cambiarRol(UUID idActor, UUID idUsuario, Rol rol) {
@@ -123,7 +123,7 @@ public class ServicioUsuarios implements DirectorioIdentidad {
             throw new Conflicto("No puede retirar su propio rol de administrador");
         }
         Usuario actualizado = buscarUsuario(idUsuario).conRol(rol);
-        if (rol == Rol.ESTUDIANTE) {
+        if (rol == Rol.ESTUDIANTE || rol == Rol.DOCENTE) {
             validarCorreoInstitucional(actualizado.correo());
         }
         usuarios.guardar(actualizado);

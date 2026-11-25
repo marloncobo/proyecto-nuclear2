@@ -11,7 +11,6 @@ import com.psicoapp.shared.exceptions.AccesoDenegado;
 import com.psicoapp.shared.exceptions.Conflicto;
 import com.psicoapp.shared.exceptions.NoEncontrado;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.List;
@@ -36,7 +35,7 @@ public class ServicioGestionSesiones implements ConsultaSesiones, AutorizacionDo
 
     public record DatosSesion(UUID id, UUID idCaso, UUID idEspacio, UUID idDocente, Instant inicioPrevisto,
             Instant finPrevisto, int duracionMaximaMin, String modoNavegacion, String lugar, String mensaje, String estado,
-            List<DatosConvocatoria> convocatorias) { }
+            List<DatosConvocatoria> convocatorias, Instant aperturaReal, Instant cierreReal) { }
 
     private final NotificacionSujeto notificaciones;
     private final URI urlAcceso;
@@ -143,7 +142,7 @@ public class ServicioGestionSesiones implements ConsultaSesiones, AutorizacionDo
                 + (sesion.lugar() == null ? "" : "\nLugar: " + sesion.lugar())
                 + (sesion.mensaje() == null ? "" : "\n" + sesion.mensaje());
         return new SesionProgramada(UUID.randomUUID(), reloj.instant(), estudiante,
-                sesion.id(), nombreCaso, mensaje, urlAcceso, codigo);
+                sesion.id(), sesion.inicioPrevisto(), nombreCaso, mensaje, urlAcceso, codigo);
     }
 
     @Transactional(readOnly = true)
@@ -169,6 +168,15 @@ public class ServicioGestionSesiones implements ConsultaSesiones, AutorizacionDo
         return representar(iniciada);
     }
 
+    public void abrirProgramadas(Instant ahora) {
+        for (UUID id : sesiones.buscarPorAbrir(ahora)) {
+            Sesion sesion = bloquear(id);
+            if (sesion.correspondeAperturaAutomatica(ahora)) {
+                sesiones.actualizarEstado(sesion.iniciar(ahora));
+            }
+        }
+    }
+
     public DatosSesion finalizar(UUID idDocente, UUID idSesion) {
         identidades.exigirDocente(idDocente);
         Sesion sesion = bloquear(idSesion);
@@ -187,12 +195,12 @@ public class ServicioGestionSesiones implements ConsultaSesiones, AutorizacionDo
     public int cerrarVencidas(Instant ahora) {
         if (ahora == null) throw new IllegalArgumentException("El instante es obligatorio");
         int cerradas = 0;
-        for (UUID id : sesiones.buscarVencidas(ahora.minus(Duration.ofDays(1)))) {
+        for (UUID id : sesiones.buscarVencidas(ahora)) {
             Sesion sesion = bloquear(id);
             // Revalidar bajo bloqueo: otro proceso pudo finalizar desde la consulta inicial.
             if (sesion.estado().codigo() != TipoEstadoSesion.FINALIZADO && sesion.estaVencida(ahora)) {
                 sesiones.actualizarEstado(sesion.finalizar(MotivoCierre.AUTOMATICO, ahora));
-                eventos.publishEvent(new SesionCerrada(sesion.id(), ahora));
+                eventos.publishEvent(new SesionCerrada(sesion.id(), sesion.finPrevisto()));
                 consolidadorReportes.consolidar(sesion.id(), ahora);
                 cerradas++;
             }
@@ -245,6 +253,7 @@ public class ServicioGestionSesiones implements ConsultaSesiones, AutorizacionDo
     private DatosSesion representar(Sesion sesion, List<DatosConvocatoria> datosConvocatorias) {
         return new DatosSesion(sesion.id(), sesion.idCaso(), sesion.idEspacio(), sesion.idDocente(),
                 sesion.inicioPrevisto(), sesion.finPrevisto(), sesion.duracionMaximaMin(),
-                sesion.modoNavegacion().name(), sesion.lugar(), sesion.mensaje(), sesion.estado().codigo().name(), datosConvocatorias);
+                sesion.modoNavegacion().name(), sesion.lugar(), sesion.mensaje(), sesion.estado().codigo().name(),
+                datosConvocatorias, sesion.aperturaReal(), sesion.cierreReal());
     }
 }

@@ -228,7 +228,7 @@
 
 - **Módulo del documento:** Acceso
 - **Actor principal:** — (validación temporal interna)
-- **Objetivo / descripción:** Confirmar sesión EN_CURSO y que no haya transcurrido más de la mitad del intervalo programado contado desde el inicio de sesión (RN-15).
+- **Objetivo / descripción:** Confirmar sesión EN_CURSO y que aún no se haya alcanzado el cierre previsto (RN-15).
 - **RF relacionados:** RF-22, RF-25
 - **RN relacionadas:** RN-12, RN-15
 - **Clasificación:** Incluido
@@ -278,7 +278,7 @@
 
 - **Módulo del documento:** Sesiones
 - **Actor principal:** — (plazo supervisado internamente)
-- **Objetivo / descripción:** Finalizar una sesión que siga abierta un día después de su fin programado y consolidar las ausencias.
+- **Objetivo / descripción:** Finalizar una sesión que siga abierta al alcanzar su fin programado y consolidar las ausencias.
 - **RF relacionados:** RF-19, RF-24
 - **RN relacionadas:** RN-12, RN-16
 - **Clasificación:** Automático

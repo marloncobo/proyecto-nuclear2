@@ -32,6 +32,13 @@ CREATE TABLE IF NOT EXISTS espacio_academico (
     nombre VARCHAR(150) NOT NULL,
     periodo VARCHAR(30) NOT NULL
 );
+CREATE TABLE IF NOT EXISTS espacio_estudiante (
+    id_espacio CHAR(36) NOT NULL,
+    id_estudiante CHAR(36) NOT NULL,
+    PRIMARY KEY (id_espacio, id_estudiante),
+    FOREIGN KEY (id_espacio) REFERENCES espacio_academico(id_espacio),
+    FOREIGN KEY (id_estudiante) REFERENCES usuario(id_usuario)
+);
 INSERT INTO rol (id_rol, nombre, descripcion)
 SELECT '00000000-0000-0000-0000-000000000001', 'ADMINISTRADOR', 'Administra usuarios, roles y permisos'
 WHERE NOT EXISTS (SELECT 1 FROM rol WHERE nombre = 'ADMINISTRADOR');
@@ -131,6 +138,13 @@ CREATE TABLE IF NOT EXISTS sesion (
     CHECK (modo_navegacion IN ('FLEXIBLE', 'RESTRINGIDA')),
     CHECK (estado IN ('SIN_INICIAR', 'EN_CURSO', 'FINALIZADO')),
     INDEX indice_sesion_vencida (estado, fecha_fin)
+);
+
+CREATE TABLE IF NOT EXISTS horario_real_sesion (
+    id_sesion CHAR(36) PRIMARY KEY,
+    apertura TIMESTAMP(6) NULL,
+    cierre TIMESTAMP(6) NULL,
+    FOREIGN KEY (id_sesion) REFERENCES sesion(id_sesion)
 );
 
 CREATE TABLE IF NOT EXISTS convocatoria (

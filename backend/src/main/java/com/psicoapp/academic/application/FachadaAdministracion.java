@@ -14,7 +14,11 @@ import org.springframework.transaction.annotation.Propagation;
 @Service
 @Transactional
 public class FachadaAdministracion {
-    public record DatosEspacioAcademico(UUID id, String nombre, String periodo) { }
+    public record DatosEspacioAcademico(UUID id, String nombre, String periodo, List<UUID> estudiantes) {
+        public DatosEspacioAcademico(UUID id, String nombre, String periodo) {
+            this(id, nombre, periodo, List.of());
+        }
+    }
 
     private final RepositorioEspaciosAcademicos espacios;
     private final DirectorioIdentidad identidades;
@@ -31,27 +35,46 @@ public class FachadaAdministracion {
     @Transactional(propagation = Propagation.MANDATORY)
     public DatosEspacioAcademico bloquearParaProgramacion(UUID idDocente, UUID id) {
         identidades.exigirDocente(idDocente);
-        return representar(espacios.bloquearPorId(id)
-                .orElseThrow(() -> new NoEncontrado("Espacio academico no encontrado")));
+        EspacioAcademico espacio = espacios.bloquearPorId(id)
+                .orElseThrow(() -> new NoEncontrado("Espacio academico no encontrado"));
+        return new DatosEspacioAcademico(espacio.id(), espacio.nombre(), espacio.periodo());
     }
 
     public DatosEspacioAcademico editarEspacio(UUID idDocente, UUID id, String nombre, String periodo) {
+        return editarEspacio(idDocente, id, nombre, periodo, null);
+    }
+
+    public DatosEspacioAcademico editarEspacio(UUID idDocente, UUID id, String nombre, String periodo,
+            List<UUID> estudiantes) {
         identidades.exigirDocente(idDocente);
         EspacioAcademico anterior = espacios.bloquearPorId(id)
                 .orElseThrow(() -> new NoEncontrado("Espacio academico no encontrado"));
-        if (usoEspacios.tieneSesiones(id)) {
+        EspacioAcademico actualizado = new EspacioAcademico(anterior.id(), nombre, periodo);
+        if ((estudiantes == null || !anterior.equals(actualizado)) && usoEspacios.tieneSesiones(id)) {
             throw new Conflicto("El espacio ya esta asociado a una sesion");
         }
-        EspacioAcademico actualizado = new EspacioAcademico(anterior.id(), nombre, periodo);
-        espacios.actualizar(actualizado);
+        if (!anterior.equals(actualizado)) espacios.actualizar(actualizado);
+        if (estudiantes != null) guardarEstudiantes(id, estudiantes);
         return representar(actualizado);
     }
 
     public DatosEspacioAcademico crearEspacio(UUID idDocente, String nombre, String periodo) {
+        return crearEspacio(idDocente, nombre, periodo, List.of());
+    }
+
+    public DatosEspacioAcademico crearEspacio(UUID idDocente, String nombre, String periodo,
+            List<UUID> estudiantes) {
         identidades.exigirDocente(idDocente);
         EspacioAcademico espacio = new EspacioAcademico(UUID.randomUUID(), nombre, periodo);
         espacios.guardar(espacio);
+        if (!estudiantes.isEmpty()) guardarEstudiantes(espacio.id(), estudiantes);
         return representar(espacio);
+    }
+
+    private void guardarEstudiantes(UUID idEspacio, List<UUID> estudiantes) {
+        List<UUID> unicos = estudiantes.stream().distinct().toList();
+        unicos.forEach(identidades::exigirEstudiante);
+        espacios.reemplazarEstudiantes(idEspacio, unicos);
     }
 
     @Transactional(readOnly = true)
@@ -68,6 +91,7 @@ public class FachadaAdministracion {
     }
 
     private DatosEspacioAcademico representar(EspacioAcademico espacio) {
-        return new DatosEspacioAcademico(espacio.id(), espacio.nombre(), espacio.periodo());
+        return new DatosEspacioAcademico(espacio.id(), espacio.nombre(), espacio.periodo(),
+                espacios.listarEstudiantes(espacio.id()));
     }
 }

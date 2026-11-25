@@ -84,6 +84,12 @@ public class RepositorioNotificacionesJdbc implements RepositorioEntregas, Repos
         jdbc.sql("UPDATE notificacion SET leida=true WHERE id_notificacion=?").param(aviso.toString()).update();
         return true;
     }
+    @Override public void marcarTodasLeidas(UUID usuario) {
+        jdbc.sql("""
+                UPDATE notificacion SET leida=true WHERE id_usuario=? AND canal='INTERNO'
+                AND estado_envio='ENVIADA' AND leida=false
+                """).param(usuario.toString()).update();
+    }
     private String texto(UUID id) { return id == null ? null : id.toString(); }
     private UUID identificador(String texto) { return texto == null ? null : UUID.fromString(texto); }
 }

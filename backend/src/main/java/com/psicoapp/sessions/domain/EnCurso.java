@@ -18,7 +18,7 @@ public final class EnCurso implements EstadoSesion {
         if (motivo == MotivoCierre.AUTOMATICO && !sesion.estaVencida(ahora)) {
             throw new TransicionSesionInvalida("Aun no corresponde el cierre automatico");
         }
-        return sesion.conEstado(Finalizado.INSTANCIA);
+        return sesion.conEstado(Finalizado.INSTANCIA, sesion.aperturaReal(), ahora);
     }
 
     @Override

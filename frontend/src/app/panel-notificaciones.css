@@ -1,0 +1,183 @@
+:host { display: block; }
+
+.filtros-notificaciones {
+  display: grid;
+  grid-template-columns: minmax(210px, 1.4fr) minmax(170px, 0.8fr) auto;
+  gap: 14px;
+  align-items: end;
+  padding: 18px;
+  border-bottom: 1px solid #e0e7dc;
+  background: #f1f5ef;
+}
+.filtros-notificaciones label {
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.filtros-notificaciones select {
+  min-height: 44px;
+  padding: 11px 12px;
+  font-size: 14px;
+}
+.limpiar-filtros {
+  min-height: 44px;
+  padding: 10px 13px;
+  border-radius: 8px;
+  color: #3e6251;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.limpiar-filtros:hover:not(:disabled) { background: #e3ecdf; }
+.resumen-listado { color: #526d5f; font-size: 13px; }
+.marcar-leida { padding: 7px 0; font-size: 11px; font-weight: 650; }
+.marcar-leida:hover { text-decoration: underline; }
+.vacio { padding: 38px 20px; color: #7b8989; font-size: 12px; line-height: 1.9; }
+.vacio h2 { color: #49665c; }
+
+.panel-notificaciones > .resumen-listado {
+  padding: 12px 26px;
+  margin: 0;
+  border-bottom: 1px solid var(--borde);
+}
+.panel-notificaciones {
+  max-width: 900px;
+  margin-bottom: 50px;
+  overflow: hidden;
+  border: 1px solid var(--borde);
+  border-radius: 15px;
+  background: #fff;
+}
+.resumen-notificaciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 22px 26px;
+  border-bottom: 1px solid var(--borde);
+  background: #f7f9f5;
+}
+.resumen-notificaciones > button { min-height: 40px; }
+.resumen-notificaciones h2,
+.resumen-notificaciones p {
+  margin: 0;
+}
+.resumen-notificaciones h2 {
+  color: #173f59;
+  font-size: 18px;
+}
+.resumen-notificaciones p {
+  margin-top: 5px;
+  color: #6c7f76;
+  font-size: 11px;
+}
+.panel-notificaciones > .error {
+  margin: 20px 26px;
+  padding: 14px 18px;
+  border-radius: 9px;
+  color: #8c443a;
+  background: #f7e9e5;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.lista-notificaciones article {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 26px;
+  border-bottom: 1px solid var(--borde);
+}
+.lista-notificaciones article:last-child {
+  border-bottom: 0;
+}
+.lista-notificaciones article.no-leida {
+  border-left: 4px solid #416b59;
+  background: #fbfcf9;
+}
+.icono-notificacion {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 12px;
+  background: #eaf0e6;
+  color: #315f4c;
+  font-size: 20px;
+}
+.contenido-notificacion > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.contenido-notificacion h3,
+.contenido-notificacion p {
+  margin: 0;
+}
+.contenido-notificacion h3 {
+  color: #173f59;
+  font-size: 14px;
+}
+.contenido-notificacion p {
+  margin: 6px 0;
+  color: #455f54;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.contenido-notificacion time,
+.estado-notificacion-leida {
+  color: #7a8b83;
+  font-size: 10px;
+}
+.etiqueta-nueva {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #dfeadf;
+  color: #315f4c;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.vacio-notificaciones {
+  padding: 55px 20px;
+  text-align: center;
+}
+.vacio-notificaciones > span {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 14px;
+  place-items: center;
+  border-radius: 50%;
+  background: #eaf0e6;
+  color: #315f4c;
+  font-size: 22px;
+}
+.vacio-notificaciones h2,
+.vacio-notificaciones p {
+  margin: 5px 0;
+}
+@media (max-width: 900px) {
+  .filtros-notificaciones { grid-template-columns: minmax(0, 1fr) minmax(170px, 0.7fr); }
+  .limpiar-filtros { grid-column: 1/-1; justify-self: start; }
+}
+@media (max-width: 650px) {
+  .filtros-notificaciones { grid-template-columns: 1fr; gap: 12px; padding: 12px; }
+  .limpiar-filtros { grid-column: auto; width: 100%; }
+  .lista-notificaciones article {
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 12px;
+    padding: 18px 16px;
+  }
+  .icono-notificacion {
+    width: 38px;
+    height: 38px;
+  }
+  .lista-notificaciones article > .marcar-leida,
+  .estado-notificacion-leida {
+    grid-column: 2;
+    justify-self: start;
+  }
+}

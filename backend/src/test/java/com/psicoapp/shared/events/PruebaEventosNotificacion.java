@@ -59,6 +59,6 @@ class PruebaEventosNotificacion {
 
     private SesionProgramada convocatoria(URI url, String codigo) {
         return new SesionProgramada(UUID.randomUUID(), Instant.EPOCH, UUID.randomUUID(),
-                UUID.randomUUID(), "Caso formativo", "Mensaje reservado", url, codigo);
+                UUID.randomUUID(), Instant.EPOCH, "Caso formativo", "Mensaje reservado", url, codigo);
     }
 }

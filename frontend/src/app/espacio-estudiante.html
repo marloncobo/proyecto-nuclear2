@@ -1,82 +1,340 @@
 <div class="espacio-estudiante">
+  <a class="saltar-contenido" href="#contenido-estudiante">Ir al contenido</a>
   <header class="barra-superior">
-    <a class="marca" href="/estudiante/actividades"><svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 8.5 9-4 9 4-9 4-9-4Z"/><path d="M6 10.5v5c3.5 2.7 8.5 2.7 12 0v-5M21 9v6"/></svg> Psicoapp</a>
+    <a
+      class="marca marca-movil"
+      href="/estudiante/actividades"
+      (click)="$event.preventDefault(); navegar('actividades')"
+    >
+      <img src="logo-psicoapp.png" alt="Psicoapp" />
+    </a>
+    <p class="ruta">
+      Tu campus <span aria-hidden="true">/</span> <strong>Espacio estudiantil</strong>
+    </p>
     <div class="acciones-cuenta">
-      <button aria-label="Notificaciones" (click)="navegar('notificaciones')"><svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg>@if (noLeidas()) {<span>{{ noLeidas() }}</span>}</button>
-      <button aria-label="Cerrar sesión" (click)="salir()"><svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3M14 3h6v18h-6"/></svg></button>
+      <psico-tutorial
+        [pasos]="pasosTutorial[vista()]"
+        [automatico]="tutorialInicial()"
+        (inicioConsumido)="tutorialInicial.set(false)"
+      />
+      <button aria-label="Notificaciones" (click)="navegar('notificaciones')">
+        <svg class="icono" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4" />
+        </svg>
+        @if (noLeidas()) {
+          <span class="contador-avisos">{{ noLeidas() }}</span>
+        }
+      </button>
+      <button class="mi-cuenta" type="button" aria-haspopup="dialog" (click)="cuenta.showModal()">
+        Mi cuenta <span aria-hidden="true">↗</span>
+      </button>
     </div>
   </header>
-  <div class="disposicion">
-    <aside class="navegacion">
-      <p>ESTUDIANTE</p>
-      <button [class.activo]="vista() === 'actividades'" (click)="navegar('actividades')"><svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7M5 10v10h14V10M9 20v-6h6v6"/></svg>Mis actividades</button>
-      <button [class.activo]="vista() === 'resultados'" (click)="navegar('resultados')"><svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10h4v10M10 20V4h4v16M15 20v-7h4v7M3 20h18"/></svg>Mis resultados</button>
-      <button [class.activo]="vista() === 'notificaciones'" (click)="navegar('notificaciones')"><svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg>Notificaciones</button>
-      <div class="perfil"><strong>{{ api.usuario()?.nombre }}</strong><small>{{ api.usuario()?.correo }}</small></div>
-    </aside>
-    <main>
-      @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
-      @if (ocupado()) { <p class="cargando" role="status">Cargando…</p> }
+  <aside class="navegacion">
+    <a
+      class="marca marca-escritorio"
+      href="/estudiante/actividades"
+      (click)="$event.preventDefault(); navegar('actividades')"
+    >
+      <img src="logo-psicoapp.png" alt="Psicoapp" />
+    </a>
+    <p class="etiqueta-menu">CAMPUS VIRTUAL</p>
+    <nav aria-label="Secciones del estudiante">
+      <button
+        [class.activo]="vista() === 'actividades' || vista() === 'simulacion'"
+        [attr.aria-current]="vista() === 'actividades' || vista() === 'simulacion' ? 'page' : null"
+        (click)="navegar('actividades')"
+      >
+        <svg class="icono" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 11 12 4l9 7M5 10v10h14V10M9 20v-6h6v6" /></svg
+        >Mis actividades
+      </button>
+      <button
+        [class.activo]="vista() === 'resultados'"
+        [attr.aria-current]="vista() === 'resultados' ? 'page' : null"
+        (click)="navegar('resultados')"
+      >
+        <svg class="icono" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 20V10h4v10M10 20V4h4v16M15 20v-7h4v7M3 20h18" /></svg
+        >Mis resultados
+      </button>
+      <button
+        [class.activo]="vista() === 'notificaciones'"
+        [attr.aria-current]="vista() === 'notificaciones' ? 'page' : null"
+        (click)="navegar('notificaciones')"
+      >
+        <svg class="icono" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4" /></svg
+        >Notificaciones
+      </button>
+    </nav>
+    <div class="perfil">
+      <span class="avatar" aria-hidden="true">{{ api.usuario()?.nombre?.charAt(0) }}</span>
+      <div>
+        <strong [attr.title]="api.usuario()?.nombre">{{ api.usuario()?.nombre }}</strong
+        ><small>Estudiante</small>
+      </div>
+      <button class="salir-perfil" type="button" aria-label="Cerrar sesión" (click)="salir()">
+        <span aria-hidden="true">↪</span>
+      </button>
+    </div>
+  </aside>
+  <main id="contenido-estudiante" [class.contenido-academico]="vista() !== 'notificaciones'" tabindex="-1">
+    @if (error()) {
+      <p class="error" role="alert">{{ error() }}</p>
+    }
+    @if (ocupado()) {
+      <p class="cargando" role="status">Cargando…</p>
+    }
 
-      @if (vista() === 'actividades') {
-        <header class="bienvenida"><h1>¡Bienvenido!</h1><p>Consulta tus simulaciones y resultados.</p></header>
-        <section class="resumen">
-          <article><span>Pendientes</span><strong>{{ pendientes() }}</strong></article>
-          <article><span>Finalizadas</span><strong>{{ finalizadas() }}</strong></article>
-        </section>
-        <section aria-labelledby="titulo-actividades">
-          <h2 id="titulo-actividades">Mis actividades</h2>
-          <div class="tarjetas">
-            @for (actividad of actividades(); track actividad.idSesion) {
-              <article class="tarjeta-actividad">
-                <div><h3>{{ actividad.nombreCaso }}</h3><p>{{ actividad.contexto }} · {{ actividad.duracionMaximaMin }} minutos</p>
-                  <small>{{ actividad.inicioPrevisto | date:'medium' }}</small></div>
-                <span class="estado">{{ actividad.accion === 'ESPERAR' ? 'Pendiente' : 'Disponible' }}</span>
-                @switch (actividad.accion) {
-                  @case ('INICIAR') { <button class="primario" [disabled]="ocupado()" (click)="iniciar(actividad)">Iniciar actividad</button> }
-                  @case ('CONTINUAR') { <button class="primario" [disabled]="ocupado()" (click)="abrirActividad(actividad.idSesion)">Continuar actividad</button> }
-                  @case ('RESULTADO') { <button class="secundario" (click)="verResultado(actividad.idIntento!)">Ver resultado</button> }
-                  @default { <p class="espera">Pendiente de inicio o fuera de la ventana de ingreso.</p> }
+    @if (vista() === 'actividades') {
+      <header class="encabezado-pagina encabezado-actividades">
+        <div>
+          <span class="sobretitulo-estudiante">Aprender en comunidad</span>
+          <h1>¡<em>Bienvenido</em>!</h1>
+          <p>Consulta tus simulaciones y resultados.</p>
+        </div>
+        <button type="button" class="secundario" [disabled]="ocupado()" (click)="actualizarActividades()">
+          <span aria-hidden="true">↻</span> Actualizar
+        </button>
+      </header>
+      <section class="resumen">
+        <article>
+          <span>Pendientes</span><strong>{{ pendientes() }}</strong>
+        </article>
+        <article>
+          <span>Finalizadas</span><strong>{{ finalizadas() }}</strong>
+        </article>
+      </section>
+      <section aria-labelledby="titulo-actividades">
+        <h2 id="titulo-actividades">Mis actividades</h2>
+        <div class="tarjetas">
+          @for (actividad of actividadesOrdenadas(); track actividad.idSesion) {
+            @let plazoTerminado = plazoIngresoTerminado(actividad);
+            <article class="tarjeta-actividad">
+              <div>
+                <h3>{{ actividad.nombreCaso }}</h3>
+                <p class="meta-actividad">
+                  {{ actividad.inicioPrevisto | date: 'dd/MM/yyyy, HH:mm' }} ·
+                  {{ actividad.duracionMaximaMin }} min
+                  @if (referenciasSesion().get(actividad.idSesion); as referencia) {
+                    · {{ referencia }}
+                  }
+                </p>
+                <p class="contexto-actividad">{{ actividad.contexto }}</p>
+              </div>
+              <span
+                class="estado"
+                [class.finalizada]="actividad.estadoSesion === 'FINALIZADO' || actividad.accion === 'RESULTADO'"
+                [class.pendiente]="plazoTerminado || (actividad.estadoSesion !== 'FINALIZADO' && actividad.accion === 'ESPERAR')"
+              >
+                {{
+                  actividad.estadoSesion === 'FINALIZADO' || actividad.accion === 'RESULTADO'
+                    ? 'Finalizada'
+                    : plazoTerminado
+                      ? 'Plazo terminado'
+                      : actividad.accion === 'ESPERAR'
+                        ? 'Pendiente'
+                        : 'Disponible'
+                }}
+              </span>
+              @switch (plazoTerminado ? 'ESPERAR' : actividad.accion) {
+                @case ('INICIAR') {
+                  <div class="acciones-ingreso">
+                    <p class="cuenta-ingreso">
+                      Tiempo para entrar
+                      <strong role="timer" aria-label="Tiempo para entrar">{{ tiempoIngresoRestante(actividad) }}</strong>
+                    </p>
+                    <button class="primario" [disabled]="ocupado()" (click)="iniciar(actividad)">
+                      Iniciar actividad
+                    </button>
+                  </div>
                 }
-              </article>
-            } @empty { <p class="vacio">Todavía no tienes convocatorias activas.</p> }
-          </div>
+                @case ('CONTINUAR') {
+                  <button
+                    class="primario"
+                    [disabled]="ocupado()"
+                    (click)="abrirActividad(actividad.idSesion)"
+                  >
+                    Continuar actividad
+                  </button>
+                }
+                @case ('RESULTADO') {
+                  <button class="secundario" (click)="verResultado(actividad.idIntento!)">
+                    Ver resultado
+                  </button>
+                }
+                @default {
+                  @if (plazoTerminado) {
+                    <p class="espera">Ya pasó la hora límite para iniciar esta actividad.</p>
+                  } @else if (actividad.estadoSesion !== 'FINALIZADO') {
+                    <p class="espera">Pendiente de inicio o fuera de la ventana de ingreso.</p>
+                  }
+                }
+              }
+            </article>
+          } @empty {
+            <p class="vacio">Todavía no tienes convocatorias activas.</p>
+          }
+        </div>
+      </section>
+    }
+
+    @if (vista() === 'simulacion' && simulacion(); as caso) {
+      <header class="cabecera-simulacion">
+        <div>
+          <button class="enlace" (click)="navegar('actividades')">← Mis actividades</button>
+          <span class="sobretitulo-estudiante">Simulación en curso</span>
+          <h1>{{ caso.actividad.nombreCaso }}</h1>
+        </div>
+        <strong role="timer">{{ tiempoRestante() }}</strong>
+      </header>
+      @if (pregunta(); as actual) {
+        <section class="simulador">
+          <aside>
+            <p>{{ respondidas() }} de {{ caso.preguntas.length }} preguntas respondidas</p>
+            <ol>
+              @for (item of caso.preguntas; track item.id; let numero = $index) {
+                <li [class.actual]="numero === indice()">{{ numero + 1 }}</li>
+              }
+            </ol>
+          </aside>
+          <article>
+            <span>Pregunta {{ indice() + 1 }} de {{ caso.preguntas.length }}</span>
+            <h2>{{ actual.escenario }}</h2>
+            <p>{{ actual.contexto }}</p>
+            <fieldset [disabled]="ocupado() || segundosRestantes() === 0">
+              <legend>{{ actual.enunciado }}</legend>
+              @for (opcion of actual.opciones; track opcion.id) {
+                <label class="opcion"
+                  ><input
+                    type="radio"
+                    name="respuesta"
+                    [checked]="intento()?.respuestas?.[actual.id] === opcion.id"
+                    (change)="responder(actual.id, opcion.id)"
+                  />{{ opcion.texto }}</label
+                >
+              }
+            </fieldset>
+            <footer>
+              <button
+                class="secundario"
+                [disabled]="
+                  ocupado() || indice() === 0 || intento()?.modoNavegacion === 'RESTRINGIDA'
+                "
+                (click)="operar('retroceder')"
+              >
+                Anterior</button
+              ><button class="secundario" [disabled]="ocupado()" (click)="operar('finalizar')">
+                Entregar</button
+              ><button
+                class="primario"
+                [disabled]="
+                  ocupado() ||
+                  indice() === caso.preguntas.length - 1 ||
+                  (intento()?.modoNavegacion === 'RESTRINGIDA' &&
+                    !intento()?.respuestas?.[actual.id])
+                "
+                (click)="operar('avanzar')"
+              >
+                Siguiente
+              </button>
+            </footer>
+          </article>
         </section>
       }
+    }
 
-      @if (vista() === 'simulacion' && simulacion(); as caso) {
-        <header class="cabecera-simulacion"><div><button class="enlace" (click)="navegar('actividades')">← Mis actividades</button><h1>{{ caso.actividad.nombreCaso }}</h1></div><strong role="timer">{{ tiempoRestante() }}</strong></header>
-        @if (pregunta(); as actual) {
-          <section class="simulador">
-            <aside><p>{{ respondidas() }} de {{ caso.preguntas.length }} preguntas respondidas</p>
-              <ol>@for (item of caso.preguntas; track item.id; let numero=$index) {<li [class.actual]="numero === indice()">{{ numero + 1 }}</li>}</ol></aside>
-            <article><span>Pregunta {{ indice() + 1 }} de {{ caso.preguntas.length }}</span><h2>{{ actual.escenario }}</h2><p>{{ actual.contexto }}</p>
-              <fieldset [disabled]="ocupado() || segundosRestantes() === 0"><legend>{{ actual.enunciado }}</legend>
-                @for (opcion of actual.opciones; track opcion.id) {<label class="opcion"><input type="radio" name="respuesta" [checked]="intento()?.respuestas?.[actual.id] === opcion.id" (change)="responder(actual.id, opcion.id)" />{{ opcion.texto }}</label>}
-              </fieldset>
-              <footer><button class="secundario" [disabled]="ocupado() || indice() === 0 || intento()?.modoNavegacion === 'RESTRINGIDA'" (click)="operar('retroceder')">Anterior</button><button class="secundario" [disabled]="ocupado()" (click)="operar('finalizar')">Entregar</button><button class="primario" [disabled]="ocupado() || indice() === caso.preguntas.length - 1 || (intento()?.modoNavegacion === 'RESTRINGIDA' && !intento()?.respuestas?.[actual.id])" (click)="operar('avanzar')">Siguiente</button></footer>
+    @if (vista() === 'resultados') {
+      <header class="encabezado-pagina">
+        <span class="sobretitulo-estudiante">Progreso académico</span>
+        <h1>Mis <em>resultados</em></h1>
+        <p>Cada intento se conserva de forma independiente.</p>
+      </header>
+      @if (resultadoSeleccionado(); as resultado) {
+        <button class="enlace" (click)="resultadoSeleccionado.set(null)">
+          ← Todos los intentos
+        </button>
+        <article class="detalle-resultado">
+          <header>
+            <div>
+              <h2>{{ resultado.nombreCaso }}</h2>
+              <p>{{ resultado.fin | date: 'dd/MM/yyyy, HH:mm' }}</p>
+            </div>
+            <strong>{{ resultado.calificacion ?? 'Pendiente' }}</strong>
+          </header>
+          @for (respuesta of resultado.respuestas; track respuesta.idPregunta) {
+            <section>
+              <h3>{{ respuesta.enunciado }}</h3>
+              <p>
+                Tu respuesta: <strong>{{ respuesta.respuesta ?? 'Sin respuesta' }}</strong>
+              </p>
+              <p [class.acierto]="respuesta.correcta">
+                {{ respuesta.correcta ? 'Respuesta correcta' : 'Respuesta por mejorar' }} ·
+                {{ respuesta.puntos }} puntos
+              </p>
+              <p>Respuesta correcta: {{ respuesta.respuestasCorrectas.join(', ') }}</p>
+              @for (explicacion of respuesta.explicaciones; track explicacion) {
+                <small>{{ explicacion }}</small>
+              }
+            </section>
+          }
+          @for (valoracion of resultado.valoraciones; track valoracion.id) {
+            <blockquote>
+              {{ valoracion.mensaje }}
+              <footer>Valoración docente · {{ valoracion.fecha | date: 'dd/MM/yyyy, HH:mm' }}</footer>
+            </blockquote>
+          }
+        </article>
+      } @else {
+        <div class="tarjetas">
+          @for (resultado of resultados(); track resultado.idIntento) {
+            <article class="tarjeta-resultado">
+              <div>
+                <h2>{{ resultado.nombreCaso }}</h2>
+                <p>{{ resultado.fin | date: 'dd/MM/yyyy, HH:mm' }}</p>
+              </div>
+              <strong>{{ resultado.calificacion ?? 'Pendiente' }}</strong
+              ><button class="secundario" (click)="verResultado(resultado.idIntento)">
+                Ver retroalimentación
+              </button>
             </article>
-          </section>
-        }
+          } @empty {
+            <p class="vacio">Aún no tienes intentos finalizados.</p>
+          }
+        </div>
       }
+    }
 
-      @if (vista() === 'resultados') {
-        <header><h1>Mis resultados</h1><p>Cada intento se conserva de forma independiente.</p></header>
-        @if (resultadoSeleccionado(); as resultado) {
-          <button class="enlace" (click)="resultadoSeleccionado.set(null)">← Todos los intentos</button>
-          <article class="detalle-resultado"><header><div><h2>{{ resultado.nombreCaso }}</h2><p>{{ resultado.fin | date:'medium' }}</p></div><strong>{{ resultado.calificacion ?? 'Pendiente' }}</strong></header>
-            @for (respuesta of resultado.respuestas; track respuesta.idPregunta) {<section><h3>{{ respuesta.enunciado }}</h3><p>Tu respuesta: <strong>{{ respuesta.respuesta ?? 'Sin respuesta' }}</strong></p><p [class.acierto]="respuesta.correcta">{{ respuesta.correcta ? 'Respuesta correcta' : 'Respuesta por mejorar' }} · {{ respuesta.puntos }} puntos</p><p>Respuesta correcta: {{ respuesta.respuestasCorrectas.join(', ') }}</p>@for (explicacion of respuesta.explicaciones; track explicacion) {<small>{{ explicacion }}</small>}</section>}
-            @for (valoracion of resultado.valoraciones; track valoracion.id) {<blockquote>{{ valoracion.mensaje }}<footer>Valoración docente · {{ valoracion.fecha | date:'medium' }}</footer></blockquote>}
-          </article>
-        } @else {
-          <div class="tarjetas">@for (resultado of resultados(); track resultado.idIntento) {<article class="tarjeta-resultado"><div><h2>{{ resultado.nombreCaso }}</h2><p>{{ resultado.fin | date:'medium' }}</p></div><strong>{{ resultado.calificacion ?? 'Pendiente' }}</strong><button class="secundario" (click)="verResultado(resultado.idIntento)">Ver retroalimentación</button></article>} @empty {<p class="vacio">Aún no tienes intentos finalizados.</p>}</div>
-        }
-      }
-
-      @if (vista() === 'notificaciones') {
-        <header><h1>Notificaciones</h1><p>Avisos de convocatorias, resultados y valoraciones.</p></header>
-        <div class="tarjetas">@for (aviso of notificaciones(); track aviso.id) {<article class="aviso" [class.no-leido]="!aviso.leida"><div><strong>{{ aviso.tipo }}</strong><p>{{ aviso.mensaje }}</p><small>{{ aviso.fechaCreacion | date:'medium' }}</small></div>@if (!aviso.leida) {<button class="secundario" (click)="marcarLeida(aviso)">Marcar como leída</button>}</article>} @empty {<p class="vacio">No tienes notificaciones.</p>}</div>
-      }
-    </main>
-  </div>
+    @if (vista() === 'notificaciones') {
+      <header class="encabezado-pagina">
+        <span class="sobretitulo-estudiante">Mantente al día</span>
+        <h1>Notificaciones</h1>
+        <p>Avisos de convocatorias, resultados y valoraciones.</p>
+      </header>
+      <psico-panel-notificaciones
+        [notificaciones]="notificaciones()"
+        [ocupado]="ocupado()"
+        (marcarLeida)="marcarLeida($event)"
+        (marcarTodasLeidas)="marcarLeida()"
+      />
+    }
+  </main>
 </div>
+<dialog
+  #cuenta
+  class="dialogo-cuenta"
+  aria-labelledby="titulo-cuenta-estudiante"
+  (click)="$event.target === cuenta && cuenta.close()"
+>
+  <div class="contenido-cuenta">
+    <button type="button" class="cerrar-cuenta" aria-label="Cerrar Mi cuenta" (click)="cuenta.close()">
+      ×
+    </button>
+    <span class="sobretitulo-estudiante">Mi cuenta</span>
+    <h2 id="titulo-cuenta-estudiante">Hola, {{ api.usuario()?.nombre }}.</h2>
+    <p>{{ api.usuario()?.correo }}</p>
+    <p>Estudiante</p>
+    <button type="button" class="secundario" (click)="salir()">Cerrar sesión</button>
+  </div>
+</dialog>
