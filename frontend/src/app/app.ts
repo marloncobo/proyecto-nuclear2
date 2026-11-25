@@ -1,5 +1,6 @@
 import { Component, computed, effect, signal, inject, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { PanelNotificaciones } from './panel-notificaciones';
 import { DatePipe } from '@angular/common';
 import { NavigationEnd, Router } from '@angular/router';
 import { Ingreso } from './ingreso';
@@ -7,6 +8,9 @@ import { EditorCaso } from './editor-caso';
 import { SelectorEstudiantes } from './selector-estudiantes';
 import { Administracion } from './administracion';
 import { EspacioEstudiante } from './espacio-estudiante';
+import { CambioClave } from './cambio-clave';
+import { TutorialGuiado } from './tutorial-guiado';
+import { pasosAplicacion, pasosModales } from './pasos-tutorial';
 import {
   ServicioApi,
   Caso,
@@ -22,7 +26,7 @@ import {
 import { nombreEtiqueta } from './etiqueta-usuario';
 @Component({
   selector: 'psico-raiz',
-  imports: [FormsModule, DatePipe, Administracion, Ingreso, EditorCaso, SelectorEstudiantes, EspacioEstudiante],
+  imports: [FormsModule, DatePipe, Administracion, Ingreso, EditorCaso, SelectorEstudiantes, EspacioEstudiante, TutorialGuiado, PanelNotificaciones, CambioClave],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
@@ -34,6 +38,11 @@ export class Aplicacion {
   readonly demostracion = signal(false);
   readonly vista = signal('inicio');
   readonly menuMovilAbierto = signal(false);
+  readonly inicioTutorial = signal(false);
+  readonly pasosModales = pasosModales;
+  readonly pasosInterfaz = computed(() =>
+    pasosAplicacion[this.api.usuario()?.rol === 'ADMINISTRADOR' ? 'administracion' : this.vista()],
+  );
   readonly nombreEtiqueta = nombreEtiqueta;
   readonly menu = computed(() =>
     this.api.usuario()?.rol === 'ADMINISTRADOR'
@@ -49,6 +58,7 @@ export class Aplicacion {
   );
   readonly casos = signal<Caso[]>(this.casosEjemplo());
   readonly sesiones = signal<Sesion[]>(this.sesionesEjemplo());
+  readonly ahoraSesiones = signal(Date.now());
   readonly espacios = signal<Espacio[]>(this.espaciosEjemplo());
   readonly busquedaEspacios = signal('');
   readonly periodoEspacios = signal('');
@@ -84,17 +94,29 @@ export class Aplicacion {
   readonly busquedaSesiones = signal('');
   readonly estadoSesiones = signal('');
   readonly espacioSesiones = signal('');
+  private readonly sesionesPorPagina = 5;
+  readonly paginaSesiones = signal(1);
   readonly sesionesVisibles = computed(() => {
     const consulta = this.busquedaSesiones().trim().toLocaleLowerCase('es');
     return this.sesiones().filter((sesion) => {
       const nombreCaso = this.nombreCaso(sesion.idCaso).toLocaleLowerCase('es');
-      const lugar = sesion.lugar.toLocaleLowerCase('es');
+      const lugar = (sesion.lugar ?? '').toLocaleLowerCase('es');
       return (
         (!consulta || nombreCaso.includes(consulta) || lugar.includes(consulta)) &&
         (!this.estadoSesiones() || sesion.estado === this.estadoSesiones()) &&
         (!this.espacioSesiones() || sesion.idEspacio === this.espacioSesiones())
       );
     });
+  });
+  readonly totalPaginasSesiones = computed(() =>
+    Math.max(1, Math.ceil(this.sesionesVisibles().length / this.sesionesPorPagina)),
+  );
+  readonly paginaActualSesiones = computed(() =>
+    Math.min(this.paginaSesiones(), this.totalPaginasSesiones()),
+  );
+  readonly sesionesPagina = computed(() => {
+    const inicio = (this.paginaActualSesiones() - 1) * this.sesionesPorPagina;
+    return this.sesionesVisibles().slice(inicio, inicio + this.sesionesPorPagina);
   });
   readonly modal = signal('');
   readonly seleccionado = signal<Caso | null>(null);
@@ -106,12 +128,22 @@ export class Aplicacion {
   private focoAnterior: HTMLElement | null = null;
   readonly resultado = signal<Reporte[] | null>(null);
   readonly espacioEditado = signal<Espacio | null>(null);
-  readonly estudianteEncontrado = signal<Usuario | null>(null);
-  correoBusqueda = '';
   readonly estudiantes = signal<Usuario[]>([]);
   identificadorReporte = '';
   readonly cargandoEstudiantes = signal(false);
   readonly reporteSesion = signal<FilaReporteSesion[] | null>(null);
+  readonly participantesDetalleSesion = signal<FilaReporteSesion[] | null>(null);
+  readonly filtroParticipantesSesion = signal('');
+  readonly participantesSesionFiltrados = computed(() => {
+    const consulta = this.filtroParticipantesSesion().trim().toLocaleLowerCase('es');
+    const participantes = this.participantesDetalleSesion() ?? [];
+    if (!consulta) return participantes;
+    return participantes.filter((fila) =>
+      [fila.nombreEstudiante, fila.correoEstudiante].some(
+        (dato) => dato.toLocaleLowerCase('es').includes(consulta),
+      ),
+    );
+  });
   readonly notificaciones = signal<AvisoNotificacion[]>([]);
   readonly cargandoNotificaciones = signal(false);
   readonly errorNotificaciones = signal('');
@@ -121,19 +153,6 @@ export class Aplicacion {
   );
   readonly estadoNotificaciones = signal('');
   readonly tipoNotificaciones = signal('');
-  readonly tiposNotificaciones = computed(() => [
-    ...new Set(this.notificaciones().map((notificacion) => notificacion.tipo)),
-  ]);
-  readonly notificacionesVisibles = computed(() =>
-    this.notificaciones().filter(
-      (notificacion) =>
-        (!this.estadoNotificaciones() ||
-          (this.estadoNotificaciones() === 'NO_LEIDA'
-            ? !notificacion.leida
-            : notificacion.leida)) &&
-        (!this.tipoNotificaciones() || notificacion.tipo === this.tipoNotificaciones()),
-    ),
-  );
   idSesionReporte = '';
   nombreEstudianteReporte = '';
   readonly busquedaResultados = signal('');
@@ -157,6 +176,8 @@ export class Aplicacion {
   idEstudiante = '';
   nombreEspacio = '';
   periodo = '2026-2';
+  estudiantesEspacio: string[] = [];
+  private estudiantesPredeterminados: string[] = [];
   borrador: Caso | null = null;
   programacion = {
     idCaso: '',
@@ -171,6 +192,29 @@ export class Aplicacion {
   };
   constructor() {
     let habiaCuenta = false;
+    effect((limpiar) => {
+      const usuario = this.api.usuario();
+      if (this.vista() !== 'sesiones' || usuario?.rol !== 'DOCENTE') return;
+      this.ahoraSesiones.set(Date.now());
+      let consultando = false;
+      const intervalo = setInterval(async () => {
+        const ahora = Date.now();
+        this.ahoraSesiones.set(ahora);
+        if (consultando || this.ocupado() || !this.sesiones().some(
+          (sesion) => sesion.estado === 'SIN_INICIAR' && Date.parse(sesion.inicioPrevisto) <= ahora,
+        )) return;
+        consultando = true;
+        try {
+          const sesiones = await this.api.consultar<Sesion[]>('/sesiones');
+          if (this.api.usuario() === usuario && !this.ocupado()) this.sesiones.set(sesiones);
+        } catch {
+          // El siguiente ciclo vuelve a consultar el estado.
+        } finally {
+          consultando = false;
+        }
+      }, 5000);
+      limpiar(() => clearInterval(intervalo));
+    });
     effect(() => {
       if (this.api.conectado()) {
         habiaCuenta = true;
@@ -216,8 +260,18 @@ export class Aplicacion {
       }
       const vista = direccion.queryParams['vista'] ?? this.menu()[0].id;
       this.vista.set(this.menu().some((item) => item.id === vista) ? vista : this.menu()[0].id);
-      if (evento.urlAfterRedirects.startsWith('/ingreso')) this.navegar(this.menu()[0].id);
+      if (evento.urlAfterRedirects.startsWith('/ingreso')) {
+        if (this.api.usuario()?.rol === 'ESTUDIANTE') {
+          void this.enrutador.navigate(['/estudiante', 'actividades'], { replaceUrl: true });
+        } else {
+          this.navegar(this.menu()[0].id);
+        }
+      }
     });
+    if (this.api.usuario()?.rol === 'DOCENTE') {
+      this.reiniciarDatosDeCuenta();
+      void this.ejecutar(() => this.cargarDatosDocente());
+    }
   }
   navegar(vista: string) {
     const cerrarMenu = this.menuMovilAbierto();
@@ -259,7 +313,8 @@ export class Aplicacion {
       this.irAlIngreso();
       return;
     }
-    if (!this.modal()) this.focoAnterior = document.activeElement as HTMLElement;
+    const modalAnterior = this.modal();
+    if (!modalAnterior) this.focoAnterior = document.activeElement as HTMLElement;
     this.seleccionado.set(caso);
     this.error.set('');
     this.erroresPublicacion.set([]);
@@ -268,16 +323,68 @@ export class Aplicacion {
       this.espacioEditado.set(null);
       this.nombreEspacio = '';
       this.periodo = '2026-2';
+      this.estudiantesEspacio = [];
     }
-    if ((tipo === 'programar' || tipo === 'convocados') && this.api.conectado()) {
+    if (tipo === 'programar')
+      this.seleccionarEspacioSesion(this.programacion.idEspacio);
+    if ((tipo === 'programar' || tipo === 'convocados' || tipo === 'espacio') && this.api.conectado()) {
       void this.cargarEstudiantes();
     }
-    if (tipo === 'programar') this.estudianteEncontrado.set(null);
-    if (tipo === 'crear') this.borrador = caso ? structuredClone(caso) : EditorCaso.nuevo();
+    if (tipo === 'crear') this.borrador = caso ? structuredClone(caso) : this.recuperarBorradorLocal();
     setTimeout(() => document.querySelector<HTMLElement>('.modal')?.focus());
   }
+  private claveBorradorLocal() {
+    const usuario = this.api.usuario();
+    if (usuario && this.api.conectado()) return `psicoapp.borrador-caso.v1.cuenta.${usuario.id}`;
+    return this.demostracion() ? 'psicoapp.borrador-caso.v1.demostracion' : null;
+  }
+
+  private recuperarBorradorLocal(): Caso {
+    const clave = this.claveBorradorLocal();
+    if (clave) {
+      try {
+        const guardado = localStorage.getItem(clave);
+        const caso: Caso | null = guardado ? JSON.parse(guardado) : null;
+        if (caso?.estado === 'BORRADOR' && Array.isArray(caso.escenarios)) return caso;
+      } catch {
+        // Un borrador ilegible o el almacenamiento bloqueado no impiden usar el editor.
+      }
+    }
+    return EditorCaso.nuevo();
+  }
+
+  guardarBorradorLocal(caso: Caso) {
+    if (this.seleccionado()) return;
+    const clave = this.claveBorradorLocal();
+    if (!clave) return;
+    try {
+      localStorage.setItem(clave, JSON.stringify(caso));
+    } catch {
+      // El formulario sigue disponible si el navegador no permite guardar localmente.
+    }
+  }
+
+  reiniciarBorrador() {
+    if (this.ocupado() || this.seleccionado() || !this.borrador) return;
+    if (!window.confirm('¿Borrar el borrador de este caso y empezar de cero?')) return;
+    this.eliminarBorradorLocal(this.claveBorradorLocal(), JSON.stringify(this.borrador));
+    this.borrador = EditorCaso.nuevo();
+    this.error.set('');
+  }
+
+  private eliminarBorradorLocal(clave: string | null, copia: string) {
+    if (!clave) return;
+    try {
+      if (localStorage.getItem(clave) === copia) localStorage.removeItem(clave);
+    } catch {
+      // El editor sigue disponible si el almacenamiento local está bloqueado.
+    }
+  }
+
   cerrar() {
     if (!this.ocupado()) {
+      if (this.modal() === 'alta-estudiante')
+        this.altaEstudiante = { nombre: '', correo: '', clave: '' };
       this.modal.set('');
       this.error.set('');
       this.erroresPublicacion.set([]);
@@ -296,8 +403,11 @@ export class Aplicacion {
     const teclado = evento as KeyboardEvent;
     const elementos = Array.from(
       document.querySelectorAll<HTMLElement>(
-        '.modal button:not(:disabled), .modal input, .modal textarea, .modal select',
+        '.modal :is(button, input, textarea, select, summary, [tabindex="0"]):not(:disabled)',
       ),
+    ).filter((elemento) =>
+      !elemento.closest('dialog:not([open])') &&
+      (elemento.matches('summary') || !elemento.closest('details:not([open])')),
     );
     const primero = elementos[0];
     const ultimo = elementos.at(-1);
@@ -340,12 +450,8 @@ export class Aplicacion {
     this.resultado.set(null);
     this.seleccionado.set(null);
     this.sesionPendiente.set(null);
-    this.estudianteEncontrado.set(null);
     this.espacioEditado.set(null);
-    this.correoBusqueda = '';
-    this.busquedaSesiones.set('');
-    this.estadoSesiones.set('');
-    this.espacioSesiones.set('');
+    this.limpiarFiltrosSesiones();
     this.busquedaEspacios.set('');
     this.periodoEspacios.set('');
     this.busqueda.set('');
@@ -353,6 +459,8 @@ export class Aplicacion {
     this.idEstudiante = '';
     this.nombreEspacio = '';
     this.periodo = '2026-2';
+    this.estudiantesEspacio = [];
+    this.estudiantesPredeterminados = [];
     this.borrador = null;
     this.estudiantes.set([]);
     this.notificaciones.set([]);
@@ -360,6 +468,7 @@ export class Aplicacion {
     this.tipoNotificaciones.set('');
     this.errorNotificaciones.set('');
     this.reporteSesion.set(null);
+    this.participantesDetalleSesion.set(null);
     this.idSesionReporte = '';
     this.identificadorReporte = '';
     this.nombreEstudianteReporte = '';
@@ -398,6 +507,7 @@ export class Aplicacion {
   }
   async completarIngreso() {
     this.demostracion.set(false);
+    this.inicioTutorial.set(true);
     await this.ejecutar(async () => {
       this.reiniciarDatosDeCuenta();
       this.modal.set('');
@@ -413,23 +523,27 @@ export class Aplicacion {
         this.navegar('administracion');
       } else {
         this.navegar('inicio');
-        const usuario = this.api.usuario();
-        const [espacios, casos, sesiones] = await Promise.all([
-          this.api.consultar<Espacio[]>('/academico/espacios'),
-          this.api.consultar<Caso[]>('/casos'),
-          this.api.consultar<Sesion[]>('/sesiones'),
-        ]);
-        if (this.api.usuario() !== usuario) return;
-        this.espacios.set(espacios);
-        this.casos.set(casos);
-        this.sesiones.set(sesiones);
-        await this.cargarNotificaciones();
+        await this.cargarDatosDocente();
       }
     });
   }
 
+  private async cargarDatosDocente() {
+    const usuario = this.api.usuario();
+    const [espacios, casos, sesiones] = await Promise.all([
+      this.api.consultar<Espacio[]>('/academico/espacios'),
+      this.api.consultar<Caso[]>('/casos'),
+      this.api.consultar<Sesion[]>('/sesiones'),
+    ]);
+    if (this.api.usuario() !== usuario) return;
+    this.espacios.set(espacios);
+    this.casos.set(casos);
+    this.sesiones.set(sesiones);
+    await this.cargarNotificaciones();
+  }
+
   async cargarNotificaciones() {
-    if (this.cargandoNotificaciones() || !this.api.conectado()) return;
+    if (this.cargandoNotificaciones() || this.marcandoNotificacion() || !this.api.conectado()) return;
     const usuario = this.api.usuario();
     this.cargandoNotificaciones.set(true);
     this.errorNotificaciones.set('');
@@ -446,53 +560,29 @@ export class Aplicacion {
     }
   }
 
-  async marcarNotificacionLeida(notificacion: AvisoNotificacion) {
-    if (notificacion.leida || this.marcandoNotificacion()) return;
-    this.marcandoNotificacion.set(notificacion.id);
+  async marcarNotificacionLeida(notificacion?: AvisoNotificacion) {
+    if (notificacion?.leida || this.marcandoNotificacion() || this.cargandoNotificaciones()) return;
+    const usuario = this.api.usuario();
+    this.marcandoNotificacion.set(notificacion?.id ?? 'todas');
     this.errorNotificaciones.set('');
     try {
-      await this.api.marcarNotificacionLeida(notificacion.id);
+      if (notificacion) await this.api.marcarNotificacionLeida(notificacion.id);
+      else await this.api.marcarTodasNotificacionesLeidas();
+      if (this.api.usuario() !== usuario) return;
       this.notificaciones.update((lista) =>
         lista.map((actual) =>
-          actual.id === notificacion.id ? { ...actual, leida: true } : actual,
+          !notificacion || actual.id === notificacion.id ? { ...actual, leida: true } : actual,
         ),
       );
     } catch (error) {
-      this.errorNotificaciones.set(
-        error instanceof Error ? error.message : 'No fue posible marcar la notificación.',
+      if (this.api.usuario() === usuario) this.errorNotificaciones.set(
+        error instanceof Error ? error.message : 'No fue posible marcar las notificaciones.',
       );
     } finally {
       this.marcandoNotificacion.set(null);
     }
   }
 
-  tituloNotificacion(tipo: string) {
-    return (
-      (
-        {
-          RECORDATORIO_SESION: 'Recordatorio de sesión próxima',
-          FINALIZACION_SESION: 'Finalización de sesión',
-          ESTUDIANTES_PENDIENTES: 'Estudiantes que no completaron la actividad',
-          EVALUACIONES_DISPONIBLES: 'Evaluaciones disponibles',
-          REPORTE_DISPONIBLE: 'Reporte disponible',
-        } as Record<string, string>
-      )[tipo] ?? tipo
-    );
-  }
-
-  iconoNotificacion(tipo: string) {
-    return (
-      (
-        {
-          RECORDATORIO_SESION: '◷',
-          FINALIZACION_SESION: '✓',
-          ESTUDIANTES_PENDIENTES: '♙',
-          EVALUACIONES_DISPONIBLES: '▣',
-          REPORTE_DISPONIBLE: '▤',
-        } as Record<string, string>
-      )[tipo] ?? '◉'
-    );
-  }
   salir() {
     if (this.ocupado()) return;
     this.api.salir();
@@ -504,11 +594,14 @@ export class Aplicacion {
   async guardarCaso(caso: Caso) {
     await this.ejecutar(async () => {
       const anterior = this.seleccionado();
+      const claveLocal = anterior ? null : this.claveBorradorLocal();
+      const copiaEnviada = claveLocal ? JSON.stringify(caso) : '';
       const guardado = this.api.conectado()
         ? anterior
           ? await this.api.enviar<Caso>(`/casos/${anterior.id}`, caso, 'PUT')
           : await this.api.enviar<Caso>('/casos', caso)
         : caso;
+      this.eliminarBorradorLocal(claveLocal, copiaEnviada);
       this.casos.update((casos) =>
         anterior
           ? casos.map((actual) => (actual.id === anterior.id ? guardado : actual))
@@ -519,6 +612,7 @@ export class Aplicacion {
       this.aviso.set(anterior ? 'Borrador actualizado.' : 'Borrador guardado.');
     });
   }
+
   async cambiarEstado(caso: Caso, accion: 'publicar' | 'archivar') {
     await this.ejecutar(async () => {
       if (this.api.conectado()) await this.api.enviar(`/casos/${caso.id}/${accion}`, {});
@@ -538,12 +632,28 @@ export class Aplicacion {
     this.busquedaSesiones.set('');
     this.estadoSesiones.set('');
     this.espacioSesiones.set('');
+    this.paginaSesiones.set(1);
   }
   editarEspacio(espacio: Espacio) {
     this.abrir('espacio');
     this.espacioEditado.set(espacio);
     this.nombreEspacio = espacio.nombre;
     this.periodo = espacio.periodo;
+    this.estudiantesEspacio = [...(espacio.estudiantes ?? [])];
+  }
+
+  seleccionarEspacioSesion(id: string) {
+    const manuales = this.programacion.estudiantes.filter(
+      (estudiante) => !this.estudiantesPredeterminados.includes(estudiante),
+    );
+    this.programacion.idEspacio = id;
+    const predeterminados = this.espacioProgramado()?.estudiantes ?? [];
+    this.estudiantesPredeterminados = predeterminados.filter((estudiante) => !manuales.includes(estudiante));
+    this.programacion.estudiantes = [...new Set([...manuales, ...this.estudiantesPredeterminados])];
+  }
+
+  espacioProgramado() {
+    return this.espacios().find((espacio) => espacio.id === this.programacion.idEspacio);
   }
   limpiarFiltrosEspacios() {
     this.busquedaEspacios.set('');
@@ -553,17 +663,23 @@ export class Aplicacion {
     this.busquedaResultados.set('');
     this.estadoResultados.set('');
   }
-  limpiarFiltrosNotificaciones() {
-    this.estadoNotificaciones.set('');
-    this.tipoNotificaciones.set('');
-  }
   async cargarEstudiantes() {
     if (this.cargandoEstudiantes()) return;
     const usuario = this.api.usuario();
     this.cargandoEstudiantes.set(true);
     try {
       const estudiantes = await this.api.consultar<Usuario[]>('/identidad/estudiantes/listado');
-      if (this.api.usuario() === usuario) this.estudiantes.set(estudiantes);
+      if (this.api.usuario() === usuario) {
+        this.estudiantes.set(estudiantes);
+        const disponibles = new Set(estudiantes.map((estudiante) => estudiante.id));
+        if (this.modal() === 'programar') {
+          this.programacion.estudiantes = this.programacion.estudiantes.filter(
+            (id) => disponibles.has(id) || !this.estudiantesPredeterminados.includes(id),
+          );
+        }
+        if (this.modal() === 'espacio')
+          this.estudiantesEspacio = this.estudiantesEspacio.filter((id) => disponibles.has(id));
+      }
     } catch (error) {
       if (this.api.usuario() === usuario)
         this.error.set(error instanceof Error ? error.message : 'No se pudo cargar la lista.');
@@ -574,56 +690,48 @@ export class Aplicacion {
 
   async registrarEstudiante() {
     await this.ejecutar(async () => {
-      let estudiante: Usuario;
-      let existente = false;
-      try {
-        estudiante = await this.api.registrarEstudiante(this.altaEstudiante);
-      } catch (error) {
-        try {
-          estudiante = await this.api.buscarEstudiante(this.altaEstudiante.correo);
-          existente = true;
-        } catch {
-          throw error;
-        }
-      }
+      const estudiante = await this.api.registrarEstudiante(this.altaEstudiante);
       this.altaEstudiante = { nombre: '', correo: '', clave: '' };
       this.estudiantes.update((lista) =>
         lista.some((actual) => actual.id === estudiante.id) ? lista : [...lista, estudiante],
       );
-      this.programacion.estudiantes = [
-        ...new Set([...this.programacion.estudiantes, estudiante.id]),
-      ];
-      this.abrir('programar');
-      this.aviso.set(
-        existente
-          ? 'La cuenta ya existía y fue seleccionada sin cambiar sus credenciales.'
-          : 'Estudiante registrado y agregado a la convocatoria.',
-      );
+      this.modal.set('');
+      this.aviso.set('Estudiante registrado. Ya puedes seleccionarlo al programar una sesión.');
+      const menuAbierto = this.menuMovilAbierto();
+      this.menuMovilAbierto.set(false);
+      setTimeout(() => {
+        const destino = menuAbierto
+          ? document.getElementById('alternar-menu')
+          : this.focoAnterior;
+        destino?.focus();
+      });
     });
-  }
-
-  async buscarEstudiante() {
-    await this.ejecutar(async () => {
-      this.estudianteEncontrado.set(null);
-      this.estudianteEncontrado.set(await this.api.buscarEstudiante(this.correoBusqueda));
-    });
-  }
-
-  agregarEstudiante() {
-    const estudiante = this.estudianteEncontrado();
-    if (!estudiante) return;
-    this.estudiantes.update((lista) =>
-      lista.some((actual) => actual.id === estudiante.id) ? lista : [...lista, estudiante],
-    );
-    this.programacion.estudiantes = [...new Set([...this.programacion.estudiantes, estudiante.id])];
-    this.estudianteEncontrado.set(null);
-    this.correoBusqueda = '';
   }
 
   editarConvocados(sesion: Sesion) {
     this.convocadosSeleccionados = this.convocadosActuales(sesion);
     this.sesionPendiente.set(sesion);
     this.abrir('convocados');
+  }
+
+  async abrirDetalleSesion(sesion: Sesion) {
+    this.sesionPendiente.set(sesion);
+    this.participantesDetalleSesion.set(null);
+    this.filtroParticipantesSesion.set('');
+    this.abrir('detalle-sesion');
+    if (!this.api.conectado()) return;
+
+    await this.ejecutar(async () => {
+      const id = encodeURIComponent(sesion.id);
+      const [detalle, filas] = await Promise.all([
+        this.api.consultar<Sesion>(`/sesiones/${id}`),
+        this.api.consultar<FilaReporteSesion[]>(`/reportes/sesiones/${id}`),
+      ]);
+      if (this.sesionPendiente() !== sesion) return;
+      this.sesionPendiente.set(detalle);
+      this.sesiones.update((sesiones) => sesiones.map((actual) => actual.id === detalle.id ? detalle : actual));
+      this.participantesDetalleSesion.set(filas.filter((fila) => fila.idIntento !== null));
+    });
   }
 
   private convocadosActuales(sesion: Sesion) {
@@ -660,11 +768,12 @@ export class Aplicacion {
   }
   async guardarEspacio() {
     await this.ejecutar(async () => {
-      const datos = { nombre: this.nombreEspacio, periodo: this.periodo };
+      const datos = { nombre: this.nombreEspacio, periodo: this.periodo, estudiantes: this.estudiantesEspacio };
       const anterior = this.espacioEditado();
       if (
         anterior &&
         !this.api.conectado() &&
+        (datos.nombre.trim() !== anterior.nombre || datos.periodo.trim() !== anterior.periodo) &&
         this.sesiones().some((sesion) => sesion.idEspacio === anterior.id)
       )
         throw new Error('El espacio ya está asociado a una sesión.');
@@ -698,6 +807,7 @@ export class Aplicacion {
         : { ...datos, id: crypto.randomUUID(), estado: 'SIN_INICIAR', convocatorias: [] };
       this.sesiones.update((sesiones) => [...sesiones, sesion]);
       this.programacion.estudiantes = [];
+      this.estudiantesPredeterminados = [];
       this.modal.set('');
       this.navegar('sesiones');
       this.aviso.set(
@@ -705,6 +815,10 @@ export class Aplicacion {
       );
     });
   }
+  permiteInicioAnticipado(sesion: Sesion) {
+    return this.demostracion() || this.ahoraSesiones() < Date.parse(sesion.inicioPrevisto);
+  }
+
   async transicion(sesion: Sesion) {
     await this.ejecutar(async () => {
       const accion = sesion.estado === 'SIN_INICIAR' ? 'iniciar' : 'finalizar';

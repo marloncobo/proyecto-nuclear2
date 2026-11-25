@@ -16,6 +16,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 @Transactional
 public class RepositorioSesionesJdbc implements RepositorioSesiones {
+    private static final String CONSULTA_SESION = """
+            SELECT s.*,
+                (SELECT h.apertura FROM horario_real_sesion h WHERE h.id_sesion = s.id_sesion) AS apertura_real,
+                (SELECT h.cierre FROM horario_real_sesion h WHERE h.id_sesion = s.id_sesion) AS cierre_real
+            FROM sesion s WHERE s.id_sesion = ?
+            """;
     private final JdbcClient jdbc;
 
     public RepositorioSesionesJdbc(JdbcClient jdbc) {
@@ -47,14 +53,14 @@ public class RepositorioSesionesJdbc implements RepositorioSesiones {
     @Override
     @Transactional(readOnly = true)
     public Optional<Sesion> buscarPorId(UUID id) {
-        return jdbc.sql("SELECT * FROM sesion WHERE id_sesion = ?")
+        return jdbc.sql(CONSULTA_SESION)
                 .param(id.toString()).query(this::mapear).optional();
     }
 
     @Override
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
     public Optional<Sesion> bloquearPorId(UUID id) {
-        return jdbc.sql("SELECT * FROM sesion WHERE id_sesion = ? FOR UPDATE")
+        return jdbc.sql(CONSULTA_SESION + " FOR UPDATE")
                 .param(id.toString()).query(this::mapear).optional();
     }
 
@@ -65,6 +71,26 @@ public class RepositorioSesionesJdbc implements RepositorioSesiones {
                 .params(sesion.estado().codigo().name(), sesion.id().toString()).update() != 1) {
             throw new IllegalStateException("La sesion bloqueada ya no existe");
         }
+        if (sesion.cierreReal() == null && sesion.aperturaReal() == null) return;
+        var parametros = java.util.Arrays.asList(
+                sesion.aperturaReal() == null ? null : Timestamp.from(sesion.aperturaReal()),
+                sesion.cierreReal() == null ? null : Timestamp.from(sesion.cierreReal()),
+                sesion.id().toString());
+        if (jdbc.sql("UPDATE horario_real_sesion SET apertura = ?, cierre = ? WHERE id_sesion = ?")
+                .params(parametros).update() == 0) {
+            jdbc.sql("INSERT INTO horario_real_sesion (apertura, cierre, id_sesion) VALUES (?, ?, ?)")
+                    .params(parametros).update();
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UUID> buscarPorAbrir(Instant ahora) {
+        Timestamp instante = Timestamp.from(ahora);
+        return jdbc.sql("""
+                SELECT id_sesion FROM sesion WHERE estado='SIN_INICIAR'
+                AND fecha_inicio <= ? AND fecha_fin > ? ORDER BY id_sesion
+                """).params(instante, instante).query((fila, indice) -> UUID.fromString(fila.getString("id_sesion"))).list();
     }
 
     @Override
@@ -77,11 +103,14 @@ public class RepositorioSesionesJdbc implements RepositorioSesiones {
     }
 
     private Sesion mapear(ResultSet fila, int indice) throws SQLException {
+        Timestamp apertura = fila.getTimestamp("apertura_real");
+        Timestamp cierre = fila.getTimestamp("cierre_real");
         return new Sesion(UUID.fromString(fila.getString("id_sesion")), UUID.fromString(fila.getString("id_caso")),
                 UUID.fromString(fila.getString("id_espacio")), UUID.fromString(fila.getString("id_docente")),
                 fila.getTimestamp("fecha_inicio").toInstant(), fila.getTimestamp("fecha_fin").toInstant(),
                 fila.getInt("duracion_maxima_min"), ModoNavegacion.valueOf(fila.getString("modo_navegacion")),
                 fila.getString("lugar"), fila.getString("mensaje"),
-                EstadoSesion.desde(TipoEstadoSesion.valueOf(fila.getString("estado"))));
+                EstadoSesion.desde(TipoEstadoSesion.valueOf(fila.getString("estado"))),
+                apertura == null ? null : apertura.toInstant(), cierre == null ? null : cierre.toInstant());
     }
 }

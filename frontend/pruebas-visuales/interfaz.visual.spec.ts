@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../pruebas/soporte/sin-tutorial-automatico';
 import { simularApi, ingresar } from '../pruebas/soporte/identidad';
 
 test.beforeEach(async ({ page: pagina }) => {

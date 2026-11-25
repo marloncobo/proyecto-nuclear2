@@ -13,12 +13,10 @@ import com.psicoapp.participation.domain.Intento;
 import com.psicoapp.sessions.application.RepositorioConvocatorias;
 import com.psicoapp.sessions.application.RepositorioSesiones;
 import com.psicoapp.sessions.domain.Sesion;
-import com.psicoapp.sessions.domain.TipoEstadoSesion;
 import com.psicoapp.shared.exceptions.AccesoDenegado;
 import com.psicoapp.shared.exceptions.NoEncontrado;
 import java.math.BigDecimal;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -152,18 +150,12 @@ public class ServicioEspacioEstudiante {
 
     private String accion(Sesion sesion, Intento intento) {
         if (intento != null && intento.estado() == EstadoIntento.EN_PROGRESO) return "CONTINUAR";
-        boolean ventana = permiteIngreso(sesion);
+        boolean ventana = sesion.permiteIngreso(reloj.instant());
         if (intento == null) return ventana ? "INICIAR" : "ESPERAR";
         if (ventana && intentos.tienePermisoReintento(intento.id())) return "INICIAR";
         return "RESULTADO";
     }
 
-    private boolean permiteIngreso(Sesion sesion) {
-        Instant ahora = reloj.instant();
-        Instant limite = sesion.inicioPrevisto().plus(Duration.between(sesion.inicioPrevisto(), sesion.finPrevisto()).dividedBy(2));
-        return sesion.estado().codigo() == TipoEstadoSesion.EN_CURSO && !sesion.estaVencida(ahora)
-                && !ahora.isBefore(sesion.inicioPrevisto()) && !ahora.isAfter(limite);
-    }
 
     private void exigirConvocatoria(UUID estudiante, UUID sesion) {
         if (convocatorias.buscarAutorizada(estudiante, sesion).isEmpty()) {

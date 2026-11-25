@@ -51,6 +51,28 @@ public class RepositorioEspaciosAcademicosJdbc implements RepositorioEspaciosAca
                 .query(this::mapear).list();
     }
 
+    @Override
+    public List<UUID> listarEstudiantes(UUID idEspacio) {
+        return jdbc.sql("""
+                SELECT e.id_estudiante FROM espacio_estudiante e
+                JOIN usuario u ON u.id_usuario = e.id_estudiante
+                JOIN rol r ON r.id_rol = u.id_rol
+                WHERE e.id_espacio = ? AND u.activo = TRUE AND r.nombre = 'ESTUDIANTE'
+                ORDER BY e.id_estudiante
+                """).param(idEspacio.toString()).query(String.class).list().stream()
+                .map(UUID::fromString).toList();
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void reemplazarEstudiantes(UUID idEspacio, List<UUID> estudiantes) {
+        jdbc.sql("DELETE FROM espacio_estudiante WHERE id_espacio = ?").param(idEspacio.toString()).update();
+        for (UUID estudiante : estudiantes) {
+            jdbc.sql("INSERT INTO espacio_estudiante (id_espacio, id_estudiante) VALUES (?, ?)")
+                    .params(idEspacio.toString(), estudiante.toString()).update();
+        }
+    }
+
     private EspacioAcademico mapear(ResultSet fila, int indice) throws SQLException {
         return new EspacioAcademico(UUID.fromString(fila.getString("id_espacio")), fila.getString("nombre"),
                 fila.getString("periodo"));

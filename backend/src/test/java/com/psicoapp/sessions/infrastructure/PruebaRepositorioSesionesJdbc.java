@@ -5,7 +5,6 @@ import com.psicoapp.cases.DatosPruebaCasos;
 import com.psicoapp.cases.domain.ConstructorCasoAcademico;
 import com.psicoapp.cases.infrastructure.RepositorioCasosJdbc;
 import com.zaxxer.hikari.HikariDataSource;
-import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.*;
@@ -149,7 +148,7 @@ class PruebaRepositorioSesionesJdbc {
         assertEquals(List.of(sesion.id()), repositorio.buscarVencidas(FIN));
         transaccion.executeWithoutResult(estado -> {
             var bloqueada = repositorio.bloquearPorId(sesion.id()).orElseThrow();
-            repositorio.actualizarEstado(bloqueada.finalizar(MotivoCierre.AUTOMATICO, FIN.plus(Duration.ofDays(1))));
+            repositorio.actualizarEstado(bloqueada.finalizar(MotivoCierre.AUTOMATICO, FIN));
         });
         assertTrue(repositorio.buscarVencidas(FIN).isEmpty());
     }

@@ -152,6 +152,12 @@
   align-items: center;
   gap: 23px;
 }
+.acciones-ingreso {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+}
 .sello-campus > span {
   font-size: 15px;
 }

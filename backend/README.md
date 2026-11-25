@@ -111,7 +111,9 @@ Consulta tambien las [reglas y pruebas de publicacion](../docs/pruebas/casos-pub
 `sessions` programa casos publicados propios en espacios academicos existentes,
 con duracion no mayor al tiempo estimado. El docente responsable inicia/finaliza
 la sesion mediante los estados `SinIniciar`, `EnCurso` y `Finalizado`.
-Un planificador cierra automaticamente al alcanzar fin previsto + 24 horas,
+Un planificador abre las sesiones al llegar al inicio previsto. El docente
+responsable puede adelantar la apertura. Otro planificador cierra las sesiones
+al alcanzar el fin previsto,
 incluidas sesiones nunca iniciadas. Las transiciones usan bloqueo transaccional.
 
 Rutas docentes: `GET /api/sesiones`, `POST /api/sesiones`, `GET /api/sesiones/{id}`,

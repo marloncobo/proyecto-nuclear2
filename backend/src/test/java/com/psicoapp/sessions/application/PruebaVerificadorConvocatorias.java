@@ -12,7 +12,7 @@ import static org.mockito.Mockito.*;
 
 class PruebaVerificadorConvocatorias {
     @Test
-    void cuentaSeAsociaASesionYRespetaMitadDelHorario() {
+    void cuentaSeAsociaASesionYPermiteIngresoHastaElCierre() {
         var convocatorias = mock(RepositorioConvocatorias.class);
         var sesiones = mock(RepositorioSesiones.class);
         var identidades = mock(DirectorioIdentidad.class);
@@ -31,11 +31,13 @@ class PruebaVerificadorConvocatorias {
         assertFalse(verificador.verificar(UUID.randomUUID(), codigo));
         assertFalse(verificador.verificar(estudiante, "invalido"));
         assertDoesNotThrow(() -> verificador.exigirAcceso(estudiante, sesion.id(), codigo));
-        when(reloj.instant()).thenReturn(DatosPruebaSesiones.INICIO.plusSeconds(1801));
+        when(reloj.instant()).thenReturn(DatosPruebaSesiones.FIN.minusNanos(1));
+        assertDoesNotThrow(() -> verificador.exigirAcceso(estudiante, sesion.id(), codigo));
+        when(reloj.instant()).thenReturn(DatosPruebaSesiones.FIN);
         assertThrows(AccesoDenegado.class, () -> verificador.exigirAcceso(estudiante, sesion.id(), codigo));
         // Autenticacion no es ingreso nuevo: no bloquea por si sola reanudaciones despues del umbral.
         assertTrue(verificador.verificar(estudiante, codigo));
-        when(reloj.instant()).thenReturn(DatosPruebaSesiones.FIN.plus(Duration.ofDays(1)));
+        when(reloj.instant()).thenReturn(DatosPruebaSesiones.FIN.plusSeconds(1));
         assertTrue(verificador.verificar(estudiante, codigo));
     }
 

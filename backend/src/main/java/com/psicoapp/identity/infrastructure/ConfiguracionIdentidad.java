@@ -60,6 +60,8 @@ public class ConfiguracionIdentidad {
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/identidad/ingreso").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/identidad/clave-inicial").hasAuthority("CAMBIO_CLAVE_INICIAL")
+                        .requestMatchers(HttpMethod.PUT, "/api/identidad/yo/clave")
+                                .hasAnyRole("DOCENTE", "ADMINISTRADOR", "ESTUDIANTE")
                         .requestMatchers("/api/identidad/yo").hasAnyAuthority("CAMBIO_CLAVE_INICIAL",
                                 "ROLE_DOCENTE", "ROLE_ADMINISTRADOR", "ROLE_ESTUDIANTE")
                         .requestMatchers(HttpMethod.PUT, "/api/identidad/estudiantes/*/clave-inicial")

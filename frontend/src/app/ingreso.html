@@ -382,7 +382,10 @@
       <p class="pie-presentacion"><span aria-hidden="true">✦</span> Aprender a comprender.</p>
     </section>
     <section class="zona-formulario" aria-labelledby="titulo-ingreso">
-      <span class="sello-campus">TU CAMPUS VIRTUAL <span aria-hidden="true">↗</span></span>
+      <div class="acciones-ingreso">
+        <psico-tutorial [pasos]="pasosTutorial" />
+        <span class="sello-campus">TU CAMPUS VIRTUAL <span aria-hidden="true">↗</span></span>
+      </div>
       <div class="formulario-ingreso">
         <p class="antetitulo">QUÉ BUENO VERTE AQUÍ</p>
         <h2 id="titulo-ingreso">Tu próxima <em>perspectiva.</em></h2>
@@ -515,6 +518,7 @@
           class="boton-demostracion"
           type="button"
           [disabled]="ocupado()"
+          data-tutorial="demostracion"
           (click)="explorar.emit()"
         >
           Explorar la demostración <span aria-hidden="true">↗</span>

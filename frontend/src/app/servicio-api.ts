@@ -1,6 +1,8 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
+const CLAVE_TOKEN_SESION = 'psicoapp.token';
+
 declare global {
   interface Window {
     configuracionPsicoapp?: { urlApi?: string };
@@ -65,6 +67,8 @@ export interface Sesion {
   idEspacio: string;
   inicioPrevisto: string;
   finPrevisto: string;
+  aperturaReal?: string | null;
+  cierreReal?: string | null;
   duracionMaximaMin: number;
   estado: string;
   modoNavegacion: string;
@@ -81,6 +85,7 @@ export interface Espacio {
   id: string;
   nombre: string;
   periodo: string;
+  estudiantes?: string[];
 }
 export interface Usuario {
   id: string;
@@ -172,6 +177,30 @@ export class ServicioApi {
   readonly conectado = signal(false);
   private autorizacion = '';
   private generacionSesion = 0;
+
+  async restaurarSesion() {
+    try {
+      const token = sessionStorage.getItem(CLAVE_TOKEN_SESION);
+      if (!token) return;
+
+      this.autorizacion = 'Bearer ' + token;
+      const usuario = await this.peticion<Usuario>('/identidad/yo', 'GET', undefined, {}, true);
+      this.usuario.set(usuario);
+      this.conectado.set(true);
+    } catch {
+      this.autorizacion = '';
+    }
+  }
+
+  private guardarToken(token: string | null) {
+    try {
+      if (token === null) sessionStorage.removeItem(CLAVE_TOKEN_SESION);
+      else sessionStorage.setItem(CLAVE_TOKEN_SESION, token);
+    } catch {
+      // La sesión sigue funcionando en memoria si el navegador bloquea el almacenamiento.
+    }
+  }
+
   async ingresar(correo: string, clave: string, _estudiante = false) {
     const generacionAnterior = this.generacionSesion;
     const generacionIngreso = ++this.generacionSesion;
@@ -197,6 +226,7 @@ export class ServicioApi {
         throw new Error('La cuenta cambió. Vuelve a intentar la operación.');
       this.usuario.set(usuario);
       this.conectado.set(!ingreso.cambioClaveInicial);
+      this.guardarToken(ingreso.cambioClaveInicial ? null : ingreso.token);
       return { usuario, cambioClaveInicial: Boolean(ingreso.cambioClaveInicial) };
     } catch (error) {
       if (this.generacionSesion === generacionIngreso) {
@@ -209,9 +239,13 @@ export class ServicioApi {
   cambiarClaveInicial(clave: string) {
     return this.enviar<void>('/identidad/clave-inicial', { clave }, 'PUT');
   }
+  cambiarClave(actual: string, nueva: string) {
+    return this.enviar<void>('/identidad/yo/clave', { actual, nueva }, 'PUT');
+  }
   salir() {
     this.generacionSesion++;
     this.autorizacion = '';
+    this.guardarToken(null);
     this.usuario.set(null);
     this.conectado.set(false);
   }
@@ -258,18 +292,13 @@ export class ServicioApi {
   listarRoles() {
     return this.consultar<Rol[]>('/identidad/roles');
   }
-  buscarEstudiante(correo: string) {
-    return this.consultar<Usuario>(
-      '/identidad/estudiantes?' + new URLSearchParams({ correo: correo.trim() }),
-    );
-  }
   consultarPermiso(rol: Rol) {
     return this.consultar<{ habilitado: boolean }>(`/identidad/roles/${rol}/creacion-casos`);
   }
   configurarPermiso(habilitado: boolean) {
     return this.enviar<void>('/identidad/roles/DOCENTE/creacion-casos', { habilitado }, 'PUT');
   }
-  editarEspacio(id: string, datos: { nombre: string; periodo: string }) {
+  editarEspacio(id: string, datos: Omit<Espacio, 'id'>) {
     return this.enviar<Espacio>(`/academico/espacios/${encodeURIComponent(id)}`, datos, 'PUT');
   }
   async listarNotificaciones(limite = 20, desplazamiento = 0) {
@@ -284,6 +313,10 @@ export class ServicioApi {
   }
   marcarNotificacionLeida(id: string) {
     return this.enviar<void>(`/notificaciones/${encodeURIComponent(id)}/leida`, undefined, 'PUT');
+  }
+
+  marcarTodasNotificacionesLeidas() {
+    return this.enviar<void>('/notificaciones/leidas', undefined, 'PUT');
   }
   listarActividadesEstudiante() {
     return this.consultar<ActividadEstudiante[]>('/estudiante/actividades');
@@ -310,6 +343,7 @@ export class ServicioApi {
     metodo: string,
     datos?: unknown,
     cabeceras: Record<string, string> = {},
+    restaurandoSesion = false,
   ): Promise<T> {
     const autorizacion = this.autorizacion;
     const generacionSesion = this.generacionSesion;
@@ -339,13 +373,14 @@ export class ServicioApi {
       const sesionExpirada =
         ruta !== '/identidad/ingreso' &&
         respuesta.status === 401 &&
-        this.usuario() !== null &&
+        (restaurandoSesion || this.usuario() !== null) &&
         generacionSesion === this.generacionSesion &&
         autorizacion !== '' &&
         autorizacion === this.autorizacion;
       if (sesionExpirada) {
         this.salir();
-        await this.enrutador.navigate(['/ingreso'], { replaceUrl: true });
+        if (!restaurandoSesion)
+          await this.enrutador.navigate(['/ingreso'], { replaceUrl: true });
       }
       const mensajes: Record<number, string> = {
         401: sesionExpirada
@@ -420,6 +455,9 @@ export interface FilaReporteSesion {
   calificacion: number | null;
   preguntasRespondidas: number | null;
   preguntasTotales: number | null;
+  inicioIntento?: string | null;
+  finIntento?: string | null;
+  preguntasCorrectas?: number | null;
   ausencia: {
     fechaConsolidacion: string;
     detalles: { idPregunta: string; puntos: number; valoracion: string }[];

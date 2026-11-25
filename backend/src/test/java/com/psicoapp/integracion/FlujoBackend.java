@@ -41,8 +41,11 @@ abstract class FlujoBackend {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"correo\":\""+estudiante+"\",\"nombre\":\"Alumno\",\"clave\":\""+clave+"\"}"))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
         String idEspacio = id(mvc.perform(post("/api/academico/espacios").with(portador(mvc, docente, clave))
-                .contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Psicologia\",\"periodo\":\"2026-2\"}"))
-                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                        {"nombre":"Psicologia","periodo":"2026-2","estudiantes":["%s"]}
+                        """.formatted(idEstudiante)))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.estudiantes[0]").value(idEstudiante))
+                .andReturn().getResponse().getContentAsString());
         // Estos contratos se ejecutan tambien en la variante MySQL optativa.
         mvc.perform(get("/api/identidad/usuarios").param("rol", "DOCENTE").param("activo", "true").with(portador(mvc, admin, clave)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(idDocente));
@@ -56,7 +59,7 @@ abstract class FlujoBackend {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"activo\":true}")).andExpect(status().isOk());
         mvc.perform(put("/api/academico/espacios/{id}", idEspacio).with(portador(mvc, docente, clave))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Espacio actualizado\",\"periodo\":\"2026-2\"}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk()).andExpect(jsonPath("$.estudiantes[0]").value(idEstudiante));
         String pregunta=UUID.randomUUID().toString();
         String contenido = """
                 {"nombre":"Caso","desarrolloSituacional":"Conflicto","contexto":"Educativo","tiempoEstimadoMin":40,
@@ -95,6 +98,13 @@ abstract class FlujoBackend {
         mvc.perform(put("/api/academico/espacios/{id}", idEspacio).with(portador(mvc, docente, clave))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Cambio rechazado\",\"periodo\":\"2027-1\"}"))
                 .andExpect(status().isConflict());
+        mvc.perform(put("/api/academico/espacios/{id}", idEspacio).with(portador(mvc, docente, clave))
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                        {"nombre":"Espacio actualizado","periodo":"2026-2","estudiantes":[]}
+                        """))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.estudiantes").isEmpty());
+        mvc.perform(get("/api/sesiones/{id}", sesion).with(portador(mvc, docente, clave)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.convocatorias[0].idEstudiante").value(idEstudiante));
         String codigo=JsonPath.read(creada,"$.convocatorias[0].codigoAcceso");
         String segunda=mvc.perform(post("/api/sesiones").with(portador(mvc, docente,clave))
                 .contentType(MediaType.APPLICATION_JSON).content(programacion)).andExpect(status().isCreated())
@@ -104,13 +114,15 @@ abstract class FlujoBackend {
         assertNotEquals(codigo,convocatorias.listarPorSesion(UUID.fromString(sesion)).getFirst().resumenCodigo());
         mvc.perform(get("/api/identidad/yo").with(portador(mvc, estudiante,clave))).andExpect(status().isOk());
         mvc.perform(post("/api/sesiones/{id}/iniciar",sesion).with(portador(mvc, docente,clave)))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("EN_CURSO"));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("EN_CURSO"))
+                .andExpect(jsonPath("$.aperturaReal").value("2026-11-03T14:00:00Z"));
         mvc.perform(get("/api/identidad/yo").with(portador(mvc, estudiante,clave))).andExpect(status().isOk());
         mvc.perform(get("/api/casos/{id}",caso).with(portador(mvc, estudiante,clave))).andExpect(status().isForbidden());
         rechazaIngreso(estudiante, "incorrecto");
         rechazaIngreso(docente, "incorrecta");
         mvc.perform(get("/api/sesiones/{id}",sesion).with(portador(mvc, docente,clave)))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.convocatorias[0].codigoAcceso").isEmpty());
+                .andExpect(status().isOk()).andExpect(jsonPath("$.convocatorias[0].codigoAcceso").isEmpty())
+                .andExpect(jsonPath("$.aperturaReal").value("2026-11-03T14:00:00Z"));
         mvc.perform(post("/api/casos/{id}/archivar",caso).with(portador(mvc, docente,clave)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("ARCHIVADO"));
         mvc.perform(post("/api/sesiones").with(portador(mvc, docente,clave))
@@ -129,7 +141,32 @@ abstract class FlujoBackend {
         assertEquals(2,cerradas);
         assertEquals(0,repetidas);
         assertEquals("FINALIZADO",sesiones.buscarPorId(UUID.fromString(sesion)).orElseThrow().estado().codigo().name());
+        mvc.perform(get("/api/sesiones/{id}", sesion).with(portador(mvc, docente, clave)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.aperturaReal").value("2026-11-03T14:00:00Z"))
+                .andExpect(jsonPath("$.cierreReal").value("2026-11-05T15:00:00Z"));
         mvc.perform(get("/api/identidad/yo").with(portador(mvc, estudiante,clave))).andExpect(status().isOk());
+        String clavePersonal = "clave-personal";
+        String claveNueva = "clave-actualizada";
+        mvc.perform(put("/api/identidad/yo/clave").with(portador(mvc, estudiante, clave))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"actual\":\"clave-ficticia\",\"nueva\":\"clave-actualizada\"}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(put("/api/identidad/clave-inicial").with(portador(mvc, estudiante, clave))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"clave\":\"clave-personal\"}"))
+                .andExpect(status().isNoContent());
+        mvc.perform(put("/api/identidad/yo/clave").with(portador(mvc, estudiante, clavePersonal))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"actual\":\"clave-equivocada\",\"nueva\":\"clave-actualizada\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("La contraseña actual es incorrecta"));
+        mvc.perform(put("/api/identidad/yo/clave").with(portador(mvc, estudiante, clavePersonal))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"actual\":\"clave-personal\",\"nueva\":\"clave-actualizada\"}"))
+                .andExpect(status().isNoContent());
+        rechazaIngreso(estudiante, clavePersonal);
+        mvc.perform(get("/api/identidad/yo").with(portador(mvc, estudiante, claveNueva)))
+                .andExpect(status().isOk());
     }
 
     private String id(String cuerpo) { return JsonPath.read(cuerpo,"$.id"); }

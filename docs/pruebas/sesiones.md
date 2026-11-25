@@ -29,18 +29,17 @@ HTTP, SQL ni del programador temporal.
 
 | Estado | Operacion | Resultado |
 | --- | --- | --- |
-| SIN_INICIAR | Inicio docente autorizado, antes del cierre automatico | EN_CURSO |
+| SIN_INICIAR | Apertura automática en horario o anticipada por el docente | EN_CURSO |
 | SIN_INICIAR | Participacion o cierre manual | Rechazo |
 | EN_CURSO | Segundo inicio | Rechazo |
 | EN_CURSO | Cierre docente autorizado | FINALIZADO |
-| SIN_INICIAR / EN_CURSO | Cierre automatico en fin previsto + 24 horas o despues | FINALIZADO |
+| SIN_INICIAR / EN_CURSO | Cierre automatico en fin previsto o despues | FINALIZADO |
 | FINALIZADO | Inicio o participacion | Rechazo |
 | FINALIZADO | Repetir cierre | Misma sesion, sin nueva escritura |
 
-Se mantiene sin habilitar el cierre manual desde SIN_INICIAR, por ser una
-decision funcional pendiente en la guia de patrones. No se impone una ventana
-nueva al inicio docente: los requisitos seleccionados indican que el docente
-lo inicia, pero no establecen un veto antes de la hora programada. Siempre se
+La sesión se abre automáticamente durante el intervalo programado. El docente
+puede abrirla antes previa confirmación y dar acceso a los convocados. Se
+mantiene sin habilitar el cierre manual desde SIN_INICIAR. Siempre se
 rechaza iniciar o participar al alcanzar el limite de cierre automatico,
 incluso si el barrido aun no ha actualizado el estado persistido.
 
@@ -79,11 +78,14 @@ Se usa Clock inyectable con reloj UTC en produccion y relojes fijos en pruebas.
 La API recibe instantes ISO-8601 con Z u offset explicito y devuelve UTC.
 09:00 -05:00 de Colombia corresponde a 14:00Z.
 
-El cierre vence exactamente al alcanzar `finPrevisto + Duration.ofDays(1)`
-(24 horas transcurridas). No depende de la zona horaria del equipo ni de
+El cierre vence exactamente al alcanzar `finPrevisto`. No depende de la zona horaria del equipo ni de
 una medianoche local. Los campos TIMESTAMP del ER admiten precision de segundos
 y el rango de MySQL 1970-01-01T00:00:01Z a 2038-01-19T03:14:07Z;
 se rechazan nanosegundos y fechas fuera de ese rango para no truncar datos.
+
+`PlanificadorAperturaSesiones` revisa cada 5 segundos si hay sesiones pendientes
+dentro del horario programado. Si el servidor se reinicia, abre las que aún
+están dentro de su horario.
 
 `PlanificadorCierreSesiones` solicita `cerrarVencidas(reloj.instant())`
 cada 60 segundos, con primer barrido despues de ese intervalo. Revisa vencidas
@@ -93,6 +95,8 @@ El docente sigue pudiendo cerrar manualmente una sesion en curso.
 
 Propiedades opcionales:
 
+- `psicoapp.sesiones.intervalo-apertura-ms`: 5000 por defecto.
+- `psicoapp.sesiones.apertura-automatica-habilitada`: true por defecto.
 - `psicoapp.sesiones.intervalo-cierre-ms`: 60000 por defecto.
 - `psicoapp.sesiones.cierre-automatico-habilitado`: true por defecto;
   se usa false en la prueba de contexto sin base de datos.

@@ -7,7 +7,6 @@ import com.psicoapp.sessions.DatosPruebaSesiones;
 import com.psicoapp.sessions.domain.*;
 import com.psicoapp.shared.exceptions.*;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
@@ -149,9 +148,23 @@ class PruebaServicioGestionSesiones {
     }
 
     @Test
+    void aperturaAutomaticaRevalidaElHorarioYElEstadoBajoBloqueo() {
+        var abierta = DatosPruebaSesiones.programada(docente).iniciar(INICIO.minusSeconds(60));
+        when(sesiones.buscarPorAbrir(INICIO)).thenReturn(List.of(sesion.id(), abierta.id()));
+        when(sesiones.bloquearPorId(sesion.id())).thenReturn(Optional.of(sesion));
+        when(sesiones.bloquearPorId(abierta.id())).thenReturn(Optional.of(abierta));
+
+        servicio.abrirProgramadas(INICIO);
+
+        verify(sesiones).actualizarEstado(argThat(s -> s.id().equals(sesion.id())
+                && s.estado().codigo() == TipoEstadoSesion.EN_CURSO && INICIO.equals(s.aperturaReal())));
+        verify(sesiones, times(1)).actualizarEstado(any());
+    }
+
+    @Test
     @DisplayName("RN-12: cierre automatico revalida bajo bloqueo y omite ya cerradas")
     void cierraVencidasIncluyendoSesionNuncaIniciada() {
-        var limite = FIN.plus(Duration.ofDays(1));
+        var limite = FIN;
         var otra = DatosPruebaSesiones.programada(docente).iniciar(INICIO).finalizar(MotivoCierre.DOCENTE, INICIO);
         when(sesiones.buscarVencidas(FIN)).thenReturn(List.of(sesion.id(), otra.id()));
         when(sesiones.bloquearPorId(sesion.id())).thenReturn(Optional.of(sesion));

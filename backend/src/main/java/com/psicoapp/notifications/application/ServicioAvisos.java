@@ -19,4 +19,9 @@ public class ServicioAvisos {
     public void marcarLeida(UUID usuario, UUID aviso) {
         if (!avisos.marcarLeida(usuario, aviso)) throw new NoEncontrado("Aviso no encontrado");
     }
+
+    @Transactional
+    public void marcarTodasLeidas(UUID usuario) {
+        avisos.marcarTodasLeidas(usuario);
+    }
 }

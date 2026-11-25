@@ -9,4 +9,5 @@ public interface RepositorioAvisos {
             Instant fechaCreacion, boolean leida) { }
     List<Aviso> listar(UUID idUsuario, int limite, int desplazamiento);
     boolean marcarLeida(UUID idUsuario, UUID idAviso);
+    void marcarTodasLeidas(UUID idUsuario);
 }

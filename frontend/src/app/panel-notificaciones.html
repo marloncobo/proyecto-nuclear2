@@ -1,0 +1,125 @@
+<section class="panel-notificaciones" aria-labelledby="resumen-notificaciones">
+  <div class="resumen-notificaciones">
+    <div>
+      <h2 id="resumen-notificaciones">
+        {{ notificacionesNoLeidas() || 'Sin' }}
+        {{
+          notificacionesNoLeidas() === 1 ? 'notificación nueva' : 'notificaciones nuevas'
+        }}
+      </h2>
+      <p>Los avisos leídos permanecen disponibles como historial.</p>
+    </div>
+    <button
+      type="button"
+      class="marcar-leida"
+      [disabled]="ocupado() || cargandoNotificaciones() || marcandoNotificacion() !== null || (!notificacionesNoLeidas() && notificaciones().length < 100)"
+      (click)="marcarTodasLeidas.emit()"
+    >
+      {{ marcandoNotificacion() === 'todas' ? 'Marcando…' : 'Marcar todo como leído' }}
+    </button>
+  </div>
+  @if (errorNotificaciones()) {
+    <div class="error" role="alert">{{ errorNotificaciones() }}</div>
+  }
+  @if (cargandoNotificaciones() && !notificaciones().length) {
+    <p class="vacio" role="status">Consultando tus notificaciones…</p>
+  } @else {
+    <form
+      class="filtros-notificaciones"
+      (ngSubmit)="$event.preventDefault()"
+    >
+      <label
+        >Filtrar por lectura<select
+          name="estadoNotificaciones"
+          [ngModel]="estadoNotificaciones()"
+          (ngModelChange)="estadoNotificaciones.set($event)"
+        >
+          <option value="">Todas</option>
+          <option value="NO_LEIDA">No leídas</option>
+          <option value="LEIDA">Leídas</option>
+        </select></label
+      >
+      <label
+        >Filtrar por tipo<select
+          name="tipoNotificaciones"
+          [ngModel]="tipoNotificaciones()"
+          (ngModelChange)="tipoNotificaciones.set($event)"
+        >
+          <option value="">Todos los tipos</option>
+          @for (tipo of tiposNotificaciones(); track tipo) {
+            <option [value]="tipo">{{ tituloNotificacion(tipo) }}</option>
+          }
+        </select></label
+      >
+      <button
+        type="button"
+        class="limpiar-filtros"
+        [disabled]="!estadoNotificaciones() && !tipoNotificaciones()"
+        (click)="limpiarFiltrosNotificaciones()"
+      >
+        Limpiar filtros
+      </button>
+    </form>
+    <p class="resumen-listado" role="status" aria-live="polite">
+      {{ notificacionesVisibles().length }}
+      {{
+        notificacionesVisibles().length === 1
+          ? 'notificación visible'
+          : 'notificaciones visibles'
+      }}
+    </p>
+    <div class="lista-notificaciones">
+      @for (notificacion of notificacionesVisibles(); track notificacion.id) {
+        <article [class.no-leida]="!notificacion.leida">
+          <span class="icono-notificacion" aria-hidden="true">{{
+            iconoNotificacion(notificacion.tipo)
+          }}</span>
+          <div class="contenido-notificacion">
+            <div>
+              <h3>{{ tituloNotificacion(notificacion.tipo) }}</h3>
+              @if (!notificacion.leida) {
+                <span class="etiqueta-nueva">Nueva</span>
+              }
+            </div>
+            <p>{{ notificacion.mensaje }}</p>
+            <time [attr.datetime]="notificacion.fechaCreacion">{{
+              notificacion.fechaCreacion | date: 'medium'
+            }}</time>
+          </div>
+          @if (!notificacion.leida) {
+            <button
+              class="marcar-leida"
+              type="button"
+              [disabled]="marcandoNotificacion() !== null || ocupado() || cargandoNotificaciones()"
+              (click)="marcarLeida.emit(notificacion)"
+            >
+              {{
+                marcandoNotificacion() === notificacion.id
+                  ? 'Marcando…'
+                  : 'Marcar como leída'
+              }}
+            </button>
+          } @else {
+            <span class="estado-notificacion-leida">Leída</span>
+          }
+        </article>
+      } @empty {
+        <div class="vacio vacio-notificaciones">
+          <span aria-hidden="true">✓</span>
+          <h2>
+            {{
+              notificaciones().length ? 'No hay coincidencias.' : 'Todo está al día.'
+            }}
+          </h2>
+          <p>
+            {{
+              notificaciones().length
+                ? 'Cambia o limpia los filtros para ver otros avisos.'
+                : 'Aquí aparecerán tus avisos.'
+            }}
+          </p>
+        </div>
+      }
+    </div>
+  }
+</section>

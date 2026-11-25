@@ -1,0 +1,35 @@
+<button #disparador type="button" class="abrir-tutorial" (click)="abrir()">Tutorial</button>
+<dialog #ventana class="tutorial" aria-label="Tutorial guiado" (cancel)="cancelar($event)"
+  (keydown.escape)="$event.stopPropagation()" (keydown.tab)="$event.stopPropagation()">
+  @if (marco(); as objetivo) {
+    <div
+      class="resalte"
+      aria-hidden="true"
+      [style.top.px]="objetivo.top - 4"
+      [style.left.px]="objetivo.left - 4"
+      [style.width.px]="objetivo.width + 8"
+      [style.height.px]="objetivo.height + 8"
+    ></div>
+  } @else {
+    <div class="fondo-tutorial" aria-hidden="true"></div>
+  }
+  @if (pasosActivos()[indice()]; as paso) {
+    <section class="tarjeta-tutorial" [class.arriba]="(marco()?.top ?? 0) > ventana.clientHeight - (marco()?.bottom ?? 0)">
+      <div aria-live="polite">
+        <p class="paso">Paso {{ indice() + 1 }} de {{ pasosActivos().length }}</p>
+        <h2>{{ paso.titulo }}</h2>
+        <p class="descripcion">{{ paso.descripcion }}</p>
+      </div>
+      <label class="preferencia">
+        <input #preferencia type="checkbox" [checked]="oculto()" (change)="guardarPreferencia(preferencia.checked)" />
+        No volver a mostrar automáticamente
+      </label>
+      <div class="acciones">
+        <button type="button" class="saltar" (click)="cerrar()">Saltar</button>
+        <button type="button" class="siguiente" (click)="avanzar()">
+          {{ indice() + 1 === pasosActivos().length ? 'Finalizar' : 'Siguiente' }}
+        </button>
+      </div>
+    </section>
+  }
+</dialog>

@@ -53,8 +53,11 @@ public class ServicioGestionParticipacion {
         if (ultimo.isPresent() && !intentos.retirarPermisoReintento(ultimo.get().id())) {
             throw new Conflicto("Se requiere autorizacion del docente para un reintento");
         }
-        Intento intento = Intento.iniciar(UUID.randomUUID(), idSesion, idEstudiante, reloj.instant(),
-                sesion.duracionMaximaMin(), com.psicoapp.sessions.domain.ModoNavegacion.valueOf(sesion.modoNavegacion()),
+        Instant ahora = reloj.instant();
+        if (!ahora.isBefore(sesion.finPrevisto())) throw new Conflicto("La sesion ya alcanzo su cierre programado");
+        Intento intento = Intento.iniciar(UUID.randomUUID(), idSesion, idEstudiante, ahora,
+                sesion.duracionMaximaMin(), sesion.finPrevisto(),
+                com.psicoapp.sessions.domain.ModoNavegacion.valueOf(sesion.modoNavegacion()),
                 intentos.preguntasDeSesion(idSesion));
         intentos.guardar(intento);
         return representar(intento);
@@ -86,10 +89,8 @@ public class ServicioGestionParticipacion {
         sesionesDocente.exigirResponsable(docente, sesion);
         autorizacion.exigirParticipacionVigente(estudiante, sesion);
         var enCurso = sesiones.exigirEnCurso(sesion);
-        Instant inicio = enCurso.inicioPrevisto();
-        Instant limiteIngreso = inicio.plus(java.time.Duration.between(inicio, enCurso.finPrevisto()).dividedBy(2));
         Instant ahora = reloj.instant();
-        if (ahora.isBefore(inicio) || ahora.isAfter(limiteIngreso)) {
+        if (!ahora.isBefore(enCurso.finPrevisto())) {
             throw new Conflicto("La ventana de ingreso ya no admite reintentos");
         }
         intentos.bloquearEstudiante(estudiante);

@@ -25,6 +25,7 @@ las rutas requieren `Authorization: Bearer <token>` y cuerpos JSON con
 | --- | --- | --- | --- |
 | `POST /api/identidad/ingreso` | Público | `correo`, `clave` | Token JWT Bearer, tipo, vencimiento y estado de cambio de contraseña inicial. |
 | `GET /api/identidad/yo` | Autenticado | — | Identidad y rol de la cuenta actual. |
+| `PUT /api/identidad/yo/clave` | Autenticado con acceso completo | `actual`, `nueva` | Verifica la contraseña actual y actualiza la de la propia cuenta. |
 | `PUT /api/identidad/clave-inicial` | Estudiante pendiente | `clave` | Sustituye la contraseña inicial e invalida el token temporal. |
 | `GET /api/identidad/usuarios` | Administrador | Filtros opcionales `rol`, `activo`, `busqueda` | Usuarios administrables ordenados. |
 | `GET /api/identidad/usuarios/{idUsuario}` | Administrador | — | Detalle del usuario, sin credenciales. |
@@ -45,10 +46,10 @@ las rutas requieren `Authorization: Bearer <token>` y cuerpos JSON con
 
 | Método y ruta | Acceso | Entrada | Resultado |
 | --- | --- | --- | --- |
-| `POST /api/academico/espacios` | Docente | `nombre`, `periodo` | Espacio académico creado. |
+| `POST /api/academico/espacios` | Docente | `nombre`, `periodo`, lista opcional `estudiantes` | Espacio académico creado con su lista predeterminada. |
 | `GET /api/academico/espacios` | Docente | — | Espacios disponibles para el docente. |
 | `GET /api/academico/espacios/{id}` | Docente | — | Espacio académico solicitado. |
-| `PUT /api/academico/espacios/{id}` | Docente | `nombre`, `periodo` | Espacio actualizado; se rechaza si ya lo usa una sesión. |
+| `PUT /api/academico/espacios/{id}` | Docente | `nombre`, `periodo`, lista opcional `estudiantes` | Actualiza el espacio. Si ya tiene sesiones, solo se puede cambiar la lista predeterminada. Las convocatorias existentes se conservan. |
 
 ## Casos
 
@@ -71,7 +72,7 @@ se conserva en los DTO de `ServicioCreacionCaso`.
 | --- | --- | --- | --- |
 | `POST /api/sesiones` | Docente | Programación, caso, espacio y lista `estudiantes` | Sesión programada y convocatorias iniciales. |
 | `GET /api/sesiones` | Docente | — | Sesiones del docente. |
-| `GET /api/sesiones/{id}` | Docente responsable | — | Programación, estado y convocatorias de la sesión. |
+| `GET /api/sesiones/{id}` | Docente responsable | — | Programación, estado, convocatorias y horarios de apertura y cierre reales cuando están registrados. |
 | `PUT /api/sesiones/{id}/convocados` | Docente responsable | Listas de UUID `agregar` y `retirar` | Sesión con convocatorias actualizadas. |
 | `POST /api/sesiones/{id}/iniciar` | Docente responsable | — | Sesión en estado `EN_CURSO`. |
 | `POST /api/sesiones/{id}/finalizar` | Docente responsable | — | Sesión en estado `FINALIZADO`; la repetición es idempotente. |
@@ -121,7 +122,7 @@ Al cerrar una sesión o retirar una convocatoria, se cierra y califica el intent
 | Método y ruta | Acceso | Entrada | Resultado |
 | --- | --- | --- | --- |
 | `GET /api/reportes/casos/{idCaso}/estudiantes/{idEstudiante}` | Docente responsable del caso | — | Intentos finalizados o vencidos, respuestas y evaluación del estudiante. |
-| `GET /api/reportes/sesiones/{idSesion}` | Docente responsable | — | Participación, ausencias y notas de la sesión. |
+| `GET /api/reportes/sesiones/{idSesion}` | Docente responsable | — | Participación, ausencias, horarios por intento, aciertos y notas de la sesión. |
 | `POST /api/reportes/participaciones/{idIntento}/valoraciones` | Docente responsable | `mensaje` | Valoración general creada y aviso interno solicitado. |
 
 ## Fuente de verdad

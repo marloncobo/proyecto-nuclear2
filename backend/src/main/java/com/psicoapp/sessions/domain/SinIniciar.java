@@ -10,13 +10,10 @@ public final class SinIniciar implements EstadoSesion {
 
     @Override
     public Sesion iniciar(Sesion sesion, Instant ahora) {
-        if (ahora.isBefore(sesion.inicioPrevisto())) {
-            throw new TransicionSesionInvalida("Aun no se alcanza el inicio previsto");
-        }
         if (sesion.estaVencida(ahora)) {
             throw new TransicionSesionInvalida("La sesion ya alcanzo su cierre automatico");
         }
-        return sesion.conEstado(EnCurso.INSTANCIA);
+        return sesion.conEstado(EnCurso.INSTANCIA, ahora, null);
     }
 
     @Override
@@ -24,7 +21,7 @@ public final class SinIniciar implements EstadoSesion {
         if (motivo != MotivoCierre.AUTOMATICO || !sesion.estaVencida(ahora)) {
             throw new TransicionSesionInvalida("Una sesion sin iniciar solo admite cierre automatico al vencer");
         }
-        return sesion.conEstado(Finalizado.INSTANCIA);
+        return sesion.conEstado(Finalizado.INSTANCIA, null, ahora);
     }
 
     @Override
