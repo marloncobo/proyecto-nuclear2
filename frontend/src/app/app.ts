@@ -8,6 +8,7 @@ import { EditorCaso } from './editor-caso';
 import { SelectorEstudiantes } from './selector-estudiantes';
 import { Administracion } from './administracion';
 import { EspacioEstudiante } from './espacio-estudiante';
+import { CambioClave } from './cambio-clave';
 import { TutorialGuiado } from './tutorial-guiado';
 import { pasosAplicacion, pasosModales } from './pasos-tutorial';
 import {
@@ -25,7 +26,7 @@ import {
 import { nombreEtiqueta } from './etiqueta-usuario';
 @Component({
   selector: 'psico-raiz',
-  imports: [FormsModule, DatePipe, Administracion, Ingreso, EditorCaso, SelectorEstudiantes, EspacioEstudiante, TutorialGuiado, PanelNotificaciones],
+  imports: [FormsModule, DatePipe, Administracion, Ingreso, EditorCaso, SelectorEstudiantes, EspacioEstudiante, TutorialGuiado, PanelNotificaciones, CambioClave],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })

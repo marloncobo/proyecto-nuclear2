@@ -16,5 +16,6 @@ public interface RepositorioUsuarios {
     Optional<Usuario> buscarPorId(UUID id);
     Optional<Usuario> buscarPorCorreo(String correo);
     boolean actualizarClaveEstudiante(UUID id, String hashAnterior, String hashNuevo, boolean inicial);
+    boolean cambiarClave(UUID id, String hashAnterior, String hashNuevo);
     void guardar(Usuario usuario);
 }

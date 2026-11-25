@@ -84,6 +84,16 @@ public class ControladorIdentidad {
     public record SolicitudClave(@NotBlank @Size(min = 8, max = 72) String clave) {
         @Override public String toString() { return "SolicitudClave[PROTEGIDA]"; }
     }
+    public record SolicitudCambioClave(@NotBlank @Size(max = 72) String actual,
+            @NotBlank @Size(min = 8, max = 72) String nueva) {
+        @Override public String toString() { return "SolicitudCambioClave[PROTEGIDA]"; }
+    }
+
+    @PutMapping("/yo/clave")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void cambiarClave(Principal principal, @Valid @RequestBody SolicitudCambioClave solicitud) {
+        identidades.cambiarClave(UUID.fromString(principal.getName()), solicitud.actual(), solicitud.nueva());
+    }
 
     @PutMapping("/estudiantes/{id}/clave-inicial")
     @ResponseStatus(HttpStatus.NO_CONTENT)

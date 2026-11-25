@@ -85,6 +85,15 @@ public class RepositorioUsuariosJdbc implements RepositorioUsuarios {
                 .param("id", id.toString()).param("anterior", hashAnterior, java.sql.Types.VARCHAR).update() == 1;
     }
 
+    @Override
+    public boolean cambiarClave(UUID id, String hashAnterior, String hashNuevo) {
+        return jdbc.sql("""
+                UPDATE usuario SET contrasena_hash = ?
+                WHERE id_usuario = ? AND activo = TRUE AND clave_inicial = FALSE
+                  AND contrasena_hash = ?
+                """).params(hashNuevo, id.toString(), hashAnterior).update() == 1;
+    }
+
     private Usuario mapear(ResultSet fila, int indice) throws SQLException {
         return new Usuario(UUID.fromString(fila.getString("id_usuario")), fila.getString("correo"), fila.getString("nombre"),
                 Rol.valueOf(fila.getString("rol")), fila.getString("contrasena_hash"), fila.getBoolean("activo"),

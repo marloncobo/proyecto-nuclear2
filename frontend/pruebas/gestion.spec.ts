@@ -526,6 +526,13 @@ test('administración móvil: filtros, teclado y contenido sin desbordamiento', 
 
 test('el ingreso de estudiantes abre su espacio y no funciones del personal', async ({ page: pagina }) => {
   await simularApi(pagina, 'ESTUDIANTE');
+  await pagina.route('**/api/identidad/yo/clave', (ruta) => {
+    const { actual, nueva } = ruta.request().postDataJSON();
+    if (actual !== 'clave-ficticia')
+      return ruta.fulfill({ status: 400, json: { detail: 'La contraseña actual es incorrecta' } });
+    expect(nueva).toBe('clave-nueva');
+    return ruta.fulfill({ status: 204 });
+  });
   await ingresar(pagina, 'alumna@example.test');
   await expect(pagina.getByRole('heading', { name: '¡Bienvenido!' })).toBeVisible();
   await expect(pagina.getByRole('heading', { name: 'Administración de usuarios.' })).toHaveCount(0);
@@ -540,6 +547,23 @@ test('el ingreso de estudiantes abre su espacio y no funciones del personal', as
   await miCuenta.click();
   const cuenta = pagina.getByRole('dialog', { name: 'Hola, Alumna de prueba.' });
   await expect(cuenta.getByText('alumna+grupo@example.test', { exact: true })).toBeVisible();
+  const actual = cuenta.getByLabel('Contraseña actual', { exact: true });
+  const nueva = cuenta.getByLabel('Nueva contraseña', { exact: true });
+  const confirmacion = cuenta.getByLabel('Confirmar nueva contraseña', { exact: true });
+  const guardar = cuenta.getByRole('button', { name: 'Guardar contraseña' });
+  await actual.fill('clave-errada');
+  await nueva.fill('clave-nueva');
+  await confirmacion.fill('clave-distinta');
+  await guardar.click();
+  await expect(cuenta.getByRole('alert')).toHaveText('Las contraseñas nuevas no coinciden.');
+  await confirmacion.fill('clave-nueva');
+  await guardar.click();
+  await expect(cuenta.getByRole('alert')).toHaveText('La contraseña actual es incorrecta');
+  await actual.fill('clave-ficticia');
+  await guardar.click();
+  await expect(cuenta.getByRole('status')).toHaveText('Contraseña actualizada.');
+  await expect(actual).toHaveValue('');
+  await expect(nueva).toHaveValue('');
   await pagina.keyboard.press('Escape');
   await expect(cuenta).toBeHidden();
   await expect(miCuenta).toBeFocused();

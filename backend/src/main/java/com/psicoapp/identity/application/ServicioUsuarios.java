@@ -227,6 +227,23 @@ public class ServicioUsuarios implements DirectorioIdentidad {
         }
     }
 
+    public void cambiarClave(UUID id, String actual, String nueva) {
+        Usuario usuario = buscarUsuario(id);
+        if (!usuario.activo() || usuario.claveInicial() || usuario.hashClave() == null) {
+            throw new AccesoDenegado("La cuenta no puede cambiar la contraseña desde Mi cuenta");
+        }
+        if (actual == null || actual.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72
+                || !claves.matches(actual, usuario.hashClave())) {
+            throw new IllegalArgumentException("La contraseña actual es incorrecta");
+        }
+        if (actual.equals(nueva)) {
+            throw new IllegalArgumentException("La nueva contraseña debe ser distinta de la actual");
+        }
+        if (!usuarios.cambiarClave(id, usuario.hashClave(), codificarClave(nueva))) {
+            throw new Conflicto("La contraseña cambió. Verifica la contraseña actual e inténtalo de nuevo");
+        }
+    }
+
     private void exigirGestorEstudiantes(UUID actor) {
         var usuario = buscarUsuario(actor);
         if (!usuario.activo() || (usuario.rol() != Rol.DOCENTE && usuario.rol() != Rol.ADMINISTRADOR)) {

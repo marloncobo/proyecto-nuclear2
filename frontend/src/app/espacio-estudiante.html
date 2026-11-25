@@ -325,7 +325,8 @@
   #cuenta
   class="dialogo-cuenta"
   aria-labelledby="titulo-cuenta-estudiante"
-  (click)="$event.target === cuenta && cuenta.close()"
+  (close)="cambioClave.reiniciar()"
+  (click)="$event.target === cuenta ? cuenta.close() : null"
 >
   <div class="contenido-cuenta">
     <button type="button" class="cerrar-cuenta" aria-label="Cerrar Mi cuenta" (click)="cuenta.close()">
@@ -335,6 +336,7 @@
     <h2 id="titulo-cuenta-estudiante">Hola, {{ api.usuario()?.nombre }}.</h2>
     <p>{{ api.usuario()?.correo }}</p>
     <p>Estudiante</p>
+    <psico-cambio-clave #cambioClave />
     <button type="button" class="secundario" (click)="salir()">Cerrar sesión</button>
   </div>
 </dialog>

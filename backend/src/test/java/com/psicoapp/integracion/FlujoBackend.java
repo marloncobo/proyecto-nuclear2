@@ -146,6 +146,27 @@ abstract class FlujoBackend {
                 .andExpect(jsonPath("$.aperturaReal").value("2026-11-03T14:00:00Z"))
                 .andExpect(jsonPath("$.cierreReal").value("2026-11-05T15:00:00Z"));
         mvc.perform(get("/api/identidad/yo").with(portador(mvc, estudiante,clave))).andExpect(status().isOk());
+        String clavePersonal = "clave-personal";
+        String claveNueva = "clave-actualizada";
+        mvc.perform(put("/api/identidad/yo/clave").with(portador(mvc, estudiante, clave))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"actual\":\"clave-ficticia\",\"nueva\":\"clave-actualizada\"}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(put("/api/identidad/clave-inicial").with(portador(mvc, estudiante, clave))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"clave\":\"clave-personal\"}"))
+                .andExpect(status().isNoContent());
+        mvc.perform(put("/api/identidad/yo/clave").with(portador(mvc, estudiante, clavePersonal))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"actual\":\"clave-equivocada\",\"nueva\":\"clave-actualizada\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("La contraseña actual es incorrecta"));
+        mvc.perform(put("/api/identidad/yo/clave").with(portador(mvc, estudiante, clavePersonal))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"actual\":\"clave-personal\",\"nueva\":\"clave-actualizada\"}"))
+                .andExpect(status().isNoContent());
+        rechazaIngreso(estudiante, clavePersonal);
+        mvc.perform(get("/api/identidad/yo").with(portador(mvc, estudiante, claveNueva)))
+                .andExpect(status().isOk());
     }
 
     private String id(String cuerpo) { return JsonPath.read(cuerpo,"$.id"); }

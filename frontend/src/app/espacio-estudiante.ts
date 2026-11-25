@@ -1,6 +1,7 @@
 import { Component, computed, effect, inject, input, model, signal } from '@angular/core';
 import { PanelNotificaciones } from './panel-notificaciones';
 import { DatePipe } from '@angular/common';
+import { CambioClave } from './cambio-clave';
 import { Router } from '@angular/router';
 import { TutorialGuiado } from './tutorial-guiado';
 import { pasosEstudiante } from './pasos-tutorial';
@@ -15,7 +16,7 @@ import {
 
 @Component({
   selector: 'psico-espacio-estudiante',
-  imports: [DatePipe, TutorialGuiado, PanelNotificaciones],
+  imports: [DatePipe, TutorialGuiado, PanelNotificaciones, CambioClave],
   templateUrl: './espacio-estudiante.html',
   styleUrl: './espacio-estudiante.css',
 })

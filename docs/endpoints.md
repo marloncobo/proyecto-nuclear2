@@ -25,6 +25,7 @@ las rutas requieren `Authorization: Bearer <token>` y cuerpos JSON con
 | --- | --- | --- | --- |
 | `POST /api/identidad/ingreso` | Público | `correo`, `clave` | Token JWT Bearer, tipo, vencimiento y estado de cambio de contraseña inicial. |
 | `GET /api/identidad/yo` | Autenticado | — | Identidad y rol de la cuenta actual. |
+| `PUT /api/identidad/yo/clave` | Autenticado con acceso completo | `actual`, `nueva` | Verifica la contraseña actual y actualiza la de la propia cuenta. |
 | `PUT /api/identidad/clave-inicial` | Estudiante pendiente | `clave` | Sustituye la contraseña inicial e invalida el token temporal. |
 | `GET /api/identidad/usuarios` | Administrador | Filtros opcionales `rol`, `activo`, `busqueda` | Usuarios administrables ordenados. |
 | `GET /api/identidad/usuarios/{idUsuario}` | Administrador | — | Detalle del usuario, sin credenciales. |

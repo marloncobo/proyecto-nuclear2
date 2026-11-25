@@ -239,6 +239,9 @@ export class ServicioApi {
   cambiarClaveInicial(clave: string) {
     return this.enviar<void>('/identidad/clave-inicial', { clave }, 'PUT');
   }
+  cambiarClave(actual: string, nueva: string) {
+    return this.enviar<void>('/identidad/yo/clave', { actual, nueva }, 'PUT');
+  }
   salir() {
     this.generacionSesion++;
     this.autorizacion = '';
