@@ -169,8 +169,8 @@ participacion conserva sus
 controles independientes de convocatoria, estado y ventana temporal.
 
 Se agregan las tablas `notificacion` y `valoracion_docente` al esquema.
-La dependencia nueva `spring-boot-starter-mail` implementa el puerto SMTP.
-**Antes de convocar:** configurar clave AES persistente, URL de acceso y SMTP
+El adaptador de infraestructura implementa el puerto de correo mediante la API HTTPS de Gmail.
+**Antes de convocar:** configurar clave AES persistente, URL de acceso y Gmail
 segun la [guia de notificaciones](../docs/pruebas/notificaciones.md).
 El correo incluye el enlace de ingreso, la sesión, el caso y el mensaje docente, sin contraseñas ni códigos.
 Los avisos docentes se reconstruyen de forma idempotente desde sesiones, intentos
@@ -352,6 +352,9 @@ Configura estas variables en `.env` (sin versionar secretos):
 | `PSICOAPP_JWT_CLAVE` | Clave HS256 Base64 de 32 bytes o más; vacía genera una clave efímera |
 | `PSICOAPP_CORS_ORIGENES` | Orígenes web exactos permitidos, separados por comas; vacío deshabilita CORS |
 | `PSICOAPP_NOTIFICACIONES_CLAVE_CIFRADO` | Clave AES-256-GCM Base64 para cifrar notificaciones |
+| `PSICOAPP_NOTIFICACIONES_REMITENTE` | Dirección de la cuenta Gmail autorizada |
+| `PSICOAPP_GMAIL_ID_CLIENTE`, `PSICOAPP_GMAIL_SECRETO_CLIENTE`, `PSICOAPP_GMAIL_TOKEN_RENOVACION` | Credenciales OAuth 2.0 de la cuenta remitente |
+| `PSICOAPP_NOTIFICACIONES_DESPACHO` | `true` habilita la entrega; `false` conserva los correos pendientes |
 | `PSICOAPP_NOTIFICACIONES_AVISOS_DOCENTE` | Habilita o pausa la generación de nuevos avisos docentes; predeterminado `true` |
 | `PSICOAPP_NOTIFICACIONES_RECORDATORIO_HORAS` | Anticipación del recordatorio de sesión, en horas; rango 1–168, predeterminado `24` |
 | `PSICOAPP_NOTIFICACIONES_AVISOS_DOCENTE_INTERVALO_MS` | Intervalo entre revisiones de avisos docentes, en milisegundos; predeterminado `60000` |

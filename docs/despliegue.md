@@ -34,12 +34,16 @@ permanece privada dentro de Railway.
    PSICOAPP_JWT_CLAVE_REQUERIDA=true
    PSICOAPP_NOTIFICACIONES_CLAVE_CIFRADO=<Base64 aleatorio de exactamente 32 bytes>
    PSICOAPP_NOTIFICACIONES_URL_ACCESO=https://<proyecto>.web.app/ingreso
+   PSICOAPP_NOTIFICACIONES_REMITENTE=avisos@dominio.edu.co
+   PSICOAPP_GMAIL_ID_CLIENTE=<ID de cliente OAuth>
+   PSICOAPP_GMAIL_SECRETO_CLIENTE=<secreto de cliente OAuth>
+   PSICOAPP_GMAIL_TOKEN_RENOVACION=<token OAuth de la cuenta remitente>
    PSICOAPP_CORS_ORIGENES=https://<proyecto>.web.app,https://<proyecto>.firebaseapp.com
    ```
 
-   Completar también las variables de participación, sesiones, notificaciones y
-   correo indicadas en `.env.example`. Si todavía no se enviará correo, conservar
-   `PSICOAPP_NOTIFICACIONES_DESPACHO=false`; no habilitarlo con credenciales vacías.
+   Completar también las variables de participación, sesiones y notificaciones
+   indicadas en `.env.example`. Después de [autorizar la cuenta de Gmail](pruebas/notificaciones.md#autorizar-la-cuenta-remitente),
+   definir `PSICOAPP_NOTIFICACIONES_DESPACHO=true` para activar la entrega.
    Las claves JWT y de cifrado deben ser distintas y persistentes. Para generar cada
    una en PowerShell:
 

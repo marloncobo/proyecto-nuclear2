@@ -50,7 +50,7 @@ outbox descrita en la guia de patrones, no un envio en memoria despues del commi
 El despachador consulta hasta 100 entregas por barrido, por defecto cada 30 s.
 Cada entrega usa `REQUIRES_NEW` y bloqueo de fila hasta confirmar, permitiendo
 trabajadores concurrentes sin entrega duplicada por la misma solicitud confirmada.
-Un fallo SMTP conserva PENDIENTE, incrementa intentos, guarda solo ENVIO_FALLIDO
+Un fallo de Gmail conserva PENDIENTE, incrementa intentos, guarda solo ENVIO_FALLIDO
 y reintenta a los 30, 60, 120 segundos, etc., con tope de espera de una hora.
 No se almacenan mensajes de excepcion del proveedor ni se registran credenciales.
 
@@ -61,9 +61,9 @@ en `sessions`. Retirar cancela convocatorias pendientes; reincorporar rota el
 codigo y cancela retiros pendientes obsoletos para no enviar mensajes contradictorios.
 Los correos ya aceptados por el proveedor no pueden retirarse.
 
-SMTP no permite garantizar exactamente un correo si el proceso cae despues de
-que el proveedor lo acepte y antes de confirmar la transaccion local; ese caso
-puede repetir el envio. Los eventos y avisos internos si se deduplican en la BD.
+La API de Gmail no ofrece una clave de idempotencia para el envio. Si Gmail acepta
+el correo y se pierde la respuesta o falla la confirmacion en la BD, un reintento
+puede duplicarlo. Los eventos y avisos internos se deduplican en la BD.
 
 ### Integraciones implementadas
 
@@ -113,7 +113,7 @@ se genera otra automaticamente al reiniciar, pues perderia los pendientes.
 Una clave ausente/invalida impide encolar correos; la transaccion productora se
 revierte sin dejar convocatorias a medias. No cambiarla mientras existan pendientes:
 para rotarla, entregar/cancelar los pendientes o migrarlos con ambas claves.
-No habilitar logs de debug de SMTP ni registrar cuerpos de eventos.
+No registrar solicitudes, respuestas, tokens OAuth ni cuerpos de eventos de Gmail.
 
 Generacion en PowerShell (guardar el valor en el gestor de secretos del entorno):
 
@@ -128,13 +128,11 @@ $env:PSICOAPP_NOTIFICACIONES_CLAVE_CIFRADO = [Convert]::ToBase64String($claveNot
 | Variable | Valor / funcion |
 | --- | --- |
 | PSICOAPP_NOTIFICACIONES_URL_ACCESO | URL HTTP(S) sin credenciales; por defecto http://localhost:3000/ingreso. Debe apuntar al acceso real del frontend cuando exista. |
-| PSICOAPP_NOTIFICACIONES_REMITENTE | Remitente autorizado por el proveedor; obligatorio para entregar. |
-| PSICOAPP_CORREO_HOST | Servidor SMTP; por defecto localhost. |
-| PSICOAPP_CORREO_PUERTO | Puerto; por defecto 587. |
-| PSICOAPP_CORREO_USUARIO / PSICOAPP_CORREO_CLAVE | Credenciales SMTP del entorno; nunca en Git. |
-| PSICOAPP_CORREO_AUTENTICACION | Por defecto true. |
-| PSICOAPP_CORREO_TLS | STARTTLS habilitado y requerido, por defecto true. |
-| PSICOAPP_NOTIFICACIONES_DESPACHO | Por defecto true. false pausa entregas, conservando solicitudes. |
+| PSICOAPP_NOTIFICACIONES_REMITENTE | Direccion de la cuenta Gmail que autorizo el envio. |
+| PSICOAPP_GMAIL_ID_CLIENTE | ID del cliente OAuth de Google Cloud. |
+| PSICOAPP_GMAIL_SECRETO_CLIENTE | Secreto de ese cliente OAuth. |
+| PSICOAPP_GMAIL_TOKEN_RENOVACION | Token de renovacion de la cuenta remitente con permiso `gmail.send`. |
+| PSICOAPP_NOTIFICACIONES_DESPACHO | Por defecto `false`. Usar `true` para procesar las entregas pendientes. |
 | PSICOAPP_NOTIFICACIONES_INTERVALO_MS | Por defecto 30000. |
 | PSICOAPP_NOTIFICACIONES_AVISOS_DOCENTE | Activa (`true`) o pausa (`false`) la generacion de nuevos avisos docentes. Pausarla no elimina el historial ni las solicitudes existentes. Por defecto `true`. |
 | PSICOAPP_NOTIFICACIONES_RECORDATORIO_HORAS | Ventana previa al inicio de una sesion en la que se crea el recordatorio docente. Se expresa en horas, admite de 1 a 168 y usa 24 por defecto. |
@@ -151,10 +149,18 @@ el generador sin borrar avisos existentes. Generar y entregar son operaciones
 distintas: si `PSICOAPP_NOTIFICACIONES_DESPACHO=false`, las solicitudes nuevas
 quedan en estado pendiente y todavia no aparecen como entregadas en el frontend.
 
-Timeouts SMTP de conexion, lectura y escritura: 5 segundos. Las variables SMTP
-pueden adaptarse al proveedor; para un capturador local sin autenticacion/TLS,
-configurar explicitamente ambos valores en false y su puerto. Sin SMTP disponible,
-la convocatoria se guarda y el envio queda pendiente para reintentar.
+### Autorizar la cuenta remitente
+
+1. Habilitar la [API de Gmail](https://developers.google.com/workspace/gmail/api/guides) en Google Cloud y configurar la pantalla de consentimiento y un cliente OAuth de tipo aplicacion web.
+2. Autorizar la cuenta remitente con el alcance `https://www.googleapis.com/auth/gmail.send` y acceso sin conexion (`access_type=offline`). Intercambiar el codigo de autorizacion por el token de renovacion siguiendo el [flujo OAuth de Google](https://developers.google.com/identity/protocols/oauth2/web-server). Como alternativa, usar [OAuth Playground](https://developers.google.com/oauthplayground/) con las credenciales OAuth propias y registrar su URI de redireccion `https://developers.google.com/oauthplayground` en ese cliente.
+3. Guardar las credenciales en el gestor de secretos del backend o en el `.env` local. Configurar el remitente, mantener la clave AES persistente y habilitar el despacho con `PSICOAPP_NOTIFICACIONES_DESPACHO=true` cuando se quiera procesar la cola.
+
+Google emite tokens de renovacion de siete dias para aplicaciones externas en modo de prueba con este alcance. Para operacion continua, configurar la audiencia y publicacion segun las politicas de la cuenta. [Vigencia de tokens OAuth](https://developers.google.com/identity/protocols/oauth2#expiration).
+
+El backend obtiene el token de acceso automaticamente y lo reutiliza hasta poco
+antes de vencer. Envia correo MIME de texto plano por HTTPS con tiempos de
+conexion y lectura de 5 segundos. Si faltan credenciales o Google rechaza la
+solicitud, la entrega permanece pendiente para reintentar.
 
 Al arrancar, `schema.sql` agrega las tablas nuevas de forma idempotente. No modifica
 ni elimina tablas existentes. La aplicacion debe conservar la misma clave y BD
@@ -170,16 +176,16 @@ actualizacion manual e historial.
 | CP-NO-002 | RF-27; CU-33 | Nota valida, referencia de intento y un solo aviso al repetir evaluacion. |
 | CP-NO-003 | RF-21; CU-34 | Altas/retiros, rotacion de codigo, cancelacion de mensajes obsoletos y cambios atomicos. |
 | CP-NO-004 | RF-21/27 | Evento repetido y dos trabajadores concurrentes sin doble entrega confirmada. |
-| CP-NO-005 | CU-14/33 | SMTP falla sin revertir convocatoria; error saneado y reintento con espera. |
+| CP-NO-005 | CU-14/33 | Gmail falla sin revertir convocatoria; error saneado y reintento con espera. |
 | CP-NO-006 | RN-08/09; CU-24/27 | Evaluacion automatica voluntaria/por vencimiento, cero sin respuestas y sin aviso anticipado. |
 | CP-NO-007 | RF-02/27 | Propietario, rol, JWT, lectura idempotente y consulta posterior al cierre. |
 | CP-NO-008 | RF-21/27 | Repositorio reconstruido recupera pendientes; rollback de sesion, finalizacion y valoracion no deja avisos. |
 
 Clases: `PruebaEventosNotificacion`, `PruebaFlujosNotificaciones`,
-`PruebaCifradorNotificaciones` y `PruebaCorreoSmtp`. La suite de flujos integra
+`PruebaCifradorNotificaciones` y `PruebaCorreoGmail`. La suite de flujos integra
 Spring, JDBC, transacciones, seguridad y MockMvc sobre H2 en modo MySQL.
-El puerto SMTP se sustituye por un doble; el adaptador SMTP se verifica con un
-JavaMailSender simulado. No se envian correos externos ni se usan datos reales.
+El puerto de correo se sustituye por un doble; el adaptador Gmail se verifica con
+un servidor HTTP simulado. No se envian correos externos ni se usan datos reales.
 Los casos amplian el plan del proyecto sin afirmar aprobacion academica del equipo.
 
 Verificacion requerida desde backend: `.\mvnw.cmd verify`.
@@ -195,7 +201,7 @@ Las 18 pruebas de notifications y las 4 de contratos de eventos pasaron.
 Las 14 omitidas corresponden a los 13 recorridos MySQL de notificaciones y al
 recorrido MySQL previo, porque no estan configuradas las variables de ese servidor.
 `git diff --check` y los enlaces locales de la documentacion revisada sin incidencias.
-La validacion manual con proveedor SMTP y MySQL real queda pendiente de disponer
+La validacion manual con Gmail y MySQL real queda pendiente de disponer
 de configuracion de pruebas. No se declara equivalencia entre H2 y MySQL.
 
 ## Limites conservados

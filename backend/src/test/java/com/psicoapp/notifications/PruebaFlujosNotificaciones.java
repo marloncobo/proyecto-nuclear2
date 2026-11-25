@@ -152,9 +152,9 @@ class PruebaFlujosNotificaciones {
         assertEquals("", contenido(id));
     }
 
-    // CP-NO-005: fallos de SMTP no cambian datos academicos y se reintentan con espera.
+    // CP-NO-005: fallos de Gmail no cambian datos academicos y se reintentan con espera.
     @Test
-    void falloSmtpConservaConvocatoriaYReintentaSinFiltrarError() {
+    void falloGmailConservaConvocatoriaYReintentaSinFiltrarError() {
         UUID id = ids().getFirst();
         doThrow(new IllegalStateException("dato secreto " + codigo)).doNothing()
                 .when(correo).enviar(anyString(), anyString(), anyString());
