@@ -11,4 +11,6 @@ public interface RepositorioEspaciosAcademicos {
     void guardar(EspacioAcademico espacio);
     Optional<EspacioAcademico> buscarPorId(UUID id);
     List<EspacioAcademico> listarTodos();
+    List<UUID> listarEstudiantes(UUID idEspacio);
+    void reemplazarEstudiantes(UUID idEspacio, List<UUID> estudiantes);
 }

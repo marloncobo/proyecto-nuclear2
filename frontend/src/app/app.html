@@ -1,5 +1,9 @@
 @if (api.conectado() && api.usuario()?.rol === 'ESTUDIANTE') {
-  <psico-espacio-estudiante [sesionDestino]="destinoEstudiante() ?? sesionEstudiante()" />
+  <psico-espacio-estudiante
+    [sesionDestino]="destinoEstudiante() ?? sesionEstudiante()"
+    [tutorialInicial]="inicioTutorial()"
+    (tutorialInicialChange)="inicioTutorial.set($event)"
+  />
 } @else if (!api.conectado() && !demostracion()) {
   <psico-ingreso (autenticado)="completarIngreso()" (explorar)="iniciarDemostracion()" />
 } @else {
@@ -57,6 +61,11 @@
             }
           </button>
         }
+        @if (api.conectado() && api.usuario()?.rol === 'DOCENTE') {
+          <button type="button" title="Registrar estudiante" data-tutorial="registrar-estudiante" (click)="abrir('alta-estudiante')">
+            <span class="icono-menu" aria-hidden="true">＋</span>Registrar estudiante
+          </button>
+        }
       </nav>
       <div class="nota-lateral">
         <div class="orbita-mini" aria-hidden="true">✳</div>
@@ -102,6 +111,11 @@
           }}</strong></span
         >
         <div class="acciones-cabecera">
+          <psico-tutorial
+            [pasos]="pasosInterfaz()"
+            [automatico]="inicioTutorial()"
+            (inicioConsumido)="inicioTutorial.set(false)"
+          />
           <span class="indicador-conexion" [class.conectado]="api.conectado()">{{
             api.conectado() ? 'Conectado' : 'Demostración'
           }}</span><button class="boton-texto" [disabled]="ocupado()" (click)="abrir('ingreso')">
@@ -136,7 +150,7 @@
                   Diseña experiencias que inviten a pensar.<br />Acompaña a tus estudiantes a
                   comprender su mundo.
                 </p>
-                <button class="boton primario" (click)="abrir('crear')">
+                <button class="boton primario" data-tutorial="crear-caso" (click)="abrir('crear')">
                   <span aria-hidden="true">＋</span> Crear un caso <span aria-hidden="true">↗</span>
                 </button>
               </div>
@@ -264,7 +278,9 @@
                 <h1>Biblioteca de <em>casos.</em></h1>
                 <p class="subtitulo">Situaciones para cuestionar, dialogar y descubrir.</p>
               </div>
-              <button class="boton primario" (click)="abrir('crear')">＋ Crear un caso</button>
+              <button class="boton primario" data-tutorial="crear-caso" (click)="abrir('crear')">
+                ＋ Crear un caso
+              </button>
             </div>
             <div class="herramientas">
               <label class="buscador"
@@ -302,11 +318,16 @@
                   </div>
                   <div class="cuerpo-tarjeta">
                     <p class="sobretitulo">{{ caso.contexto }}</p>
-                    <h2>{{ caso.nombre }}</h2>
+                    <h2 [id]="'titulo-caso-biblioteca-' + caso.id">{{ caso.nombre }}</h2>
                     <p>{{ caso.desarrolloSituacional }}</p>
                     <div class="pie-tarjeta">
                       <span>◷ {{ caso.tiempoEstimadoMin }} min</span
-                      ><button class="boton-texto" (click)="abrir('detalle', caso)">
+                      ><button
+                        type="button"
+                        class="boton-texto abrir-detalle-caso"
+                        [attr.aria-describedby]="'titulo-caso-biblioteca-' + caso.id"
+                        (click)="abrir('detalle', caso)"
+                      >
                         Explorar caso ↗
                       </button>
                     </div>
@@ -339,13 +360,13 @@
                   placeholder="Nombre del caso o lugar"
                   maxlength="180"
                   [ngModel]="busquedaSesiones()"
-                  (ngModelChange)="busquedaSesiones.set($event)"
+                  (ngModelChange)="busquedaSesiones.set($event); paginaSesiones.set(1)"
               /></label>
               <label
                 >Filtrar por estado<select
                   name="estadoSesiones"
                   [ngModel]="estadoSesiones()"
-                  (ngModelChange)="estadoSesiones.set($event)"
+                  (ngModelChange)="estadoSesiones.set($event); paginaSesiones.set(1)"
                 >
                   <option value="">Todos los estados</option>
                   <option value="SIN_INICIAR">Sin iniciar</option>
@@ -357,7 +378,7 @@
                 >Filtrar por espacio<select
                   name="espacioSesiones"
                   [ngModel]="espacioSesiones()"
-                  (ngModelChange)="espacioSesiones.set($event)"
+                  (ngModelChange)="espacioSesiones.set($event); paginaSesiones.set(1)"
                 >
                   <option value="">Todos los espacios</option>
                   @for (espacio of espacios(); track espacio.id) {
@@ -381,7 +402,7 @@
               {{ sesionesVisibles().length === 1 ? 'sesión encontrada' : 'sesiones encontradas' }}
             </p>
             <section class="lista-sesiones">
-              @for (sesion of sesionesVisibles(); track sesion.id) {
+              @for (sesion of sesionesPagina(); track sesion.id) {
                 <article class="tarjeta-sesion">
                   <div class="calendario">
                     <strong>{{ sesion.inicioPrevisto | date: 'dd' }}</strong><span>{{
@@ -390,7 +411,17 @@
                   </div>
                   <div class="datos-sesion">
                     <span class="estado">{{ estadoLegible(sesion.estado) }}</span>
-                    <h2>{{ nombreCaso(sesion.idCaso) }}</h2>
+                    <h2>
+                      <button
+                        type="button"
+                        class="abrir-detalle-sesion"
+                        [disabled]="ocupado()"
+                        [attr.aria-label]="'Ver detalles de ' + nombreCaso(sesion.idCaso)"
+                        (click)="abrirDetalleSesion(sesion)"
+                      >
+                        {{ nombreCaso(sesion.idCaso) }}
+                      </button>
+                    </h2>
                     <p>
                       {{ sesion.inicioPrevisto | date: 'shortTime' }} ·
                       {{ sesion.duracionMaximaMin }} min · {{ sesion.lugar }}
@@ -403,19 +434,23 @@
                         Editar convocados
                       </button>
                     }
-                    <button
-                      class="boton secundario"
-                      [disabled]="ocupado()"
-                      (click)="
-                        abrir(
-                          sesion.estado === 'SIN_INICIAR' ? 'iniciar-sesion' : 'finalizar-sesion'
-                        );
-                        sesionPendiente.set(sesion)
-                      "
-                    >
-                      {{ sesion.estado === 'SIN_INICIAR' ? 'Iniciar sesión' : 'Finalizar sesión' }}
-                      ↗
-                    </button>
+                    @if (sesion.estado === 'EN_CURSO' || permiteInicioAnticipado(sesion)) {
+                      <button
+                        class="boton"
+                        [class.primario]="sesion.estado === 'SIN_INICIAR'"
+                        [class.secundario]="sesion.estado !== 'SIN_INICIAR'"
+                        [disabled]="ocupado()"
+                        (click)="
+                          abrir(
+                            sesion.estado === 'SIN_INICIAR' ? 'iniciar-sesion' : 'finalizar-sesion'
+                          );
+                          sesionPendiente.set(sesion)
+                        "
+                      >
+                        {{ sesion.estado === 'SIN_INICIAR' ? 'Iniciar antes de tiempo' : 'Finalizar sesión' }}
+                        ↗
+                      </button>
+                    }
                   }
                 </article>
               } @empty {
@@ -431,6 +466,29 @@
                 </div>
               }
             </section>
+            @if (totalPaginasSesiones() > 1) {
+              <div class="paginacion-sesiones" role="group" aria-label="Paginación de sesiones">
+                <button
+                  type="button"
+                  class="boton secundario"
+                  [disabled]="paginaActualSesiones() === 1"
+                  (click)="paginaSesiones.set(paginaActualSesiones() - 1)"
+                >
+                  Anterior
+                </button>
+                <span aria-live="polite">
+                  Página {{ paginaActualSesiones() }} de {{ totalPaginasSesiones() }}
+                </span>
+                <button
+                  type="button"
+                  class="boton secundario"
+                  [disabled]="paginaActualSesiones() === totalPaginasSesiones()"
+                  (click)="paginaSesiones.set(paginaActualSesiones() + 1)"
+                >
+                  Siguiente
+                </button>
+              </div>
+            }
           }
           @if (vista() === 'espacios') {
             <div class="encabezado-pagina encabezado-espacios">
@@ -782,121 +840,16 @@
                 {{ cargandoNotificaciones() ? 'Actualizando…' : 'Actualizar' }}
               </button>
             </div>
-            <section class="panel-notificaciones-docente" aria-labelledby="resumen-notificaciones">
-              <div class="resumen-notificaciones-docente">
-                <h2 id="resumen-notificaciones">
-                  {{ notificacionesNoLeidas() || 'Sin' }}
-                  {{
-                    notificacionesNoLeidas() === 1 ? 'notificación nueva' : 'notificaciones nuevas'
-                  }}
-                </h2>
-                <p>Los avisos leídos permanecen disponibles como historial.</p>
-              </div>
-              @if (errorNotificaciones()) {
-                <div class="error" role="alert">{{ errorNotificaciones() }}</div>
-              }
-              @if (cargandoNotificaciones() && !notificaciones().length) {
-                <p class="vacio" role="status">Consultando tus notificaciones…</p>
-              } @else {
-                <form
-                  class="filtros-listado filtros-notificaciones"
-                  (ngSubmit)="$event.preventDefault()"
-                >
-                  <label
-                    >Filtrar por lectura<select
-                      name="estadoNotificaciones"
-                      [ngModel]="estadoNotificaciones()"
-                      (ngModelChange)="estadoNotificaciones.set($event)"
-                    >
-                      <option value="">Todas</option>
-                      <option value="NO_LEIDA">No leídas</option>
-                      <option value="LEIDA">Leídas</option>
-                    </select></label
-                  >
-                  <label
-                    >Filtrar por tipo<select
-                      name="tipoNotificaciones"
-                      [ngModel]="tipoNotificaciones()"
-                      (ngModelChange)="tipoNotificaciones.set($event)"
-                    >
-                      <option value="">Todos los tipos</option>
-                      @for (tipo of tiposNotificaciones(); track tipo) {
-                        <option [value]="tipo">{{ tituloNotificacion(tipo) }}</option>
-                      }
-                    </select></label
-                  >
-                  <button
-                    type="button"
-                    class="boton-limpiar-espacios"
-                    [disabled]="!estadoNotificaciones() && !tipoNotificaciones()"
-                    (click)="limpiarFiltrosNotificaciones()"
-                  >
-                    Limpiar filtros
-                  </button>
-                </form>
-                <p class="resumen-listado" role="status" aria-live="polite">
-                  {{ notificacionesVisibles().length }}
-                  {{
-                    notificacionesVisibles().length === 1
-                      ? 'notificación visible'
-                      : 'notificaciones visibles'
-                  }}
-                </p>
-                <div class="lista-notificaciones-docente">
-                  @for (notificacion of notificacionesVisibles(); track notificacion.id) {
-                    <article [class.no-leida]="!notificacion.leida">
-                      <span class="icono-notificacion-docente" aria-hidden="true">{{
-                        iconoNotificacion(notificacion.tipo)
-                      }}</span>
-                      <div class="contenido-notificacion-docente">
-                        <div>
-                          <h3>{{ tituloNotificacion(notificacion.tipo) }}</h3>
-                          @if (!notificacion.leida) {
-                            <span class="etiqueta-nueva">Nueva</span>
-                          }
-                        </div>
-                        <p>{{ notificacion.mensaje }}</p>
-                        <time [attr.datetime]="notificacion.fechaCreacion">{{
-                          notificacion.fechaCreacion | date: 'medium'
-                        }}</time>
-                      </div>
-                      @if (!notificacion.leida) {
-                        <button
-                          class="boton-texto"
-                          type="button"
-                          [disabled]="marcandoNotificacion() !== null"
-                          (click)="marcarNotificacionLeida(notificacion)"
-                        >
-                          {{
-                            marcandoNotificacion() === notificacion.id
-                              ? 'Marcando…'
-                              : 'Marcar como leída'
-                          }}
-                        </button>
-                      } @else {
-                        <span class="estado-notificacion-leida">Leída</span>
-                      }
-                    </article>
-                  } @empty {
-                    <div class="vacio vacio-notificaciones-docente">
-                      <span aria-hidden="true">✓</span>
-                      <h2>
-                        {{
-                          notificaciones().length ? 'No hay coincidencias.' : 'Todo está al día.'
-                        }}
-                      </h2>
-                      <p>
-                        {{
-                          notificaciones().length
-                            ? 'Cambia o limpia los filtros para ver otros avisos.'
-                            : 'Aquí aparecerán las novedades de tus sesiones.'
-                        }}
-                      </p>
-                    </div>
-                  }
-                </div>
-              }
-            </section>
+            <psico-panel-notificaciones
+              [notificaciones]="notificaciones()"
+              [cargandoNotificaciones]="cargandoNotificaciones()"
+              [errorNotificaciones]="errorNotificaciones()"
+              [marcandoNotificacion]="marcandoNotificacion()"
+              [(estadoNotificaciones)]="estadoNotificaciones"
+              [(tipoNotificaciones)]="tipoNotificaciones"
+              (marcarLeida)="marcarNotificacionLeida($event)"
+              (marcarTodasLeidas)="marcarNotificacionLeida()"
+            />
           }
           <footer>
             <span>Psicoapp <i>·</i> Simulador académico de psicología social</span
@@ -911,6 +864,7 @@
       <section
         class="modal"
         [class.modal-detalle-caso]="modal() === 'detalle'"
+        [class.modal-detalle-sesion]="modal() === 'detalle-sesion'"
         role="dialog"
         aria-modal="true"
         aria-labelledby="titulo-modal"
@@ -922,7 +876,10 @@
         <button class="cerrar-modal boton-icono" aria-label="Cerrar ventana" (click)="cerrar()">
           ×
         </button>
-        @if (error() && erroresPublicacion().length === 0) {
+        @if (pasosModales[modal()]; as pasos) {
+          <psico-tutorial class="tutorial-modal" [pasos]="pasos" />
+        }
+        @if (modal() !== 'crear' && modal() !== 'programar' && error() && erroresPublicacion().length === 0) {
           <p class="error" role="alert">{{ error() }}</p>
         }
         @switch (modal()) {
@@ -937,6 +894,7 @@
                   : 'Espacio docente'
               }}
             </p>
+            <psico-cambio-clave />
             <button class="boton secundario" (click)="salir()">Cerrar sesión</button>
           }
           @case ('crear') {
@@ -944,9 +902,22 @@
               {{ seleccionado() ? 'Editar borrador' : 'Crea una experiencia.' }}
             </h2>
             @if (borrador; as caso) {
+              @if (!seleccionado()) {
+                <button
+                  type="button"
+                  class="boton secundario"
+                  [disabled]="ocupado()"
+                  data-tutorial="reiniciar-borrador"
+                  (click)="reiniciarBorrador()"
+                >
+                  Empezar de cero
+                </button>
+              }
               <psico-editor-caso
                 [caso]="caso"
                 [ocupado]="ocupado()"
+                [error]="error()"
+                (cambio)="guardarBorradorLocal($event)"
                 (guardar)="guardarCaso($event)"
               />
             }
@@ -1147,7 +1118,7 @@
               {{ espacioEditado() ? 'Editar espacio académico.' : 'Un nuevo espacio.' }}
             </h2>
             @if (espacioEditado()) {
-              <p>Solo se pueden editar espacios que no estén asociados a sesiones.</p>
+              <p>Cambiar los estudiantes predeterminados solo afecta a encuentros nuevos.</p>
             }
             <form
               #espacioFormulario="ngForm"
@@ -1164,8 +1135,20 @@
                   name="periodo"
                   [(ngModel)]="periodo"
                   maxlength="30"
-                  required /></label
-              ><button class="boton primario" [disabled]="ocupado() || espacioFormulario.invalid">
+                  required /></label>
+              @if (api.conectado()) {
+                <fieldset class="busqueda-estudiante" [disabled]="ocupado() || cargandoEstudiantes()">
+                  <legend>Estudiantes predeterminados</legend>
+                  @if (cargandoEstudiantes()) {
+                    <p role="status">Cargando estudiantes…</p>
+                  }
+                  <psico-selector-estudiantes
+                    [estudiantes]="estudiantes()"
+                    [(seleccion)]="estudiantesEspacio"
+                  />
+                </fieldset>
+              }
+              <button class="boton primario" [disabled]="ocupado() || espacioFormulario.invalid || cargandoEstudiantes()">
                 {{ espacioEditado() ? 'Guardar espacio' : 'Crear espacio ↗' }}
               </button>
             </form>
@@ -1174,54 +1157,6 @@
             <p class="sobretitulo">EL SIGUIENTE ENCUENTRO</p>
             <h2 id="titulo-modal">Dale fecha a una idea.</h2>
             <form (ngSubmit)="programar()">
-              @if (api.conectado()) {
-                <fieldset
-                  [disabled]="ocupado() || cargandoEstudiantes()"
-                  class="busqueda-estudiante"
-                >
-                  <legend>Agregar estudiantes</legend>
-                  @if (cargandoEstudiantes()) {
-                    <p role="status">Cargando estudiantes…</p>
-                  }
-                  <psico-selector-estudiantes
-                    [estudiantes]="estudiantes()"
-                    [(seleccion)]="programacion.estudiantes"
-                  />
-                  <button type="button" class="boton secundario" (click)="abrir('alta-estudiante')">
-                    Registrar estudiante
-                  </button>
-                </fieldset>
-                <fieldset [disabled]="ocupado()" class="busqueda-estudiante">
-                  <legend>Buscar estudiantes</legend>
-                  <label
-                    >Correo del estudiante<input
-                      name="correoBusqueda"
-                      type="email"
-                      [(ngModel)]="correoBusqueda"
-                      (ngModelChange)="estudianteEncontrado.set(null)"
-                      maxlength="180"
-                  /></label>
-                  <button
-                    type="button"
-                    class="boton secundario"
-                    [disabled]="ocupado() || !correoBusqueda.trim()"
-                    (click)="buscarEstudiante()"
-                  >
-                    Buscar por correo
-                  </button>
-                  @if (estudianteEncontrado(); as estudiante) {
-                    <p role="status">{{ estudiante.nombre }} · {{ estudiante.correo }}</p>
-                    <button type="button" class="boton secundario" (click)="agregarEstudiante()">
-                      Agregar a {{ estudiante.nombre }}
-                    </button>
-                  }
-                  <small
-                    >Busca una cuenta activa por su correo institucional exacto y agrégala a la
-                    convocatoria.</small
-                  >
-                </fieldset>
-              }
-
               <label
                 >Caso publicado<select name="casoSesion" [(ngModel)]="programacion.idCaso" required>
                   <option value="">Selecciona un caso</option>
@@ -1234,15 +1169,34 @@
               ><label
                 >Espacio académico<select
                   name="espacioSesion"
-                  [(ngModel)]="programacion.idEspacio"
+                  [ngModel]="programacion.idEspacio"
+                  (ngModelChange)="seleccionarEspacioSesion($event)"
                   required
                 >
                   <option value="">Selecciona un espacio</option>
                   @for (espacio of espacios(); track espacio.id) {
                     <option [value]="espacio.id">{{ espacio.nombre }}</option>
                   }
-                </select></label
-              >
+                </select></label>
+              @if (api.conectado()) {
+                <fieldset
+                  [disabled]="ocupado() || cargandoEstudiantes()"
+                  class="busqueda-estudiante"
+                >
+                  <legend>Agregar estudiantes</legend>
+                  @if (cargandoEstudiantes()) {
+                    <p role="status">Cargando estudiantes…</p>
+                  } @else if (espacioProgramado(); as espacio) {
+                    @if (!espacio.estudiantes?.length) {
+                      <p>Este espacio no tiene estudiantes predeterminados. Puedes configurarlos en Espacios académicos → Editar.</p>
+                    }
+                  }
+                  <psico-selector-estudiantes
+                    [estudiantes]="estudiantes()"
+                    [(seleccion)]="programacion.estudiantes"
+                  />
+                </fieldset>
+              }
               <div class="dos-columnas">
                 <label
                   >Inicio (hora local)<input
@@ -1276,8 +1230,11 @@
                   name="mensaje"
                   [(ngModel)]="programacion.mensaje"
                   required
-                ></textarea></label
-              ><button class="boton primario" [disabled]="ocupado()">
+                ></textarea></label>
+              @if (error(); as mensajeError) {
+                <p class="error error-programacion" role="alert">{{ mensajeError }}</p>
+              }
+              <button class="boton primario" [disabled]="ocupado() || cargandoEstudiantes()">
                 {{ ocupado() ? 'Programando…' : 'Programar sesión ↗' }}
               </button>
             </form>
@@ -1312,12 +1269,89 @@
                   autocomplete="new-password"
               /></label>
               <button class="boton primario" [disabled]="ocupado() || alta.invalid">
-                Registrar y agregar
+                Crear estudiante
               </button>
-              <button type="button" class="boton secundario" (click)="abrir('programar')">
-                Volver a programación
-              </button>
+              <button type="button" class="boton secundario" (click)="cerrar()">Cancelar</button>
             </form>
+          }
+          @case ('detalle-sesion') {
+            @if (sesionPendiente(); as sesion) {
+              <h2 id="titulo-modal">{{ nombreCaso(sesion.idCaso) }}</h2>
+              <p>{{ nombreEspacioAcademico(sesion.idEspacio) }} · {{ estadoLegible(sesion.estado) }}</p>
+              <dl class="horarios-sesion">
+                <div>
+                  <dt>Apertura programada</dt>
+                  <dd>{{ sesion.inicioPrevisto | date: 'dd/MM/yyyy, HH:mm' }}</dd>
+                </div>
+                <div>
+                  <dt>Cierre programado</dt>
+                  <dd>{{ sesion.finPrevisto | date: 'dd/MM/yyyy, HH:mm' }}</dd>
+                </div>
+                <div>
+                  <dt>Apertura real</dt>
+                  <dd>{{ (sesion.aperturaReal | date: 'dd/MM/yyyy, HH:mm') ?? 'Sin registro' }}</dd>
+                </div>
+                <div>
+                  <dt>Cierre real</dt>
+                  <dd>{{ (sesion.cierreReal | date: 'dd/MM/yyyy, HH:mm') ?? 'Sin registro' }}</dd>
+                </div>
+              </dl>
+              <h3>Participación</h3>
+              @if (ocupado()) {
+                <p role="status">Cargando participación…</p>
+              } @else if (participantesDetalleSesion(); as participantes) {
+                @if (participantes.length) {
+                  <label>
+                    Buscar estudiante
+                    <input
+                      type="search"
+                      placeholder="Nombre o correo"
+                      [value]="filtroParticipantesSesion()"
+                      (input)="filtroParticipantesSesion.set($any($event.target).value)"
+                    />
+                  </label>
+                  <div class="tabla-detalle-sesion" tabindex="0" role="region" aria-label="Detalle de participación">
+                    <table aria-label="Participación por intento">
+                      <thead>
+                        <tr>
+                          <th scope="col">Estudiante</th>
+                          <th scope="col">Empezó</th>
+                          <th scope="col">Terminó</th>
+                          <th scope="col">Aciertos</th>
+                          <th scope="col">Nota</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (fila of participantesSesionFiltrados(); track fila.idIntento) {
+                          <tr>
+                            <th scope="row">{{ fila.nombreEstudiante }}</th>
+                            <td>{{ (fila.inicioIntento | date: 'dd/MM/yyyy, HH:mm') ?? 'Sin registro' }}</td>
+                            <td>{{
+                              (fila.finIntento | date: 'dd/MM/yyyy, HH:mm') ??
+                              (fila.estado === 'EN_PROGRESO' ? 'En curso' : 'Sin registro')
+                            }}</td>
+                            <td>
+                              @if (fila.preguntasCorrectas != null && fila.preguntasTotales != null) {
+                                {{ fila.preguntasCorrectas }} / {{ fila.preguntasTotales }}
+                              } @else { — }
+                            </td>
+                            <td>{{ fila.calificacion ?? 'Pendiente' }}</td>
+                          </tr>
+                        } @empty {
+                          <tr>
+                            <td colspan="5"><span role="status">No hay estudiantes que coincidan con la búsqueda.</span></td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                } @else {
+                  <p>Todavía no hay intentos registrados para esta sesión.</p>
+                }
+              } @else if (!api.conectado()) {
+                <p>La sesión de demostración no tiene intentos registrados.</p>
+              }
+            }
           }
           @case ('convocados') {
             <h2 id="titulo-modal">Editar convocados</h2>
@@ -1343,10 +1377,10 @@
             </form>
           }
           @case ('iniciar-sesion') {
-            <h2 id="titulo-modal">Iniciar el encuentro.</h2>
-            <p>
-              El servidor verificará la hora programada y las condiciones de acceso antes de
-              iniciar.
+            <h2 id="titulo-modal">¿Abrir la sesión antes de tiempo?</h2>
+            <p class="error">
+              Los estudiantes convocados podrán entrar desde ahora. La hora de cierre
+              programada se mantiene.
             </p>
             <button class="boton primario" [disabled]="ocupado()" (click)="confirmarTransicion()">
               Confirmar inicio ↗

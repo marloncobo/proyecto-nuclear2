@@ -12,6 +12,8 @@ import {
 import { FormsModule, NgForm } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { AvisoNotificacion, Reporte, ServicioApi } from './servicio-api';
+import { TutorialGuiado } from './tutorial-guiado';
+import { pasosIngreso } from './pasos-tutorial';
 
 interface Intento {
   id: string;
@@ -36,13 +38,14 @@ interface Simulacion {
 
 @Component({
   selector: 'psico-ingreso',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, TutorialGuiado],
   templateUrl: './ingreso.html',
   styleUrl: './ingreso.css',
 })
 export class Ingreso {
   private readonly api = inject(ServicioApi);
   readonly autenticado = output<void>();
+  readonly pasosTutorial = pasosIngreso;
   readonly explorar = output<void>();
   readonly ocupado = signal(false);
   readonly error = signal('');

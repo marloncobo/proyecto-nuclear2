@@ -70,8 +70,8 @@ exclusivas de las cuentas de personal. Las credenciales no dan autorizacion
 general a cualquier sesion.
 
 AutorizacionConvocatorias.exigirAcceso valida estudiante, codigo y sesion
-concreta bajo bloqueo, estado y ventana inicial de RN-15: desde inicio previsto
-hasta la mitad del intervalo programado, ambos limites inclusivos. Su
+concreta bajo bloqueo, estado y ventana inicial de RN-15: desde la apertura automática o manual
+hasta el cierre previsto, con cierre exclusivo. Su
 transaccion es MANDATORY: participation debera consumir el contrato dentro de
 la transaccion que crea el intento. Autenticacion por si sola no crea intentos,
 no comprueba reintentos y no reemplaza esta autorizacion especifica.
@@ -80,9 +80,9 @@ reanudaciones no son ingresos iniciales.
 
 ## Tiempo y operacion
 
-Decision confirmada: no se permite iniciar antes de inicioPrevisto.
-El inicio exacto se permite. Sigue rechazandose cierre manual desde SIN_INICIAR;
-el cierre automatico se aplica a ese estado al vencer fin previsto + 24 horas.
+La apertura automática se ejecuta desde inicioPrevisto. El docente responsable
+puede adelantarla con confirmación y dar acceso a los convocados. Sigue rechazandose cierre manual desde SIN_INICIAR;
+el cierre automatico se aplica a ese estado al vencer el fin previsto.
 
 El planificador requiere la aplicacion activa y configuracion habilitada.
 Tras reinicio el siguiente barrido recupera todos los candidatos vencidos;
@@ -116,7 +116,7 @@ romper sesiones y recupera multiples cierres tras reconstruir el servicio.
 
 Las pruebas de regresion incluyen sustitucion sin huerfanos, rollback,
 propiedad, estados, HTTP 400 y JWT, opciones correctas/incorrectas, limite
-inicial, vinculacion del codigo al alumno/sesion y mitad del horario.
+inicial, vinculacion del codigo al alumno/sesion y cierre programado.
 
 PruebaFlujoMySql ejecuta el mismo recorrido contra MySQL si se configuran:
 

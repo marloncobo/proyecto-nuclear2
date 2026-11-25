@@ -474,17 +474,41 @@ p {
 }
 .accion-estado {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
   min-width: 0;
 }
+.accion-estado.con-motivo {
+  position: relative;
+  border-radius: 8px;
+  cursor: not-allowed;
+}
+.accion-estado.con-motivo .boton:disabled {
+  pointer-events: none;
+  background: #edf0ee;
+  border-color: #d6ddd9;
+  color: #4d5a54;
+}
+.accion-estado.con-motivo:focus-visible {
+  outline: 2px solid var(--azul);
+  outline-offset: 2px;
+}
 .motivo-estado {
-  display: block;
+  position: absolute;
+  z-index: 1;
+  inset-inline-end: 0;
+  bottom: 100%;
+  width: max-content;
+  max-width: min(230px, 75vw);
+  padding: 6px 10px;
+  border-radius: 6px;
+  visibility: hidden;
+  background: var(--azul);
+  color: #fff;
   font-size: 12px;
   line-height: 1.5;
-  font-weight: 400;
-  color: #63766b;
-  max-width: 150px;
+}
+.accion-estado.con-motivo:hover .motivo-estado,
+.accion-estado.con-motivo:focus .motivo-estado {
+  visibility: visible;
 }
 .usuarios-vacios {
   padding: 32px 20px;
@@ -635,9 +659,6 @@ p {
   .accion-estado .boton {
     width: 100%;
   }
-  .motivo-estado {
-    max-width: none;
-  }
   .encabezado-usuarios {
     margin-bottom: 16px;
     gap: 16px;
@@ -697,4 +718,9 @@ p {
   .encabezado-usuarios h1 {
     font-size: 25px;
   }
+}
+.tutorial-modal {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 2rem .65rem 0;
 }

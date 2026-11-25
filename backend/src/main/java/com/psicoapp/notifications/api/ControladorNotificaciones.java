@@ -21,4 +21,10 @@ public class ControladorNotificaciones {
     public void marcarLeida(Principal principal, @PathVariable UUID id) {
         avisos.marcarLeida(UUID.fromString(principal.getName()), id);
     }
+
+    @PutMapping("/leidas")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void marcarTodasLeidas(Principal principal) {
+        avisos.marcarTodasLeidas(UUID.fromString(principal.getName()));
+    }
 }

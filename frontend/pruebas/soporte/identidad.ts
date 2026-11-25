@@ -29,7 +29,7 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
     rol,
     usuarios: [administrador, docente, estudiante],
     permiso: true,
-    espacio: { id: 'espacio-real', nombre: 'Psicología social', periodo: '2026-2' },
+    espacio: { id: 'espacio-real', nombre: 'Psicología social', periodo: '2026-2', estudiantes: [] as string[] },
     conflictoEspacio: false,
     conflictoDocente: false,
     conflictoRegistro: false,
@@ -97,6 +97,10 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
       return ruta.fulfill({ json: [] });
     if (url.pathname === '/api/estudiante/resultados' && metodo === 'GET')
       return ruta.fulfill({ json: [] });
+    if (url.pathname === '/api/notificaciones/leidas' && metodo === 'PUT') {
+      estado.notificaciones.forEach((aviso) => { aviso.leida = true; });
+      return ruta.fulfill({ status: 204 });
+    }
     if (url.pathname.startsWith('/api/notificaciones/') && url.pathname.endsWith('/leida')) {
       const id = url.pathname.split('/')[3];
       const notificacion = estado.notificaciones.find((actual) => actual.id === id);
@@ -115,13 +119,20 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
       return ruta.fulfill({ json: { habilitado: estado.permiso } });
     }
     if (url.pathname === '/api/identidad/estudiantes/listado')
-      return ruta.fulfill({ json: [estudiante] });
+      return ruta.fulfill({ json: estado.usuarios.filter((usuario) => usuario.rol === 'ESTUDIANTE' && usuario.activo) });
     if (metodo === 'GET' && ['/api/casos', '/api/sesiones'].includes(url.pathname))
       return ruta.fulfill({ json: [] });
-    if (url.pathname === '/api/identidad/estudiantes') {
-      if (url.searchParams.get('correo')?.toLowerCase() !== estudiante.correo)
-        return ruta.fulfill({ status: 404, json: { detail: 'Estudiante no encontrado' } });
-      return ruta.fulfill({ json: estudiante });
+    if (url.pathname === '/api/identidad/estudiantes' && metodo === 'POST') {
+      const nuevo = {
+        id: 'estudiante-nuevo',
+        nombre: datos.nombre,
+        correo: datos.correo,
+        rol: 'ESTUDIANTE',
+        puedeCrearCasos: false,
+        activo: true,
+      };
+      estado.usuarios.push(nuevo);
+      return ruta.fulfill({ status: 201, json: nuevo });
     }
     if (url.pathname.startsWith('/api/identidad/usuarios/')) {
       const usuario = estado.usuarios.find((usuario) => usuario.id === url.pathname.split('/')[4]);

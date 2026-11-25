@@ -59,7 +59,7 @@ public class ServicioUsuarios implements DirectorioIdentidad {
         exigirRol(idActor, Rol.ADMINISTRADOR);
         Usuario anterior = buscarUsuario(idUsuario);
         if (anterior.rol() != Rol.DOCENTE) throw new Conflicto("La cuenta no tiene rol docente");
-        String normalizado = Usuario.normalizarCorreo(correo);
+        String normalizado = validarCorreoInstitucional(correo);
         if (usuarios.buscarPorCorreo(normalizado).filter(u -> !u.id().equals(idUsuario)).isPresent()) {
             throw new Conflicto("El correo ya esta registrado");
         }
@@ -114,7 +114,7 @@ public class ServicioUsuarios implements DirectorioIdentidad {
     }
     public DatosUsuario registrarDocente(UUID idActor, String correo, String nombre, String clave) {
         exigirRol(idActor, Rol.ADMINISTRADOR);
-        return crearUsuario(correo, nombre, Rol.DOCENTE, clave);
+        return crearUsuario(validarCorreoInstitucional(correo), nombre, Rol.DOCENTE, clave);
     }
 
     public DatosUsuario cambiarRol(UUID idActor, UUID idUsuario, Rol rol) {
@@ -123,7 +123,7 @@ public class ServicioUsuarios implements DirectorioIdentidad {
             throw new Conflicto("No puede retirar su propio rol de administrador");
         }
         Usuario actualizado = buscarUsuario(idUsuario).conRol(rol);
-        if (rol == Rol.ESTUDIANTE) {
+        if (rol == Rol.ESTUDIANTE || rol == Rol.DOCENTE) {
             validarCorreoInstitucional(actualizado.correo());
         }
         usuarios.guardar(actualizado);
@@ -224,6 +224,23 @@ public class ServicioUsuarios implements DirectorioIdentidad {
         }
         if (!usuarios.actualizarClaveEstudiante(estudiante, cuenta.hashClave(), nuevo, false)) {
             throw new Conflicto("La contraseña inicial ya fue cambiada");
+        }
+    }
+
+    public void cambiarClave(UUID id, String actual, String nueva) {
+        Usuario usuario = buscarUsuario(id);
+        if (!usuario.activo() || usuario.claveInicial() || usuario.hashClave() == null) {
+            throw new AccesoDenegado("La cuenta no puede cambiar la contraseña desde Mi cuenta");
+        }
+        if (actual == null || actual.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72
+                || !claves.matches(actual, usuario.hashClave())) {
+            throw new IllegalArgumentException("La contraseña actual es incorrecta");
+        }
+        if (actual.equals(nueva)) {
+            throw new IllegalArgumentException("La nueva contraseña debe ser distinta de la actual");
+        }
+        if (!usuarios.cambiarClave(id, usuario.hashClave(), codificarClave(nueva))) {
+            throw new Conflicto("La contraseña cambió. Verifica la contraseña actual e inténtalo de nuevo");
         }
     }
 

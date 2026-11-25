@@ -1,13 +1,19 @@
 package com.psicoapp.sessions.domain;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
 /** Contexto inmutable del patron State. No representa intentos individuales. */
 public record Sesion(UUID id, UUID idCaso, UUID idEspacio, UUID idDocente,
         Instant inicioPrevisto, Instant finPrevisto, int duracionMaximaMin,
-        ModoNavegacion modoNavegacion, String lugar, String mensaje, EstadoSesion estado) {
+        ModoNavegacion modoNavegacion, String lugar, String mensaje, EstadoSesion estado,
+        Instant aperturaReal, Instant cierreReal) {
+    public Sesion(UUID id, UUID idCaso, UUID idEspacio, UUID idDocente,
+            Instant inicioPrevisto, Instant finPrevisto, int duracionMaximaMin,
+            ModoNavegacion modoNavegacion, String lugar, String mensaje, EstadoSesion estado) {
+        this(id, idCaso, idEspacio, idDocente, inicioPrevisto, finPrevisto, duracionMaximaMin,
+                modoNavegacion, lugar, mensaje, estado, null, null);
+    }
     public Sesion {
         if (id == null || idCaso == null || idEspacio == null || idDocente == null
                 || inicioPrevisto == null || finPrevisto == null || modoNavegacion == null || estado == null) {
@@ -54,12 +60,21 @@ public record Sesion(UUID id, UUID idCaso, UUID idEspacio, UUID idDocente,
 
     public boolean estaVencida(Instant ahora) {
         exigirInstante(ahora);
-        return !ahora.isBefore(finPrevisto.plus(Duration.ofDays(1)));
+        return !ahora.isBefore(finPrevisto);
     }
 
-    Sesion conEstado(EstadoSesion nuevo) {
+    public boolean permiteIngreso(Instant ahora) {
+        return estado.codigo() == TipoEstadoSesion.EN_CURSO && !estaVencida(ahora);
+    }
+
+    public boolean correspondeAperturaAutomatica(Instant ahora) {
+        return estado.codigo() == TipoEstadoSesion.SIN_INICIAR && !ahora.isBefore(inicioPrevisto)
+                && !estaVencida(ahora);
+    }
+
+    Sesion conEstado(EstadoSesion nuevo, Instant apertura, Instant cierre) {
         return new Sesion(id, idCaso, idEspacio, idDocente, inicioPrevisto, finPrevisto,
-                duracionMaximaMin, modoNavegacion, lugar, mensaje, nuevo);
+                duracionMaximaMin, modoNavegacion, lugar, mensaje, nuevo, apertura, cierre);
     }
 
     private static void exigirInstante(Instant ahora) {

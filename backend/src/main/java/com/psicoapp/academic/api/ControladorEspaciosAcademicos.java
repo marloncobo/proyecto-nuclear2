@@ -4,6 +4,7 @@ import com.psicoapp.academic.application.FachadaAdministracion;
 import com.psicoapp.academic.application.FachadaAdministracion.DatosEspacioAcademico;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.security.Principal;
 import java.util.List;
@@ -21,7 +22,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/academico/espacios")
 public class ControladorEspaciosAcademicos {
-    public record SolicitudEspacio(@NotBlank @Size(max = 150) String nombre, @NotBlank @Size(max = 30) String periodo) { }
+    public record SolicitudEspacio(@NotBlank @Size(max = 150) String nombre,
+            @NotBlank @Size(max = 30) String periodo, List<@NotNull UUID> estudiantes) { }
 
     private final FachadaAdministracion academico;
 
@@ -32,13 +34,19 @@ public class ControladorEspaciosAcademicos {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public DatosEspacioAcademico crearEspacio(Principal principal, @Valid @RequestBody SolicitudEspacio solicitud) {
-        return academico.crearEspacio(UUID.fromString(principal.getName()), solicitud.nombre(), solicitud.periodo());
+        UUID docente = UUID.fromString(principal.getName());
+        return solicitud.estudiantes() == null
+                ? academico.crearEspacio(docente, solicitud.nombre(), solicitud.periodo())
+                : academico.crearEspacio(docente, solicitud.nombre(), solicitud.periodo(), solicitud.estudiantes());
     }
 
     @PutMapping("/{id}")
     public DatosEspacioAcademico editarEspacio(Principal principal, @PathVariable UUID id,
             @Valid @RequestBody SolicitudEspacio solicitud) {
-        return academico.editarEspacio(UUID.fromString(principal.getName()), id, solicitud.nombre(), solicitud.periodo());
+        UUID docente = UUID.fromString(principal.getName());
+        return solicitud.estudiantes() == null
+                ? academico.editarEspacio(docente, id, solicitud.nombre(), solicitud.periodo())
+                : academico.editarEspacio(docente, id, solicitud.nombre(), solicitud.periodo(), solicitud.estudiantes());
     }
 
     @GetMapping("/{id}")

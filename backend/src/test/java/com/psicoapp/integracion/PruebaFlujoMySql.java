@@ -15,6 +15,7 @@ import org.springframework.test.context.DynamicPropertySource;
         "psicoapp.notificaciones.despacho-habilitado=false",
         "psicoapp.identidad.dominios-institucionales=example.test",
         "psicoapp.identidad.correo-administrador=", "psicoapp.identidad.clave-administrador=",
+        "psicoapp.sesiones.apertura-automatica-habilitada=false",
         "psicoapp.sesiones.cierre-automatico-habilitado=false"
 })
 @AutoConfigureMockMvc

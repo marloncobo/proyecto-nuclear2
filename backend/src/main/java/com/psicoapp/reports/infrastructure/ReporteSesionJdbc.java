@@ -17,7 +17,8 @@ public class ReporteSesionJdbc {
     }
     public record Fila(UUID idEstudiante, String nombreEstudiante, String correoEstudiante,
             UUID idIntento, String estado, BigDecimal calificacion, Integer preguntasRespondidas,
-            Integer preguntasTotales, Ausencia ausencia) { }
+            Integer preguntasTotales, Ausencia ausencia, Instant inicioIntento, Instant finIntento,
+            Integer preguntasCorrectas) { }
 
     private final JdbcClient jdbc;
     private final ConsultaSesionesDocente sesiones;
@@ -31,7 +32,7 @@ public class ReporteSesionJdbc {
     public List<Fila> consultar(UUID docente, UUID sesion) {
         sesiones.exigirResponsable(docente, sesion);
         List<Fila> filas = jdbc.sql("""
-                SELECT c.id_estudiante, u.nombre, u.correo, i.id_intento,
+                SELECT c.id_estudiante, u.nombre, u.correo, i.id_intento, i.fecha_inicio, i.fecha_fin,
                        CASE WHEN i.id_intento IS NOT NULL THEN i.estado
                             WHEN a.id_estudiante IS NOT NULL THEN 'AUSENTE'
                             WHEN s.estado = 'FINALIZADO' THEN 'AUSENTE'
@@ -44,6 +45,13 @@ public class ReporteSesionJdbc {
                        CASE WHEN i.id_intento IS NOT NULL THEN
                            (SELECT COUNT(*) FROM intento_pregunta ip WHERE ip.id_intento = i.id_intento)
                        END AS totales,
+                       CASE WHEN ev.id_intento IS NOT NULL THEN
+                           (SELECT COUNT(*) FROM detalle_evaluacion d
+                            WHERE d.id_intento = i.id_intento AND d.correcta = TRUE)
+                       WHEN i.id_intento IS NOT NULL THEN
+                           (SELECT COUNT(*) FROM respuesta r JOIN opcion_respuesta o ON o.id_opcion = r.id_opcion
+                            WHERE r.id_intento = i.id_intento AND o.es_correcta = TRUE)
+                       END AS correctas,
                        a.fecha_consolidacion
                 FROM convocatoria c
                 JOIN sesion s ON s.id_sesion = c.id_sesion
@@ -57,17 +65,22 @@ public class ReporteSesionJdbc {
                     String intento = fila.getString("id_intento");
                     String fechaConsolidacion = fila.getString("fecha_consolidacion");
                     UUID estudiante = UUID.fromString(fila.getString("id_estudiante"));
+                    var inicio = fila.getTimestamp("fecha_inicio");
+                    var fin = fila.getTimestamp("fecha_fin");
                     Ausencia ausencia = fechaConsolidacion == null ? null : new Ausencia(
                             fila.getTimestamp("fecha_consolidacion").toInstant(), List.of());
                     return new Fila(estudiante, fila.getString("nombre"), fila.getString("correo"),
                             intento == null ? null : UUID.fromString(intento),
                             fila.getString("estado"), fila.getBigDecimal("calificacion"),
-                            fila.getObject("respondidas", Integer.class), fila.getObject("totales", Integer.class), ausencia);
+                            fila.getObject("respondidas", Integer.class), fila.getObject("totales", Integer.class),
+                            ausencia, inicio == null ? null : inicio.toInstant(), fin == null ? null : fin.toInstant(),
+                            fila.getObject("correctas", Integer.class));
                 }).list();
         return filas.stream().map(fila -> fila.ausencia() == null ? fila : new Fila(
                 fila.idEstudiante(), fila.nombreEstudiante(), fila.correoEstudiante(), fila.idIntento(),
-                fila.estado(), fila.calificacion(), fila.preguntasRespondidas(), fila.preguntasTotales(), new Ausencia(fila.ausencia().fechaConsolidacion(),
-                        consultarDetallesAusencia(sesion, fila.idEstudiante())))).toList();
+                fila.estado(), fila.calificacion(), fila.preguntasRespondidas(), fila.preguntasTotales(),
+                new Ausencia(fila.ausencia().fechaConsolidacion(), consultarDetallesAusencia(sesion, fila.idEstudiante())),
+                fila.inicioIntento(), fila.finIntento(), fila.preguntasCorrectas())).toList();
     }
 
     private List<DetalleAusencia> consultarDetallesAusencia(UUID sesion, UUID estudiante) {

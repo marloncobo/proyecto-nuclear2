@@ -8,12 +8,10 @@
       <button
         class="boton"
         [disabled]="ocupado() || !cargado()"
-        (click)="abrirRegistro('DOCENTE', $event)"
+        data-tutorial="crear-perfil"
+        (click)="abrirVentana('registro', $event)"
       >
-        <span aria-hidden="true">＋</span> Registrar docente
-      </button>
-      <button class="boton secundario" [disabled]="ocupado() || !cargado()" (click)="abrirRegistro('ESTUDIANTE', $event)">
-        <span aria-hidden="true">＋</span> Agregar estudiante
+        <span aria-hidden="true">＋</span> Crear perfil
       </button>
       <button
         id="actualizar-usuarios"
@@ -137,7 +135,16 @@
                   >
                     Ver detalle <span aria-hidden="true">↗</span>
                   </button>
-                  <div class="accion-estado">
+                  <div
+                    class="accion-estado"
+                    [class.con-motivo]="usuario.id === api.usuario()?.id"
+                    [attr.tabindex]="usuario.id === api.usuario()?.id ? 0 : null"
+                    [attr.role]="usuario.id === api.usuario()?.id ? 'group' : null"
+                    [attr.aria-label]="usuario.id === api.usuario()?.id ? 'Desactivar cuenta propia' : null"
+                    [attr.aria-describedby]="
+                      usuario.id === api.usuario()?.id ? 'motivo-estado-' + usuario.id : null
+                    "
+                  >
                     <button
                       class="boton secundario"
                       [attr.aria-label]="
@@ -152,7 +159,7 @@
                       {{ usuario.activo ? 'Desactivar' : 'Reactivar' }}
                     </button>
                     @if (usuario.id === api.usuario()?.id) {
-                      <small class="motivo-estado" [id]="'motivo-estado-' + usuario.id"
+                      <small role="tooltip" class="motivo-estado" [id]="'motivo-estado-' + usuario.id"
                         >No puedes desactivar tu propia cuenta.</small
                       >
                     }
@@ -210,6 +217,9 @@
   >
     ×
   </button>
+  @if (pasosTutorial[vistaModal()]; as pasos) {
+    <psico-tutorial class="tutorial-modal" [pasos]="pasos" />
+  }
   @if (error()) {
     <p class="error" role="alert">{{ error() }}</p>
   }
@@ -315,9 +325,6 @@
           >
             Cambiar rol
           </button>
-          <button class="boton secundario" [disabled]="ocupado()" (click)="cerrarDetalle()">
-            Volver al listado
-          </button>
         </div>
         @if (usuario.id === api.usuario()?.id) {
           <p class="nota-modal">
@@ -328,19 +335,23 @@
     }
   } @else if (vistaModal() === 'registro') {
     <p class="sobretitulo">AMPLIAR NUESTRA COMUNIDAD</p>
-    <h2 id="detalle-usuario" class="titulo-modal" tabindex="-1">Registrar {{ tipoRegistro === 'ESTUDIANTE' ? 'estudiante' : 'docente' }}</h2>
-    <p class="descripcion-modal">
-      Crea una cuenta para que {{ tipoRegistro === 'ESTUDIANTE' ? 'el estudiante' : 'el docente' }} ingrese con su correo y contraseña.
-    </p>
+    <h2 id="detalle-usuario" class="titulo-modal" tabindex="-1">Crear perfil</h2>
     <form
       #registro="ngForm"
-      (ngSubmit)="registro.valid && registrarDocente()"
+      (ngSubmit)="registro.valid && registrarPerfil()"
       [attr.aria-busy]="ocupado()"
     >
+      <label>
+        Rol del perfil
+        <select name="rolPerfil" [(ngModel)]="tipoRegistro" [disabled]="ocupado()">
+          <option value="DOCENTE">Docente</option>
+          <option value="ESTUDIANTE">Estudiante</option>
+        </select>
+      </label>
       <label
         >Nombre {{ tipoRegistro === 'ESTUDIANTE' ? 'del estudiante' : 'del docente' }}<input
           name="nombreNuevo"
-          [(ngModel)]="nuevoDocente.nombre"
+          [(ngModel)]="nuevoPerfil.nombre"
           maxlength="120"
           required
           [disabled]="ocupado()"
@@ -351,7 +362,7 @@
           name="correoNuevo"
           type="email"
           email
-          [(ngModel)]="nuevoDocente.correo"
+          [(ngModel)]="nuevoPerfil.correo"
           maxlength="180"
           required
           [disabled]="ocupado()"
@@ -363,7 +374,7 @@
           id="clave-docente"
           name="claveNueva"
           [type]="mostrarClave ? 'text' : 'password'"
-          [(ngModel)]="nuevoDocente.clave"
+          [(ngModel)]="nuevoPerfil.clave"
           minlength="8"
           maxlength="72"
           required
@@ -383,7 +394,7 @@
       </div>
       <small id="ayuda-clave-docente" class="nota-modal"
         >Mínimo 8 caracteres y máximo 72 bytes. Algunos símbolos ocupan más de un byte. Comparte el
-        acceso con el docente por un canal privado.</small
+        acceso con la persona por un canal privado.</small
       >
       <div class="acciones pie-detalle">
         <button class="boton" [disabled]="ocupado() || registro.invalid">

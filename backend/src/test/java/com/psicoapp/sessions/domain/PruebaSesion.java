@@ -1,7 +1,6 @@
 package com.psicoapp.sessions.domain;
 
 import com.psicoapp.sessions.DatosPruebaSesiones;
-import java.time.Duration;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -11,10 +10,16 @@ import static org.junit.jupiter.api.Assertions.*;
 class PruebaSesion {
 
     @Test
-    void noIniciaAntesDelHorarioPrevisto() {
+    void admiteInicioManualAnticipadoSinAdelantarLaAperturaAutomatica() {
         Sesion programada = DatosPruebaSesiones.programada(UUID.randomUUID());
-        assertThrows(TransicionSesionInvalida.class, () -> programada.iniciar(INICIO.minusNanos(1)));
-        assertEquals(TipoEstadoSesion.EN_CURSO, programada.iniciar(INICIO).estado().codigo());
+        var anticipado = INICIO.minusSeconds(60);
+        assertFalse(programada.correspondeAperturaAutomatica(anticipado));
+        assertTrue(programada.correspondeAperturaAutomatica(INICIO));
+        assertFalse(programada.correspondeAperturaAutomatica(FIN));
+        Sesion abierta = programada.iniciar(anticipado);
+        assertEquals(TipoEstadoSesion.EN_CURSO, abierta.estado().codigo());
+        assertEquals(anticipado, abierta.aperturaReal());
+        assertTrue(abierta.permiteIngreso(anticipado));
     }
     private final Sesion sesion = DatosPruebaSesiones.programada(UUID.randomUUID());
 
@@ -45,9 +50,9 @@ class PruebaSesion {
     }
 
     @Test
-    @DisplayName("RN-12: cierre automatico exacto a fin previsto + 24 horas en ambos estados abiertos")
+    @DisplayName("RN-12: cierre automatico exacto a fin previsto en ambos estados abiertos")
     void verificaFronteraDeCierreAutomatico() {
-        var limite = FIN.plus(Duration.ofDays(1));
+        var limite = FIN;
         for (Sesion abierta : new Sesion[]{sesion, sesion.iniciar(INICIO)}) {
             assertFalse(abierta.estaVencida(limite.minusNanos(1)));
             assertThrows(TransicionSesionInvalida.class,
@@ -60,7 +65,7 @@ class PruebaSesion {
     @Test
     @DisplayName("RN-12: no permite ingreso ni inicio vencido aunque el planificador se retrase")
     void impideOperacionesVencidasAntesDelBarrido() {
-        var limite = FIN.plus(Duration.ofDays(1));
+        var limite = FIN;
         assertThrows(TransicionSesionInvalida.class, () -> sesion.iniciar(limite));
         Sesion iniciada = sesion.iniciar(INICIO);
         assertDoesNotThrow(() -> iniciada.validarParticipacion(limite.minusNanos(1)));

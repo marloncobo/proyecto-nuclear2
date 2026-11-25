@@ -13,5 +13,6 @@ public interface RepositorioSesiones {
     /** Requiere transaccion activa; mantiene bloqueo hasta su finalizacion. */
     Optional<Sesion> bloquearPorId(UUID id);
     void actualizarEstado(Sesion sesion);
+    List<UUID> buscarPorAbrir(Instant ahora);
     List<UUID> buscarVencidas(Instant finLimite);
 }

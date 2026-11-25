@@ -691,10 +691,23 @@ footer i {
   margin: 8px 0 45px;
 }
 .tarjeta-caso {
+  position: relative;
+  scroll-margin-block: 8px;
   border: 1px solid var(--borde);
   border-radius: 13px;
   overflow: hidden;
   background: #fff;
+}
+.abrir-detalle-caso::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+}
+.abrir-detalle-caso:focus-visible::after {
+  outline: 2px solid var(--azul);
+  outline-offset: -3px;
 }
 .portada-caso {
   height: 185px;
@@ -796,12 +809,21 @@ footer i {
 .vacio h2 {
   color: #49665c;
 }
+.paginacion-sesiones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: .75rem;
+  margin-top: 1rem;
+}
 .lista-sesiones {
   display: grid;
   gap: 18px;
   margin: 32px 0 60px;
 }
 .tarjeta-sesion {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 24px;
@@ -809,6 +831,45 @@ footer i {
   background: #fff;
   border: 1px solid var(--borde);
   border-radius: 12px;
+}
+.tarjeta-sesion:has(.abrir-detalle-sesion:hover) { border-color: #82928d; }
+.tarjeta-sesion > .boton { position: relative; z-index: 1; }
+.abrir-detalle-sesion { border: 0; padding: 0; background: transparent; text-align: left; font: inherit; }
+.abrir-detalle-sesion:hover { text-decoration: underline; }
+.abrir-detalle-sesion::after { content: ''; position: absolute; inset: 0; }
+.modal.modal-detalle-sesion { width: min(880px, 100%); }
+.horarios-sesion {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: .75rem;
+  margin: 1.25rem 0;
+}
+.horarios-sesion > div {
+  padding: .65rem .8rem;
+  background: var(--salvia);
+  border-radius: 8px;
+}
+.horarios-sesion dt { font-size: .8rem; }
+.horarios-sesion dd { margin: .25rem 0 0; font-weight: 700; }
+.tabla-detalle-sesion { overflow-x: auto; }
+.tabla-detalle-sesion table { width: 100%; margin-top: .5rem; border-collapse: collapse; }
+.tabla-detalle-sesion :is(th, td) {
+  padding: .65rem .55rem;
+  border-bottom: 1px solid var(--borde);
+  text-align: left;
+  font-size: .875rem;
+}
+.tabla-detalle-sesion td { white-space: nowrap; }
+@media (max-width: 540px) {
+  .tabla-detalle-sesion table { table-layout: fixed; }
+  .tabla-detalle-sesion :is(th, td) {
+    padding: .5rem .2rem;
+    font-size: .75rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .tabla-detalle-sesion thead th:first-child { width: 25%; }
+  .tabla-detalle-sesion thead th:nth-child(n+4) { width: 16%; }
 }
 .calendario {
   background: #edf1e8;
@@ -902,22 +963,11 @@ footer i {
   color: #526d5f;
   font-size: 13px;
 }
-.filtros-resultados,
-.filtros-notificaciones {
+.filtros-resultados {
   grid-template-columns: minmax(210px, 1.4fr) minmax(170px, 0.8fr) auto;
 }
 .filtros-resultados {
   margin: 20px 0 12px;
-}
-.filtros-notificaciones {
-  margin: 0;
-  border-width: 0 0 1px;
-  border-radius: 0;
-}
-.panel-notificaciones-docente > .resumen-listado {
-  padding: 12px 26px;
-  margin: 0;
-  border-bottom: 1px solid var(--borde);
 }
 .resumen-espacios {
   display: flex;
@@ -1143,6 +1193,7 @@ footer i {
   color: #8c443a;
   background: #f7e9e5;
 }
+.error-programacion { margin-bottom: 0; }
 .contador-notificaciones {
   display: grid;
   min-width: 21px;
@@ -1158,113 +1209,6 @@ footer i {
 }
 .encabezado-notificaciones-docente {
   align-items: end;
-}
-.panel-notificaciones-docente {
-  max-width: 900px;
-  margin-bottom: 50px;
-  overflow: hidden;
-  border: 1px solid var(--borde);
-  border-radius: 15px;
-  background: #fff;
-}
-.resumen-notificaciones-docente {
-  padding: 22px 26px;
-  border-bottom: 1px solid var(--borde);
-  background: #f7f9f5;
-}
-.resumen-notificaciones-docente h2,
-.resumen-notificaciones-docente p {
-  margin: 0;
-}
-.resumen-notificaciones-docente h2 {
-  color: #173f59;
-  font-size: 18px;
-}
-.resumen-notificaciones-docente p {
-  margin-top: 5px;
-  color: #6c7f76;
-  font-size: 11px;
-}
-.panel-notificaciones-docente > .error {
-  margin: 20px 26px 0;
-}
-.lista-notificaciones-docente article {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 18px;
-  padding: 22px 26px;
-  border-bottom: 1px solid var(--borde);
-}
-.lista-notificaciones-docente article:last-child {
-  border-bottom: 0;
-}
-.lista-notificaciones-docente article.no-leida {
-  border-left: 4px solid #416b59;
-  background: #fbfcf9;
-}
-.icono-notificacion-docente {
-  display: grid;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  border-radius: 12px;
-  background: #eaf0e6;
-  color: #315f4c;
-  font-size: 20px;
-}
-.contenido-notificacion-docente > div {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-}
-.contenido-notificacion-docente h3,
-.contenido-notificacion-docente p {
-  margin: 0;
-}
-.contenido-notificacion-docente h3 {
-  color: #173f59;
-  font-size: 14px;
-}
-.contenido-notificacion-docente p {
-  margin: 6px 0;
-  color: #455f54;
-  font-size: 12px;
-  line-height: 1.65;
-}
-.contenido-notificacion-docente time,
-.estado-notificacion-leida {
-  color: #7a8b83;
-  font-size: 10px;
-}
-.etiqueta-nueva {
-  padding: 4px 7px;
-  border-radius: 999px;
-  background: #dfeadf;
-  color: #315f4c;
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.vacio-notificaciones-docente {
-  padding: 55px 20px;
-  text-align: center;
-}
-.vacio-notificaciones-docente > span {
-  display: grid;
-  width: 48px;
-  height: 48px;
-  margin: 0 auto 14px;
-  place-items: center;
-  border-radius: 50%;
-  background: #eaf0e6;
-  color: #315f4c;
-  font-size: 22px;
-}
-.vacio-notificaciones-docente h2,
-.vacio-notificaciones-docente p {
-  margin: 5px 0;
 }
 .fondo-modal {
   position: fixed;
@@ -1291,6 +1235,11 @@ footer i {
   position: absolute;
   top: 12px;
   right: 12px;
+}
+.tutorial-modal {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 2rem .65rem 0;
 }
 .modal > h2 {
   font-size: 30px;
@@ -1354,6 +1303,10 @@ footer i {
   background: #ffffffd9;
   border: 1px solid #dfe7e2;
   box-shadow: 0 7px 22px #12394b12;
+}
+.modal-detalle-caso .tutorial-modal {
+  margin-top: 19px;
+  margin-right: 69px;
 }
 .cabecera-caso-detalle {
   padding: 42px 48px 32px;
@@ -1992,20 +1945,6 @@ footer i {
   }
   .encabezado-notificaciones-docente .boton {
     width: 100%;
-  }
-  .lista-notificaciones-docente article {
-    grid-template-columns: 38px minmax(0, 1fr);
-    gap: 12px;
-    padding: 18px 16px;
-  }
-  .icono-notificacion-docente {
-    width: 38px;
-    height: 38px;
-  }
-  .lista-notificaciones-docente article > .boton-texto,
-  .estado-notificacion-leida {
-    grid-column: 2;
-    justify-self: start;
   }
   .bienvenida {
     display: block;

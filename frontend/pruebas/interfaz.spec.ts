@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './soporte/sin-tutorial-automatico';
 
 test('docente: filtros por datos reconocibles y navegación conservada al recargar', async ({
   page: pagina,
@@ -29,6 +29,41 @@ test('creación de borrador y transición a publicado en demostración', async (
   await pagina.goto('/');
   await pagina.getByRole('button', { name: 'Explorar la demostración' }).click();
   await pagina.getByRole('button', { name: 'Crear un caso' }).click();
+  const modal = pagina.getByRole('dialog');
+  const nombreCaso = modal.getByLabel('Nombre del caso', { exact: true });
+  const reiniciar = modal.getByRole('button', { name: 'Empezar de cero' });
+  await nombreCaso.fill('Borrador que se va a borrar');
+  await modal.getByRole('button', { name: 'Agregar escenario' }).click();
+  pagina.once('dialog', (confirmacion) => confirmacion.dismiss());
+  await reiniciar.click();
+  await expect(nombreCaso).toHaveValue('Borrador que se va a borrar');
+  pagina.once('dialog', (confirmacion) => confirmacion.accept());
+  await reiniciar.click();
+  await expect(nombreCaso).toHaveValue('');
+  await expect(modal.locator('.escenario')).toHaveCount(1);
+  await pagina.reload();
+  await pagina.getByRole('button', { name: 'Crear un caso' }).click();
+  await expect(nombreCaso).toHaveValue('');
+  const titulo = modal.getByLabel('Título', { exact: true });
+  const encabezadoEscenario = modal.locator('.escenario > summary');
+  await expect(titulo).toBeHidden();
+  await expect(encabezadoEscenario).toHaveText('Escenario 1');
+  await encabezadoEscenario.press('Enter');
+  await expect(titulo).toBeVisible();
+
+  const total = modal.getByRole('status');
+  const ponderacion = modal.getByLabel('Ponderación', { exact: true });
+  const encabezadoCriterio = modal.locator('.criterio > summary');
+  await expect(encabezadoCriterio).toHaveText('Análisis de la situación');
+  await expect(ponderacion).toBeHidden();
+  await encabezadoCriterio.press('Enter');
+  await expect(total).toContainText('1.00');
+  await expect(total).toHaveClass(/completa/);
+  await ponderacion.fill('0.25');
+  await expect(total).toContainText('0.25');
+  await expect(total).not.toHaveClass(/completa/);
+  await ponderacion.fill('1');
+
   const campos = {
     'Nombre del caso': 'Decisiones compartidas',
     'Tema o contexto': 'Influencia social',
@@ -43,7 +78,33 @@ test('creación de borrador y transición a publicado en demostración', async (
   };
   for (const [nombre, valor] of Object.entries(campos))
     await pagina.getByLabel(nombre, { exact: true }).fill(valor);
+  const preguntaDelCriterio = modal.getByRole('checkbox', { name: campos.Pregunta });
+  await expect(preguntaDelCriterio).toBeChecked();
+  await preguntaDelCriterio.uncheck();
+  await expect(encabezadoEscenario).toHaveText('La reunión');
+  await encabezadoEscenario.click();
+  await expect(titulo).toBeHidden();
+  await pagina.keyboard.press('Escape');
+  await expect(modal).toHaveCount(0);
+  await pagina.getByRole('button', { name: 'Crear un caso' }).click();
+  await expect(modal.getByLabel('Nombre del caso')).toHaveValue(campos['Nombre del caso']);
+  await encabezadoCriterio.click();
+  await expect(preguntaDelCriterio).not.toBeChecked();
+  await preguntaDelCriterio.press('Space');
+  await expect(preguntaDelCriterio).toBeChecked();
+  await pagina.reload();
+  await pagina.getByRole('button', { name: 'Crear un caso' }).click();
+  await expect(encabezadoEscenario).toHaveText('La reunión');
+  await expect(titulo).toBeHidden();
+  await expect(ponderacion).toBeHidden();
+  await encabezadoCriterio.click();
+  await expect(preguntaDelCriterio).toBeChecked();
+  await encabezadoCriterio.click();
   await pagina.getByRole('button', { name: 'Guardar borrador' }).click();
+  await expect(modal).toHaveCount(0);
+  await pagina.getByRole('button', { name: 'Crear un caso' }).click();
+  await expect(modal.getByLabel('Nombre del caso')).toHaveValue('');
+  await pagina.keyboard.press('Escape');
   const tarjeta = pagina.locator('.tarjeta-caso').filter({ hasText: 'Decisiones compartidas' });
   await tarjeta.getByRole('button', { name: 'Explorar caso' }).click();
   await pagina.getByRole('button', { name: 'Publicar caso' }).click();
@@ -176,7 +237,7 @@ test('API: autenticación Bearer y separación de datos ficticios al crear un es
   await pagina.getByRole('button', { name: 'Crear espacio' }).click();
   await expect(pagina.getByRole('heading', { name: 'Psicología comunitaria' })).toBeVisible();
   expect(autorizacion).toBe('Bearer token-ficticio');
-  expect(cuerpo).toEqual({ nombre: 'Psicología comunitaria', periodo: '2026-2' });
+  expect(cuerpo).toEqual({ nombre: 'Psicología comunitaria', periodo: '2026-2', estudiantes: [] });
   expect(await pagina.evaluate(() => localStorage.length)).toBe(0);
 });
 

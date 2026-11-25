@@ -45,10 +45,17 @@ public final class Intento {
 
     public static Intento iniciar(UUID id, UUID idSesion, UUID idEstudiante, Instant inicio,
             int duracionMaximaMin, ModoNavegacion modoNavegacion, List<UUID> preguntas) {
+        return iniciar(id, idSesion, idEstudiante, inicio, duracionMaximaMin, Instant.MAX,
+                modoNavegacion, preguntas);
+    }
+
+    public static Intento iniciar(UUID id, UUID idSesion, UUID idEstudiante, Instant inicio,
+            int duracionMaximaMin, Instant finSesion, ModoNavegacion modoNavegacion, List<UUID> preguntas) {
         if (duracionMaximaMin <= 0) throw new IllegalArgumentException("La duracion debe ser positiva");
         Objects.requireNonNull(inicio, "El inicio es obligatorio");
+        Instant limite = inicio.plus(Duration.ofMinutes(duracionMaximaMin));
         return new Intento(id, idSesion, idEstudiante, inicio,
-                inicio.plus(Duration.ofMinutes(duracionMaximaMin)), null, modoNavegacion, preguntas,
+                limite.isAfter(finSesion) ? finSesion : limite, null, modoNavegacion, preguntas,
                 Map.of(), 0, EstadoIntento.EN_PROGRESO);
     }
 

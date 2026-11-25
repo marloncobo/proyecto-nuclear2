@@ -1,4 +1,4 @@
-<form #editor="ngForm" (ngSubmit)="editor.valid && guardar.emit(caso())">
+<form #editor="ngForm" (input)="notificarCambio()" (change)="notificarCambio()" (ngSubmit)="editor.valid && guardar.emit(caso())">
   <label>Nombre del caso<input name="nombre" [(ngModel)]="caso().nombre" maxlength="180" required /></label>
   <div class="dos-columnas">
     <label>Tema o contexto<input name="contexto" [(ngModel)]="caso().contexto" required /></label>
@@ -6,70 +6,90 @@
   </div>
   <label>Desarrollo de la situación<textarea name="desarrollo" [(ngModel)]="caso().desarrolloSituacional" required></textarea></label>
   @for (escenario of caso().escenarios; track escenario.id; let i = $index) {
-    <fieldset>
-      <legend>Escenario {{ i + 1 }}</legend>
-      <label>Título<input [name]="'titulo-' + escenario.id" [(ngModel)]="escenario.titulo" required /></label>
-      <label>Contexto del escenario<textarea [name]="'contexto-' + escenario.id" [(ngModel)]="escenario.contextoSituacional" required></textarea></label>
-      @for (pregunta of escenario.preguntas; track pregunta.id; let j = $index) {
-        <fieldset>
-          <legend>Pregunta {{ j + 1 }}</legend>
-          <label>Pregunta<input [name]="'pregunta-' + pregunta.id" [(ngModel)]="pregunta.enunciado" required /></label>
-          @for (opcion of pregunta.opciones; track opcion.id; let k = $index) {
-            <label>{{ opcion.esCorrecta ? 'Opción correcta' : (k === 1 ? 'Opción incorrecta' : 'Opción ' + (k + 1)) }}
-              <input [name]="'opcion-' + opcion.id" [(ngModel)]="opcion.texto" required />
-            </label>
-            <label>{{ opcion.esCorrecta ? 'Justificación correcta' : (k === 1 ? 'Justificación incorrecta' : 'Justificación ' + (k + 1)) }}
-              <textarea [name]="'justificacion-' + opcion.id" [(ngModel)]="opcion.justificacion" required></textarea>
-            </label>
-            @if (!opcion.esCorrecta) {
-              <button type="button" class="boton secundario" (click)="marcarCorrecta(pregunta, opcion.id)">Marcar opción {{ k + 1 }} como correcta</button>
-              @if (pregunta.opciones.length > 2) {
-                <button type="button" class="boton secundario" (click)="pregunta.opciones.splice(k, 1)">Quitar opción {{ k + 1 }}</button>
+    <details class="desplegable escenario">
+      <summary>{{ escenario.titulo.trim() || 'Escenario ' + (i + 1) }}</summary>
+      <div class="contenido-desplegable">
+        <label>Título<input [name]="'titulo-' + escenario.id" [(ngModel)]="escenario.titulo" required /></label>
+        <label>Contexto del escenario<textarea [name]="'contexto-' + escenario.id" [(ngModel)]="escenario.contextoSituacional" required></textarea></label>
+        @for (pregunta of escenario.preguntas; track pregunta.id; let j = $index) {
+          <fieldset>
+            <legend>Pregunta {{ j + 1 }}</legend>
+            <label>Pregunta<input [name]="'pregunta-' + pregunta.id" [(ngModel)]="pregunta.enunciado" required /></label>
+            @for (opcion of pregunta.opciones; track opcion.id; let k = $index) {
+              <label>{{ opcion.esCorrecta ? 'Opción correcta' : (k === 1 ? 'Opción incorrecta' : 'Opción ' + (k + 1)) }}
+                <input [name]="'opcion-' + opcion.id" [(ngModel)]="opcion.texto" required />
+              </label>
+              <label>{{ opcion.esCorrecta ? 'Justificación correcta' : (k === 1 ? 'Justificación incorrecta' : 'Justificación ' + (k + 1)) }}
+                <textarea [name]="'justificacion-' + opcion.id" [(ngModel)]="opcion.justificacion" required></textarea>
+              </label>
+              @if (!opcion.esCorrecta) {
+                <button type="button" class="boton secundario" (click)="marcarCorrecta(pregunta, opcion.id); notificarCambio()">Marcar opción {{ k + 1 }} como correcta</button>
+                @if (pregunta.opciones.length > 2) {
+                  <button type="button" class="boton secundario" (click)="pregunta.opciones.splice(k, 1); notificarCambio()">Quitar opción {{ k + 1 }}</button>
+                }
               }
             }
-          }
-          <button type="button" class="boton secundario" (click)="agregarOpcion(pregunta)">Agregar opción</button>
-          @if (escenario.preguntas.length > 1) {
-            <button type="button" class="boton secundario" (click)="quitarPregunta(escenario, j)">Quitar pregunta {{ j + 1 }}</button>
-          }
-        </fieldset>
-      }
-      <button type="button" class="boton secundario" (click)="agregarPregunta(escenario)">Agregar pregunta</button>
-      @if (caso().escenarios.length > 1) {
-        <button type="button" class="boton secundario" (click)="quitarEscenario(i)">Quitar escenario {{ i + 1 }}</button>
-      }
-    </fieldset>
+            <button type="button" class="boton secundario" (click)="agregarOpcion(pregunta); notificarCambio()">Agregar opción</button>
+            @if (escenario.preguntas.length > 1) {
+              <button type="button" class="boton secundario" (click)="quitarPregunta(escenario, j); notificarCambio()">Quitar pregunta {{ j + 1 }}</button>
+            }
+          </fieldset>
+        }
+        <button type="button" class="boton secundario" (click)="agregarPregunta(escenario); notificarCambio()">Agregar pregunta</button>
+        @if (caso().escenarios.length > 1) {
+          <button type="button" class="boton secundario" (click)="quitarEscenario(i); notificarCambio()">Quitar escenario {{ i + 1 }}</button>
+        }
+      </div>
+    </details>
   }
-  <button type="button" class="boton secundario" (click)="agregarEscenario()">Agregar escenario</button>
+  <button type="button" class="boton secundario" (click)="agregarEscenario(); notificarCambio()">Agregar escenario</button>
   @if (caso().rubrica; as rubrica) {
     <fieldset>
       <legend>Rúbrica</legend>
+      @let suma = sumaPonderaciones();
+      <output class="suma-ponderaciones" [class.completa]="suma === 1" aria-atomic="true">
+        <span>Suma de ponderaciones</span>
+        <strong>{{ suma | number: '1.2-12' }}</strong>
+      </output>
       <label>Nombre de rúbrica<input name="rubrica" [(ngModel)]="rubrica.nombre" required /></label>
       <label>Escala máxima<input name="escala" type="number" min="1" [(ngModel)]="rubrica.escalaMaxima" required /></label>
       <p>Las ponderaciones se expresan entre 0 y 1 y deben sumar 1 para publicar.</p>
       @for (criterio of rubrica.criterios; track criterio.id; let i = $index) {
-        <fieldset>
-          <legend>Criterio {{ i + 1 }}</legend>
-          <label>Nombre del criterio<input [name]="'criterio-' + criterio.id" [(ngModel)]="criterio.nombre" required /></label>
-          <label>Ponderación<input [name]="'peso-' + criterio.id" type="number" min="0" max="1" step="0.01" [(ngModel)]="criterio.ponderacion" required /></label>
-          <label>Preguntas del criterio
-            <select [name]="'preguntas-' + criterio.id" [(ngModel)]="criterio.preguntas" multiple>
+        <details class="desplegable criterio">
+          <summary>{{ criterio.nombre.trim() || 'Criterio ' + (i + 1) }}</summary>
+          <div class="contenido-desplegable">
+            <label>Nombre del criterio<input [name]="'criterio-' + criterio.id" [(ngModel)]="criterio.nombre" required /></label>
+            <label>Ponderación<input [name]="'peso-' + criterio.id" type="number" min="0" max="1" step="0.01" [(ngModel)]="criterio.ponderacion" required /></label>
+            <fieldset class="preguntas-criterio">
+              <legend>Preguntas del criterio</legend>
               @for (escenario of caso().escenarios; track escenario.id) {
-                <optgroup [label]="escenario.titulo || 'Escenario ' + escenario.orden">
+                <div class="grupo-preguntas">
+                  <strong>{{ escenario.titulo.trim() || 'Escenario ' + escenario.orden }}</strong>
                   @for (pregunta of escenario.preguntas; track pregunta.id) {
-                    <option [ngValue]="pregunta.id">{{ pregunta.enunciado || 'Pregunta ' + pregunta.orden }}</option>
+                    <label class="opcion-pregunta">
+                      <input
+                        #casilla
+                        type="checkbox"
+                        [checked]="criterio.preguntas.includes(pregunta.id)"
+                        (change)="asignarPregunta(criterio, pregunta.id, casilla.checked)"
+                      />
+                      <span>{{ pregunta.enunciado.trim() || 'Pregunta ' + pregunta.orden }}</span>
+                    </label>
                   }
-                </optgroup>
+                </div>
               }
-            </select>
-          </label>
-          <button type="button" class="boton secundario" (click)="rubrica.criterios.splice(i, 1)">Quitar criterio</button>
-        </fieldset>
+            </fieldset>
+            <button type="button" class="boton secundario" (click)="rubrica.criterios.splice(i, 1); notificarCambio()">Quitar criterio</button>
+          </div>
+        </details>
       }
-      <button type="button" class="boton secundario" (click)="agregarCriterio()">Agregar criterio</button>
+      <button type="button" class="boton secundario" (click)="agregarCriterio(); notificarCambio()">Agregar criterio</button>
     </fieldset>
   } @else {
-    <button type="button" class="boton secundario" (click)="agregarRubrica()">Agregar rúbrica</button>
+    <button type="button" class="boton secundario" (click)="agregarRubrica(); notificarCambio()">Agregar rúbrica</button>
+  }
+  @if (error(); as mensaje) {
+    <p class="error-guardado" role="alert">{{ mensaje }}</p>
   }
   <button class="boton primario" [disabled]="ocupado() || editor.invalid">Guardar borrador ↗</button>
 </form>

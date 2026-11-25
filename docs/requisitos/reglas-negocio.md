@@ -83,14 +83,14 @@
 
 ## RN-12 — Estados y cierre de sesiones
 
-**Regla:** Las sesiones tendrán los estados Sin iniciar, En curso y Finalizado. El profesor será responsable de iniciar y finalizar las sesiones. Si una sesión no ha sido finalizada por el profesor, el sistema la finalizará automáticamente un día después de la fecha y hora programadas de finalización. Una sesión finalizada no permitirá nuevas participaciones.
+**Regla:** Las sesiones tendrán los estados Sin iniciar, En curso y Finalizado. El sistema abrirá cada sesión a la hora programada. El docente responsable podrá abrirla antes con confirmación y finalizarla manualmente. Si una sesión no ha sido finalizada por el profesor, el sistema la finalizará automáticamente al alcanzar la fecha y hora programadas de finalización. Una sesión finalizada no permitirá nuevas participaciones.
 
 - **Patrón recomendado en Google Sheets:** State
 - **Justificación en Google Sheets:** State representa el ciclo de vida de sesiones y controla las transiciones válidas, incluido el cierre.
 
 ## RN-13 — Tiempo de participación
 
-**Regla:** La duración máxima configurada para una sesión no podrá superar el tiempo estimado del caso. Cada estudiante deberá respetar el límite de participación asignado.
+**Regla:** La duración máxima configurada para una sesión no podrá superar el tiempo estimado del caso. El intento termina cuando se agota el tiempo asignado o se cierra la sesión, lo que ocurra primero.
 
 - **Patrón recomendado en Google Sheets:** Sin patrón específico
 - **Justificación en Google Sheets:** El límite temporal es una validación de negocio, sin patrón específico seleccionado.
@@ -104,7 +104,7 @@
 
 ## RN-15 — Límite de ingreso tardío
 
-**Regla:** Un estudiante no podrá iniciar su participación cuando haya transcurrido más de la mitad del tiempo programado para la sesión, contado desde su hora de inicio.
+**Regla:** Un estudiante convocado puede iniciar su participación desde la apertura automática o manual de la sesión hasta antes de la hora de cierre programada.
 
 - **Patrón recomendado en Google Sheets:** Sin patrón específico
 - **Justificación en Google Sheets:** La restricción de ingreso tardío se comprueba mediante validación temporal, sin patrón específico.

@@ -7,7 +7,6 @@ import com.psicoapp.sessions.domain.TipoEstadoSesion;
 import com.psicoapp.identity.application.DirectorioIdentidad;
 import com.psicoapp.shared.exceptions.AccesoDenegado;
 import com.psicoapp.shared.exceptions.NoEncontrado;
-import java.time.Duration;
 import java.time.Clock;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -59,10 +58,7 @@ public class VerificadorConvocatorias implements VerificadorAccesoEstudiante, Au
     }
 
     public boolean permiteIngreso(Sesion sesion) {
-        var ahora = reloj.instant();
-        var limite = sesion.inicioPrevisto().plus(Duration.between(sesion.inicioPrevisto(), sesion.finPrevisto()).dividedBy(2));
-        return sesion.estado().codigo() == TipoEstadoSesion.EN_CURSO && !sesion.estaVencida(ahora)
-                && !ahora.isBefore(sesion.inicioPrevisto()) && !ahora.isAfter(limite);
+        return sesion.permiteIngreso(reloj.instant());
     }
 
     @Override

@@ -59,6 +59,26 @@ class PruebaFachadaAdministracion {
     }
 
     @Test
+    void actualizaEstudiantesSinCambiarElEspacioNiSusSesiones() {
+        UUID idEspacio = UUID.randomUUID();
+        UUID idEstudiante = UUID.randomUUID();
+        var espacio = new EspacioAcademico(idEspacio, "Grupo", "2026-2");
+        when(espacios.bloquearPorId(idEspacio)).thenReturn(Optional.of(espacio));
+        when(espacios.listarEstudiantes(idEspacio)).thenReturn(List.of(idEstudiante));
+
+        var actualizado = academico.editarEspacio(idDocente, idEspacio, espacio.nombre(), espacio.periodo(),
+                List.of(idEstudiante, idEstudiante));
+
+        assertEquals(List.of(idEstudiante), actualizado.estudiantes());
+        var orden = inOrder(espacios, identidades);
+        orden.verify(espacios).bloquearPorId(idEspacio);
+        orden.verify(identidades).exigirEstudiante(idEstudiante);
+        orden.verify(espacios).reemplazarEstudiantes(idEspacio, List.of(idEstudiante));
+        verify(espacios, never()).actualizar(any());
+        verifyNoInteractions(usoEspacios);
+    }
+
+    @Test
     @DisplayName("RF-04 / ER ESPACIO_ACADEMICO: docente registra nombre y periodo")
     void creaEspacioDespuesDeAutorizarDocente() {
         var resultado = academico.crearEspacio(idDocente, " Psicologia social ", " 2026-2 ");

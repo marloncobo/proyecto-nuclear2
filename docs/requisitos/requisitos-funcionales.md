@@ -115,7 +115,7 @@
 ## RF-19 — Administrar estados de sesiones
 
 - **Módulo/épica de origen:** Programación
-- **Descripción:** Cada sesión debe pasar por Sin iniciar, En curso y Finalizado. El docente la inicia y puede finalizarla; el sistema debe automatizar el cierre un día después del fin previsto cuando corresponda.
+- **Descripción:** Cada sesión debe pasar por Sin iniciar, En curso y Finalizado. El sistema abre y cierra la sesión según el horario programado. El docente responsable puede abrirla antes tras confirmar la advertencia o finalizarla manualmente.
 - **Patrón recomendado en Google Sheets:** State
 
 ## RF-20 — Asignar y validar código de autorización
@@ -133,13 +133,13 @@
 ## RF-22 — Restringir ingreso tardío
 
 - **Módulo/épica de origen:** Participación
-- **Descripción:** El sistema debe impedir iniciar la participación si ya pasó la mitad de tiempo del caso en que el estudiante debió iniciar. La base de cálculo de ese umbral debe precisarse con el responsable académico antes de implementarl
+- **Descripción:** El sistema debe impedir iniciar la participación al alcanzar la fecha y hora programadas de cierre de la sesión.
 - **Patrón recomendado en Google Sheets:** Proxy
 
 ## RF-23 — Controlar tiempo máximo de participación
 
 - **Módulo/épica de origen:** Participación
-- **Descripción:** Al iniciar la participación, el sistema debe comenzar a contar el tiempo del estudiante y aplicar el tiempo máximo configurado, conservando las respuestas para su evaluación.
+- **Descripción:** Al iniciar la participación, el sistema debe comenzar a contar el tiempo del estudiante y aplicar el tiempo máximo configurado o el cierre de la sesión, lo que ocurra primero, conservando las respuestas para su evaluación.
 - **Patrón recomendado en Google Sheets:** Sin patrón específico
 
 ## RF-24 — Evaluar intentos incompletos y ausencias

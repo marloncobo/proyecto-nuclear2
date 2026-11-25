@@ -26,6 +26,17 @@ class PruebaIntento {
     }
 
     @Test
+    void limitaElIntentoAlCierreProgramado() {
+        Instant cierre = INICIO.plusSeconds(90);
+        Intento intento = Intento.iniciar(UUID.randomUUID(), SESION, ESTUDIANTE, INICIO,
+                30, cierre, ModoNavegacion.FLEXIBLE, List.of(PREGUNTA_1));
+
+        assertEquals(cierre, intento.limite());
+        assertFalse(intento.estaVencido(cierre.minusNanos(1)));
+        assertTrue(intento.estaVencido(cierre));
+    }
+
+    @Test
     void guardaLaUltimaRespuestaDeLaPreguntaActual() {
         Intento intento = intento(ModoNavegacion.FLEXIBLE)
                 .responder(PREGUNTA_1, OPCION, INICIO.plusSeconds(1))
