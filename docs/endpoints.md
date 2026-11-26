@@ -32,14 +32,16 @@ las rutas requieren `Authorization: Bearer <token>` y cuerpos JSON con
 | `POST /api/identidad/docentes` | Administrador | `correo`, `nombre`, `clave` | Docente creado. |
 | `POST /api/identidad/estudiantes` | Docente o administrador | `correo`, `nombre`, `clave` | Estudiante creado con contraseña inicial, sin exponer credenciales. |
 | `PUT /api/identidad/estudiantes/{id}/clave-inicial` | Docente o administrador | `clave` | Asigna contraseña inicial solo a una cuenta estudiantil que aún no tiene. |
+| `PUT /api/identidad/estudiantes/{idUsuario}` | Docente o administrador | `correo`, `nombre` | Actualiza los datos de una cuenta estudiantil. El correo debe pertenecer a un dominio institucional configurado. |
 | `PUT /api/identidad/docentes/{idUsuario}` | Administrador | `correo`, `nombre` | Docente actualizado. |
+| `PUT /api/identidad/usuarios/{idUsuario}` | Administrador | `correo`, `nombre` | Actualiza una cuenta estudiantil, docente o la propia cuenta administrativa. Devuelve 403 si el objetivo es otro administrador. |
 | `PUT /api/identidad/usuarios/{idUsuario}/estado` | Administrador | `activo` | Usuario activado o desactivado. |
 | `PUT /api/identidad/usuarios/{idUsuario}/rol` | Administrador | `rol` | Usuario con el rol actualizado. |
 | `GET /api/identidad/roles` | Administrador | — | Roles disponibles. |
 | `PUT /api/identidad/usuarios/{idUsuario}/creacion-casos` | Administrador | `habilitado` | Configura el permiso individual de un docente y devuelve su perfil actualizado. |
 | `POST /api/identidad/estudiantes` | Docente | `correo`, `nombre` | Estudiante creado o cuenta estudiantil existente. |
 | `GET /api/identidad/estudiantes?correo={correo}` | Docente | Correo institucional exacto | Estudiante activo encontrado. |
-| `GET /api/identidad/estudiantes/listado` | Docente | — | Estudiantes activos disponibles. |
+| `GET /api/identidad/estudiantes/listado` | Docente o administrador | `paraEdicion` opcional | Lista estudiantes activos con correo institucional. Con `paraEdicion=true` incluye las cuentas estudiantiles inactivas y permite corregir correos antiguos. |
 
 ## Espacios académicos
 

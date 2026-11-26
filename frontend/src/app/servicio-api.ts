@@ -279,9 +279,19 @@ export class ServicioApi {
       'PUT',
     );
   }
-  editarDocente(id: string, datos: { correo: string; nombre: string }) {
+  async editarUsuario(id: string, datos: { correo: string; nombre: string }) {
+    const usuario = this.usuario();
+    const actualizado = await this.enviar<UsuarioAdministrado>(
+      `/identidad/usuarios/${encodeURIComponent(id)}`,
+      datos,
+      'PUT',
+    );
+    if (usuario?.id === id && this.usuario() === usuario) this.usuario.set(actualizado);
+    return actualizado;
+  }
+  editarEstudiante(id: string, datos: { correo: string; nombre: string }) {
     return this.enviar<UsuarioAdministrado>(
-      `/identidad/docentes/${encodeURIComponent(id)}`,
+      `/identidad/estudiantes/${encodeURIComponent(id)}`,
       datos,
       'PUT',
     );

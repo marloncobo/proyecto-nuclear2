@@ -11,7 +11,7 @@ public interface RepositorioUsuarios {
     default List<Usuario> listar(Rol rol, Boolean activo) {
         return listar(new FiltroUsuarios(rol, activo, null));
     }
-    void actualizarDatosDocente(UUID id, String correo, String nombre);
+    void actualizarDatos(UUID id, Rol rolEsperado, String correo, String nombre);
     void actualizarEstado(UUID id, boolean activo);
     Optional<Usuario> buscarPorId(UUID id);
     Optional<Usuario> buscarPorCorreo(String correo);

@@ -1175,6 +1175,72 @@ test('administración: fallo de lectura tras guardar no vuelve a enviar la escri
   expect(estado.solicitudes.filter((s) => s.metodo === 'PUT')).toHaveLength(1);
 });
 
+test('docente: edita los datos de un estudiante y conserva el formulario si el correo ya existe', async ({
+  page: pagina,
+}) => {
+  const estado = await simularApi(pagina, 'DOCENTE');
+  const estudiante = estado.usuarios.find((usuario) => usuario.rol === 'ESTUDIANTE')!;
+  estudiante.activo = false;
+  await ingresar(pagina, 'docente@example.test');
+  const abrir = pagina.getByRole('button', { name: 'Editar estudiante', exact: true });
+  await abrir.click();
+  const dialogo = pagina.getByRole('dialog', { name: 'Editar estudiante' });
+  await dialogo.getByRole('combobox', { name: 'Estudiante', exact: true }).selectOption(estudiante.id);
+  const nombre = dialogo.getByLabel('Nombre del estudiante');
+  const correo = dialogo.getByLabel('Correo del estudiante');
+  await expect(nombre).toHaveValue(estudiante.nombre);
+  await expect(correo).toHaveValue(estudiante.correo);
+  await nombre.fill('Estudiante actualizada');
+  await correo.fill('docente@example.test');
+  await dialogo.getByRole('button', { name: 'Guardar estudiante' }).click();
+  await expect(dialogo.getByRole('alert')).toHaveText('El correo ya está registrado');
+  await expect(nombre).toHaveValue('Estudiante actualizada');
+  for (const [width, height] of [[1440, 1000], [768, 1024], [390, 844]]) {
+    await pagina.setViewportSize({ width, height });
+    expect(await dialogo.evaluate((modal) => modal.getBoundingClientRect().right)).toBeLessThanOrEqual(width);
+    await expect(nombre).toBeVisible();
+  }
+  await pagina.setViewportSize({ width: 1440, height: 1000 });
+  await correo.fill('actualizada@example.test');
+  await dialogo.getByRole('button', { name: 'Guardar estudiante' }).click();
+  await expect(dialogo).toHaveCount(0);
+  await expect(abrir).toBeFocused();
+  await expect(pagina.getByText('Datos del estudiante actualizados.')).toBeVisible();
+  expect(estado.solicitudes.filter((solicitud) => solicitud.metodo === 'PUT').at(-1)).toEqual(expect.objectContaining({
+    ruta: '/api/identidad/estudiantes/' + estudiante.id,
+    metodo: 'PUT',
+    datos: { nombre: 'Estudiante actualizada', correo: 'actualizada@example.test' },
+  }));
+});
+
+test('administración: edita estudiantes y el perfil propio, y protege el de otro administrador', async ({
+  page: pagina,
+}) => {
+  const estado = await simularApi(pagina);
+  estado.usuarios.push({
+    ...estado.usuarios[0], id: 'otro-admin', nombre: 'Otra administradora', correo: 'otra@example.test',
+  });
+  await ingresar(pagina);
+  await pagina.getByRole('button', { name: 'Ver detalle de Otra administradora' }).click();
+  await expect(pagina.getByRole('dialog', { name: 'Detalle de Otra administradora' })).toBeVisible();
+  await expect(pagina.getByRole('button', { name: 'Editar mi perfil' })).toHaveCount(0);
+  await pagina.getByRole('button', { name: 'Cerrar detalle de usuario' }).click();
+  await pagina.getByRole('button', { name: 'Ver detalle de Alumna de prueba' }).click();
+  await pagina.getByRole('button', { name: 'Editar estudiante' }).click();
+  await pagina.getByLabel('Nombre del estudiante').fill('Alumna editada');
+  await pagina.getByRole('button', { name: 'Guardar estudiante' }).click();
+  await expect(pagina.getByRole('dialog', { name: 'Detalle de Alumna editada' })).toBeVisible();
+  await pagina.getByRole('button', { name: 'Cerrar detalle de usuario' }).click();
+  await pagina.getByRole('button', { name: 'Ver detalle de Administradora', exact: true }).click();
+  await pagina.getByRole('button', { name: 'Editar mi perfil' }).click();
+  await pagina.getByLabel('Nombre del perfil').fill('Mi perfil actualizado');
+  await pagina.getByLabel('Correo del perfil').fill('perfil@example.test');
+  await pagina.getByRole('button', { name: 'Guardar perfil' }).click();
+  await expect(pagina.getByRole('dialog', { name: 'Detalle de Mi perfil actualizado' })).toBeVisible();
+  await expect(pagina.getByRole('complementary', { name: 'Navegación principal' }))
+    .toContainText('Mi perfil actualizado');
+});
+
 test('un enlace de convocatoria conserva el destino y el inicio es explícito', async ({
   page: pagina,
 }) => {

@@ -136,6 +136,8 @@ export class Aplicacion {
   readonly resultado = signal<Reporte[] | null>(null);
   readonly espacioEditado = signal<Espacio | null>(null);
   readonly estudiantes = signal<Usuario[]>([]);
+  readonly estudiantesParaEditar = signal<Usuario[]>([]);
+  estudianteEditado = { id: '', nombre: '', correo: '' };
   identificadorReporte = '';
   readonly cargandoEstudiantes = signal(false);
   readonly reporteSesion = signal<FilaReporteSesion[] | null>(null);
@@ -334,6 +336,15 @@ export class Aplicacion {
     }
     if (tipo === 'programar')
       this.seleccionarEspacioSesion(this.programacion.idEspacio);
+    if (tipo === 'editar-estudiante') {
+      this.seleccionarEstudianteParaEditar('');
+      this.estudiantesParaEditar.set([]);
+      void this.ejecutar(async () => {
+        const docente = this.api.usuario();
+        const estudiantes = await this.api.consultar<Usuario[]>('/identidad/estudiantes/listado?paraEdicion=true');
+        if (this.api.usuario() === docente) this.estudiantesParaEditar.set(estudiantes);
+      });
+    }
     if ((tipo === 'programar' || tipo === 'convocados' || tipo === 'espacio') && this.api.conectado()) {
       void this.cargarEstudiantes();
     }
@@ -395,7 +406,8 @@ export class Aplicacion {
       this.modal.set('');
       this.error.set('');
       this.erroresPublicacion.set([]);
-      this.focoAnterior?.focus();
+      const origen = this.focoAnterior;
+      setTimeout(() => origen?.focus());
     }
   }
   @HostListener('document:keydown.escape')
@@ -470,6 +482,8 @@ export class Aplicacion {
     this.estudiantesPredeterminados = [];
     this.borrador = null;
     this.estudiantes.set([]);
+    this.estudiantesParaEditar.set([]);
+    this.estudianteEditado = { id: '', nombre: '', correo: '' };
     this.notificaciones.set([]);
     this.estadoNotificaciones.set('');
     this.tipoNotificaciones.set('');
@@ -713,6 +727,30 @@ export class Aplicacion {
         destino?.focus();
       });
     });
+  }
+
+  seleccionarEstudianteParaEditar(id: string) {
+    const estudiante = this.estudiantesParaEditar().find((actual) => actual.id === id);
+    this.estudianteEditado = { id, nombre: estudiante?.nombre ?? '', correo: estudiante?.correo ?? '' };
+    this.error.set('');
+  }
+
+  async guardarEstudiante() {
+    if (this.ocupado() || this.api.usuario()?.rol !== 'DOCENTE') return;
+    const { id, nombre, correo } = this.estudianteEditado;
+    if (!id) return;
+    const docente = this.api.usuario();
+    await this.ejecutar(async () => {
+      const actualizado = await this.api.editarEstudiante(id, { nombre: nombre.trim(), correo: correo.trim() });
+      if (this.api.usuario() !== docente) return;
+      this.estudiantes.update((lista) =>
+        lista.map((estudiante) => (estudiante.id === id ? actualizado : estudiante)),
+      );
+    });
+    if (!this.error() && this.api.usuario() === docente) {
+      this.cerrar();
+      this.aviso.set('Datos del estudiante actualizados.');
+    }
   }
 
   editarConvocados(sesion: Sesion) {

@@ -65,6 +65,9 @@
           <button type="button" title="Registrar estudiante" data-tutorial="registrar-estudiante" (click)="abrir('alta-estudiante')">
             <span class="icono-menu" aria-hidden="true">＋</span>Registrar estudiante
           </button>
+          <button type="button" (click)="abrir('editar-estudiante')" [disabled]="ocupado()">
+            <span class="icono-menu" aria-hidden="true">✎</span>Editar estudiante
+          </button>
         }
       </nav>
       <div class="nota-lateral">
@@ -1247,6 +1250,44 @@
               <button class="boton primario" [disabled]="ocupado() || cargandoEstudiantes()">
                 {{ ocupado() ? 'Programando…' : 'Programar sesión ↗' }}
               </button>
+            </form>
+          }
+          @case ('editar-estudiante') {
+            <h2 id="titulo-modal">Editar estudiante</h2>
+            @if (ocupado() && !estudianteEditado.id) {
+              <p role="status">Cargando estudiantes…</p>
+            } @else if (!estudiantesParaEditar().length && !error()) {
+              <p>No hay estudiantes disponibles.</p>
+            }
+            <form #edicion="ngForm" (ngSubmit)="edicion.valid && guardarEstudiante()" [attr.aria-busy]="ocupado()">
+              <label>
+                Estudiante
+                <select name="estudiante" [ngModel]="estudianteEditado.id"
+                  (ngModelChange)="seleccionarEstudianteParaEditar($event)"
+                  [disabled]="ocupado()" required>
+                  <option value="">Selecciona un estudiante</option>
+                  @for (estudiante of estudiantesParaEditar(); track estudiante.id) {
+                    <option [value]="estudiante.id">{{ estudiante.nombre }} · {{ estudiante.correo }}</option>
+                  }
+                </select>
+              </label>
+              @if (estudianteEditado.id) {
+                <label>
+                  Nombre del estudiante
+                  <input name="nombre" [(ngModel)]="estudianteEditado.nombre" required maxlength="120"
+                    [disabled]="ocupado()" />
+                </label>
+                <label>
+                  Correo del estudiante
+                  <input name="correo" type="email" [(ngModel)]="estudianteEditado.correo" required email
+                    maxlength="180" [disabled]="ocupado()" />
+                </label>
+                <button class="boton primario"
+                  [disabled]="ocupado() || edicion.invalid || !estudianteEditado.nombre.trim()">
+                  Guardar estudiante
+                </button>
+              }
+              <button type="button" class="boton secundario" (click)="cerrar()" [disabled]="ocupado()">Cancelar</button>
             </form>
           }
           @case ('alta-estudiante') {

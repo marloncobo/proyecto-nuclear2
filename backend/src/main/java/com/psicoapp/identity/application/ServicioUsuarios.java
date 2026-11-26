@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,13 +60,41 @@ public class ServicioUsuarios implements DirectorioIdentidad {
         exigirRol(idActor, Rol.ADMINISTRADOR);
         Usuario anterior = buscarUsuario(idUsuario);
         if (anterior.rol() != Rol.DOCENTE) throw new Conflicto("La cuenta no tiene rol docente");
-        String normalizado = validarCorreoInstitucional(correo);
-        if (usuarios.buscarPorCorreo(normalizado).filter(u -> !u.id().equals(idUsuario)).isPresent()) {
-            throw new Conflicto("El correo ya esta registrado");
+        return actualizarDatos(anterior, correo, nombre);
+    }
+
+    public DatosUsuarioAdministrado editarUsuario(UUID idActor, UUID idUsuario, String correo, String nombre) {
+        exigirRol(idActor, Rol.ADMINISTRADOR);
+        Usuario anterior = buscarUsuario(idUsuario);
+        if (anterior.rol() == Rol.ADMINISTRADOR && !idActor.equals(idUsuario)) {
+            throw new AccesoDenegado("No puedes editar los datos de otro administrador");
         }
-        Usuario actualizado = new Usuario(anterior.id(), normalizado, nombre, anterior.rol(), anterior.hashClave(),
+        return actualizarDatos(anterior, correo, nombre);
+    }
+
+    public DatosUsuarioAdministrado editarEstudiante(UUID idActor, UUID idUsuario, String correo, String nombre) {
+        exigirGestorEstudiantes(idActor);
+        Usuario anterior = buscarUsuario(idUsuario);
+        if (anterior.rol() != Rol.ESTUDIANTE) {
+            throw new AccesoDenegado("Esta operación solo permite editar cuentas de estudiantes");
+        }
+        return actualizarDatos(anterior, correo, nombre);
+    }
+
+    private DatosUsuarioAdministrado actualizarDatos(Usuario anterior, String correo, String nombre) {
+        String normalizado = anterior.rol() == Rol.ADMINISTRADOR
+                ? Usuario.normalizarCorreo(correo) : validarCorreoInstitucional(correo);
+        if (usuarios.buscarPorCorreo(normalizado).filter(u -> !u.id().equals(anterior.id())).isPresent()) {
+            throw new Conflicto("El correo ya está registrado");
+        }
+        var actualizado = new Usuario(anterior.id(), normalizado, nombre, anterior.rol(), anterior.hashClave(),
                 anterior.activo(), anterior.fechaCreacion(), anterior.claveInicial());
-        usuarios.actualizarDatosDocente(idUsuario, actualizado.correo(), actualizado.nombre());
+        if (actualizado.equals(anterior)) return representarAdministrado(anterior);
+        try {
+            usuarios.actualizarDatos(anterior.id(), anterior.rol(), actualizado.correo(), actualizado.nombre());
+        } catch (DuplicateKeyException excepcion) {
+            throw new Conflicto("El correo ya está registrado");
+        }
         return representarAdministrado(actualizado);
     }
 
@@ -99,6 +128,12 @@ public class ServicioUsuarios implements DirectorioIdentidad {
         return usuarios.listar(Rol.ESTUDIANTE, true).stream()
                 .filter(usuario -> dominioInstitucional(usuario.correo()))
                 .map(this::representarUsuario).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<DatosUsuario> listarEstudiantesParaEditar(UUID idActor) {
+        exigirGestorEstudiantes(idActor);
+        return usuarios.listar(Rol.ESTUDIANTE, null).stream().map(this::representarUsuario).toList();
     }
 
     private DatosUsuarioAdministrado representarAdministrado(Usuario usuario) {
@@ -182,6 +217,10 @@ public class ServicioUsuarios implements DirectorioIdentidad {
         if (!usuario.puedeCrearCasos()) {
             throw new AccesoDenegado("El docente no tiene permiso para crear casos");
         }
+    }
+
+    public void inicializarPrimerAdministrador(String correo, String clave) {
+        if (usuarios.listar(Rol.ADMINISTRADOR, true).isEmpty()) inicializarAdministrador(correo, clave);
     }
 
     public void inicializarAdministrador(String correo, String clave) {
@@ -277,7 +316,7 @@ public class ServicioUsuarios implements DirectorioIdentidad {
                 java.time.Instant.now(), inicial);
         try {
             usuarios.guardar(usuario);
-        } catch (org.springframework.dao.DuplicateKeyException excepcion) {
+        } catch (DuplicateKeyException excepcion) {
             throw new Conflicto("El correo ya está registrado");
         }
         return representarUsuario(usuario);
