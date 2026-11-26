@@ -56,10 +56,14 @@ export class Aplicacion {
           { id: 'casos', nombre: 'Biblioteca de casos', icono: '▤' },
           { id: 'sesiones', nombre: 'Sesiones', icono: '◷' },
           { id: 'espacios', nombre: 'Espacios académicos', icono: '◇' },
+          ...(this.api.usuario()?.rol === 'DOCENTE'
+            ? [{ id: 'estudiantes', nombre: 'Estudiantes', icono: '◎' }]
+            : []),
           { id: 'resultados', nombre: 'Resultados', icono: '↗' },
           { id: 'notificaciones', nombre: 'Notificaciones', icono: '◉' },
         ],
   );
+  readonly nombreVista = computed(() => this.menu().find((item) => item.id === this.vista())?.nombre);
   readonly casos = signal<Caso[]>(this.casosEjemplo());
   readonly sesiones = signal<Sesion[]>(this.sesionesEjemplo());
   readonly ahoraSesiones = signal(Date.now());
@@ -136,8 +140,6 @@ export class Aplicacion {
   readonly resultado = signal<Reporte[] | null>(null);
   readonly espacioEditado = signal<Espacio | null>(null);
   readonly estudiantes = signal<Usuario[]>([]);
-  readonly estudiantesParaEditar = signal<Usuario[]>([]);
-  estudianteEditado = { id: '', nombre: '', correo: '' };
   identificadorReporte = '';
   readonly cargandoEstudiantes = signal(false);
   readonly reporteSesion = signal<FilaReporteSesion[] | null>(null);
@@ -180,7 +182,6 @@ export class Aplicacion {
     );
   });
   valoraciones: Record<string, string> = {};
-  altaEstudiante = { nombre: '', correo: '', clave: '' };
   convocadosSeleccionados: string[] = [];
   idEstudiante = '';
   nombreEspacio = '';
@@ -336,15 +337,6 @@ export class Aplicacion {
     }
     if (tipo === 'programar')
       this.seleccionarEspacioSesion(this.programacion.idEspacio);
-    if (tipo === 'editar-estudiante') {
-      this.seleccionarEstudianteParaEditar('');
-      this.estudiantesParaEditar.set([]);
-      void this.ejecutar(async () => {
-        const docente = this.api.usuario();
-        const estudiantes = await this.api.consultar<Usuario[]>('/identidad/estudiantes/listado?paraEdicion=true');
-        if (this.api.usuario() === docente) this.estudiantesParaEditar.set(estudiantes);
-      });
-    }
     if ((tipo === 'programar' || tipo === 'convocados' || tipo === 'espacio') && this.api.conectado()) {
       void this.cargarEstudiantes();
     }
@@ -401,8 +393,6 @@ export class Aplicacion {
 
   cerrar() {
     if (!this.ocupado()) {
-      if (this.modal() === 'alta-estudiante')
-        this.altaEstudiante = { nombre: '', correo: '', clave: '' };
       this.modal.set('');
       this.error.set('');
       this.erroresPublicacion.set([]);
@@ -482,8 +472,6 @@ export class Aplicacion {
     this.estudiantesPredeterminados = [];
     this.borrador = null;
     this.estudiantes.set([]);
-    this.estudiantesParaEditar.set([]);
-    this.estudianteEditado = { id: '', nombre: '', correo: '' };
     this.notificaciones.set([]);
     this.estadoNotificaciones.set('');
     this.tipoNotificaciones.set('');
@@ -496,7 +484,6 @@ export class Aplicacion {
     this.busquedaResultados.set('');
     this.estadoResultados.set('');
     this.valoraciones = {};
-    this.altaEstudiante = { nombre: '', correo: '', clave: '' };
     this.convocadosSeleccionados = [];
     this.programacion = {
       idCaso: '',
@@ -709,50 +696,6 @@ export class Aplicacion {
     }
   }
 
-  async registrarEstudiante() {
-    await this.ejecutar(async () => {
-      const estudiante = await this.api.registrarEstudiante(this.altaEstudiante);
-      this.altaEstudiante = { nombre: '', correo: '', clave: '' };
-      this.estudiantes.update((lista) =>
-        lista.some((actual) => actual.id === estudiante.id) ? lista : [...lista, estudiante],
-      );
-      this.modal.set('');
-      this.aviso.set('Estudiante registrado. Ya puedes seleccionarlo al programar una sesión.');
-      const menuAbierto = this.menuMovilAbierto();
-      this.menuMovilAbierto.set(false);
-      setTimeout(() => {
-        const destino = menuAbierto
-          ? document.getElementById('alternar-menu')
-          : this.focoAnterior;
-        destino?.focus();
-      });
-    });
-  }
-
-  seleccionarEstudianteParaEditar(id: string) {
-    const estudiante = this.estudiantesParaEditar().find((actual) => actual.id === id);
-    this.estudianteEditado = { id, nombre: estudiante?.nombre ?? '', correo: estudiante?.correo ?? '' };
-    this.error.set('');
-  }
-
-  async guardarEstudiante() {
-    if (this.ocupado() || this.api.usuario()?.rol !== 'DOCENTE') return;
-    const { id, nombre, correo } = this.estudianteEditado;
-    if (!id) return;
-    const docente = this.api.usuario();
-    await this.ejecutar(async () => {
-      const actualizado = await this.api.editarEstudiante(id, { nombre: nombre.trim(), correo: correo.trim() });
-      if (this.api.usuario() !== docente) return;
-      this.estudiantes.update((lista) =>
-        lista.map((estudiante) => (estudiante.id === id ? actualizado : estudiante)),
-      );
-    });
-    if (!this.error() && this.api.usuario() === docente) {
-      this.cerrar();
-      this.aviso.set('Datos del estudiante actualizados.');
-    }
-  }
-
   editarConvocados(sesion: Sesion) {
     this.convocadosSeleccionados = this.convocadosActuales(sesion);
     this.sesionPendiente.set(sesion);
@@ -915,16 +858,19 @@ export class Aplicacion {
   }
 
   async consultarReporteSesion() {
+    const idSesion = this.idSesionReporte;
+    const cuenta = this.api.usuario();
     await this.ejecutar(async () => {
       this.limpiarFiltrosResultados();
       this.reporteSesion.set(null);
       this.resultado.set(null);
       this.nombreEstudianteReporte = '';
-      this.reporteSesion.set(
-        await this.api.consultar<FilaReporteSesion[]>(
-          `/reportes/sesiones/${encodeURIComponent(this.idSesionReporte)}`,
-        ),
+      const filas = await this.api.consultar<FilaReporteSesion[]>(
+        `/reportes/sesiones/${encodeURIComponent(idSesion)}`,
       );
+      if (this.idSesionReporte === idSesion && this.api.usuario() === cuenta) {
+        this.reporteSesion.set(filas);
+      }
     });
   }
 
@@ -961,34 +907,34 @@ export class Aplicacion {
     await this.consultarReporte();
   }
 
-  descargarReporteSesion() {
+  async descargarReporteSesion() {
     const filas = this.reporteSesion();
-    if (!filas) return;
-    const escapar = (valor: unknown) => `"${String(valor ?? '').replaceAll('"', '""')}"`;
-    const csv = [
-      'Estudiante,Correo,Identificador,Intento,Estado,Calificación,Preguntas respondidas,Preguntas totales,Preguntas ausentes',
-      ...filas.map((fila) =>
-        [
-          fila.nombreEstudiante,
-          fila.correoEstudiante,
-          fila.idEstudiante,
-          fila.idIntento,
-          fila.estado,
-          fila.calificacion,
-          fila.preguntasRespondidas,
-          fila.preguntasTotales,
-          fila.ausencia?.detalles.length ?? 0,
-        ]
-          .map(escapar)
-          .join(','),
-      ),
-    ].join('\r\n');
-    const url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }));
-    const enlace = document.createElement('a');
-    enlace.href = url;
-    enlace.download = 'participacion.csv';
-    enlace.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const sesion = this.sesiones().find((actual) => actual.id === this.idSesionReporte);
+    const cuenta = this.api.usuario();
+    if (!filas || !sesion || !cuenta) return;
+    await this.ejecutar(async () => {
+      try {
+        const { generarReporteSesionExcel } = await import('./reporte-sesion-excel');
+        const { archivo, nombre } = await generarReporteSesionExcel({
+          id: sesion.id,
+          caso: this.nombreCaso(sesion.idCaso),
+          espacio: this.nombreEspacioAcademico(sesion.idEspacio),
+          inicio: sesion.inicioPrevisto,
+          fin: sesion.finPrevisto,
+        }, filas);
+        if (this.api.usuario() !== cuenta || this.reporteSesion() !== filas || this.vista() !== 'resultados') return;
+        const url = URL.createObjectURL(archivo);
+        const enlace = document.createElement('a');
+        enlace.href = url;
+        enlace.download = nombre;
+        document.body.append(enlace);
+        enlace.click();
+        enlace.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch {
+        throw new Error('No se pudo generar el reporte en Excel. Inténtalo de nuevo.');
+      }
+    });
   }
   nombreCaso(id: string) {
     return this.casos().find((caso) => caso.id === id)?.nombre ?? 'Caso no disponible';

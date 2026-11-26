@@ -42,7 +42,7 @@ La tabla conserva la priorización de la propuesta y registra lo que ya se puede
 
 | Función de la versión completa | RF / RN | Propuesta original | Estado del código |
 | --- | --- | --- | --- |
-| Descargar reporte académico exportable | RF-16 | Segunda iteración; el MVP mantiene consulta docente de resultados (RF-15). | Descarga CSV por sesión con notas disponibles, avance y ausencias. |
+| Descargar reporte académico exportable | RF-16 | Segunda iteración; el MVP mantiene consulta docente de resultados (RF-15). | Descarga Excel (`.xlsx`) por sesión con notas disponibles, avance y ausencias. |
 | Autorizar un reintento excepcional de forma operativa | RF-25; RN-07 | Segunda iteración, manteniendo la regla de que no haya reintentos arbitrarios. El MVP no habilita nuevos intentos por defecto. | Autorización de un uso desde el reporte docente, con un solo intento activo por estudiante. |
 | Valoración general adicional del docente | RF-26 | Segunda iteración; se conserva retroalimentación por pregunta y resultado final. | Valoraciones por intento y aviso interno al estudiante. |
 | Agregar o retirar convocados después de programar | RF-21 y relaciones CU-34 | Segunda iteración; la convocatoria inicial sí funciona en el MVP. | Altas y retiros disponibles, con autorización actualizada y correo en cola. |

@@ -81,7 +81,7 @@ public class ControladorIdentidad {
     }
 
     @GetMapping("/estudiantes/listado")
-    public List<DatosUsuario> listarEstudiantes(Principal principal,
+    public List<?> listarEstudiantes(Principal principal,
             @RequestParam(defaultValue = "false") boolean paraEdicion) {
         UUID idActor = UUID.fromString(principal.getName());
         return paraEdicion ? identidades.listarEstudiantesParaEditar(idActor) : identidades.listarEstudiantes(idActor);

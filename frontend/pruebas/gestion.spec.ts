@@ -449,13 +449,17 @@ test('docente sin permiso individual no tiene el botón para crear casos', async
   await expect(pagina.getByRole('button', { name: /Crear un caso/ })).toHaveCount(0);
 });
 
-test('docente: registra desde el menú lateral y selecciona al estudiante en una sesión', async ({
+test('docente: registra desde Estudiantes y selecciona al estudiante en una sesión', async ({
   page: pagina,
 }) => {
   const estado = await simularApi(pagina, 'DOCENTE');
   await ingresar(pagina, 'docente@example.test');
-  const menu = pagina.getByRole('navigation');
-  const registrar = menu.getByRole('button', { name: 'Registrar estudiante' });
+  const menu = pagina.getByRole('navigation', { name: 'Secciones de la plataforma' });
+  await expect(menu.getByRole('button', { name: /^(Registrar|Editar) estudiante$/ })).toHaveCount(0);
+  await menu.getByRole('button', { name: 'Estudiantes', exact: true }).click();
+  await expect(pagina).toHaveURL(/vista=estudiantes/);
+  await expect(pagina.getByRole('heading', { name: 'Estudiantes', exact: true })).toBeVisible();
+  const registrar = pagina.getByRole('button', { name: 'Registrar estudiante', exact: true });
   await registrar.click();
   const modal = pagina.getByRole('dialog');
   await modal.getByLabel('Nombre del estudiante').fill('Estudiante nuevo');
@@ -464,7 +468,9 @@ test('docente: registra desde el menú lateral y selecciona al estudiante en una
   await modal.getByRole('button', { name: 'Crear estudiante' }).click();
   await expect(modal).toHaveCount(0);
   await expect(registrar).toBeFocused();
-  await expect(pagina.getByRole('status')).toContainText('Estudiante registrado.');
+  await expect(pagina.getByRole('region', { name: 'Estudiantes' })
+    .getByText('Estudiante registrado con contraseña inicial.')).toBeVisible();
+  await expect(pagina.getByRole('heading', { name: 'Estudiante nuevo' })).toBeVisible();
   expect(estado.solicitudes.some((solicitud) =>
     solicitud.ruta === '/api/identidad/estudiantes' && solicitud.metodo === 'POST',
   )).toBe(true);
@@ -794,14 +800,28 @@ test('el ingreso de estudiantes abre su espacio y no funciones del personal', as
   const nueva = cuenta.getByLabel('Nueva contraseña', { exact: true });
   const confirmacion = cuenta.getByLabel('Confirmar nueva contraseña', { exact: true });
   const guardar = cuenta.getByRole('button', { name: 'Guardar contraseña' });
+  const mostrarActual = cuenta.getByRole('button', { name: 'Mostrar contraseña actual', exact: true });
+  const mostrarNueva = cuenta.getByRole('button', { name: 'Mostrar nueva contraseña', exact: true });
+  const mostrarConfirmacion = cuenta.getByRole('button', { name: 'Mostrar confirmación de la nueva contraseña', exact: true });
+  await expect(mostrarActual).toBeVisible();
+  await expect(mostrarNueva).toBeVisible();
+  await expect(mostrarConfirmacion).toBeVisible();
+  await mostrarNueva.click();
+  await expect(nueva).toHaveAttribute('type', 'text');
+  await expect(actual).toHaveAttribute('type', 'password');
+  await cuenta.getByRole('button', { name: 'Ocultar nueva contraseña', exact: true }).click();
   await actual.fill('clave-errada');
   await nueva.fill('clave-nueva');
   await confirmacion.fill('clave-distinta');
   await guardar.click();
   await expect(cuenta.getByRole('alert')).toHaveText('Las contraseñas nuevas no coinciden.');
+  await expect(mostrarActual).toBeVisible();
+  await expect(mostrarNueva).toBeVisible();
+  await expect(mostrarConfirmacion).toBeVisible();
   await confirmacion.fill('clave-nueva');
   await guardar.click();
   await expect(cuenta.getByRole('alert')).toHaveText('La contraseña actual es incorrecta');
+  await expect(mostrarActual).toBeVisible();
   await actual.fill('clave-ficticia');
   await guardar.click();
   await expect(cuenta.getByRole('status')).toHaveText('Contraseña actualizada.');
@@ -1175,17 +1195,27 @@ test('administración: fallo de lectura tras guardar no vuelve a enviar la escri
   expect(estado.solicitudes.filter((s) => s.metodo === 'PUT')).toHaveLength(1);
 });
 
-test('docente: edita los datos de un estudiante y conserva el formulario si el correo ya existe', async ({
+test('docente: consulta y edita un estudiante inactivo desde el listado', async ({
   page: pagina,
 }) => {
   const estado = await simularApi(pagina, 'DOCENTE');
   const estudiante = estado.usuarios.find((usuario) => usuario.rol === 'ESTUDIANTE')!;
   estudiante.activo = false;
   await ingresar(pagina, 'docente@example.test');
-  const abrir = pagina.getByRole('button', { name: 'Editar estudiante', exact: true });
-  await abrir.click();
-  const dialogo = pagina.getByRole('dialog', { name: 'Editar estudiante' });
-  await dialogo.getByRole('combobox', { name: 'Estudiante', exact: true }).selectOption(estudiante.id);
+  await pagina.getByRole('button', { name: 'Estudiantes', exact: true }).click();
+  const tabla = pagina.getByRole('table', { name: 'Listado de estudiantes' });
+  await expect(tabla.getByText('Docente original')).toHaveCount(0);
+  await expect(tabla.getByText('Inactivo', { exact: true })).toBeVisible();
+  await pagina.getByLabel('Buscar estudiantes').fill('ALUMNA+GRUPO');
+  await pagina.getByLabel('Filtrar por estado').selectOption('false');
+  await pagina.getByRole('button', { name: 'Aplicar filtros' }).click();
+  await expect(pagina.getByText('estudiante encontrado', { exact: false })).toBeVisible();
+  await pagina.getByRole('button', { name: 'Limpiar filtros' }).click();
+  await tabla.getByRole('button', { name: 'Ver detalle de Alumna de prueba' }).click();
+  const dialogo = pagina.getByRole('dialog', { name: 'Detalle de Alumna de prueba' });
+  await expect(dialogo.getByText('Inactivo', { exact: true })).toBeVisible();
+  await expect(dialogo.getByRole('button', { name: 'Cambiar rol' })).toHaveCount(0);
+  await dialogo.getByRole('button', { name: 'Editar estudiante', exact: true }).click();
   const nombre = dialogo.getByLabel('Nombre del estudiante');
   const correo = dialogo.getByLabel('Correo del estudiante');
   await expect(nombre).toHaveValue(estudiante.nombre);
@@ -1203,14 +1233,42 @@ test('docente: edita los datos de un estudiante y conserva el formulario si el c
   await pagina.setViewportSize({ width: 1440, height: 1000 });
   await correo.fill('actualizada@example.test');
   await dialogo.getByRole('button', { name: 'Guardar estudiante' }).click();
-  await expect(dialogo).toHaveCount(0);
-  await expect(abrir).toBeFocused();
   await expect(pagina.getByText('Datos del estudiante actualizados.')).toBeVisible();
+  const actualizado = pagina.getByRole('dialog', { name: 'Detalle de Estudiante actualizada' });
+  await actualizado.getByRole('button', { name: 'Cerrar detalle de estudiante' }).click();
+  await expect(tabla.getByRole('button', { name: 'Ver detalle de Estudiante actualizada' })).toBeFocused();
+  await expect(tabla.getByText('actualizada@example.test')).toBeVisible();
   expect(estado.solicitudes.filter((solicitud) => solicitud.metodo === 'PUT').at(-1)).toEqual(expect.objectContaining({
     ruta: '/api/identidad/estudiantes/' + estudiante.id,
     metodo: 'PUT',
     datos: { nombre: 'Estudiante actualizada', correo: 'actualizada@example.test' },
   }));
+  expect(estado.solicitudes.some((solicitud) => solicitud.ruta.startsWith('/api/identidad/usuarios'))).toBe(false);
+});
+
+test('docente: un estado ausente se muestra como no disponible y queda fuera del filtro de inactivos', async ({
+  page: pagina,
+}) => {
+  const estado = await simularApi(pagina, 'DOCENTE');
+  const estudiante = estado.usuarios.find((usuario) => usuario.rol === 'ESTUDIANTE')!;
+  const { activo, ...sinEstado } = estudiante;
+  await pagina.route(/\/api\/identidad\/estudiantes\/listado\?paraEdicion=true$/, (ruta) =>
+    ruta.fulfill({ json: [sinEstado, { ...estudiante, id: 'inactivo', nombre: 'Estudiante inactivo', activo: false }] }),
+  );
+  await ingresar(pagina, 'docente@example.test');
+  await pagina.getByRole('button', { name: 'Estudiantes', exact: true }).click();
+  const tabla = pagina.getByRole('table', { name: 'Listado de estudiantes' });
+  const cuenta = tabla.getByRole('row').filter({ hasText: estudiante.nombre });
+  await expect(cuenta.getByText('No disponible')).toBeVisible();
+  await cuenta.getByRole('button', { name: /Ver detalle/ }).click();
+  const detalle = pagina.getByRole('dialog', { name: 'Detalle de ' + estudiante.nombre });
+  await expect(detalle.getByText('No disponible')).toBeVisible();
+  await detalle.getByRole('button', { name: 'Cerrar detalle de estudiante' }).click();
+  await pagina.getByLabel('Filtrar por estado').selectOption('false');
+  await pagina.getByRole('button', { name: 'Aplicar filtros' }).click();
+  await expect(cuenta).toHaveCount(0);
+  await expect(tabla.getByRole('row').filter({ hasText: 'Estudiante inactivo' })
+    .getByText('Inactivo', { exact: true })).toBeVisible();
 });
 
 test('administración: edita estudiantes y el perfil propio, y protege el de otro administrador', async ({

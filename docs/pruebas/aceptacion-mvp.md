@@ -28,7 +28,7 @@ participa y otra que permanece ausente.
 4. Autorizar un reintento desde Resultados y volver a abrir la convocatoria. El
    nuevo intento empieza en cero preguntas respondidas. Dejarlo vencer con la
    pantalla abierta y comprobar que aparece la calificación 0.
-5. Finalizar la sesión y descargar el CSV. Comprobar las filas de intento
+5. Finalizar la sesión y descargar el Excel. Comprobar las filas de intento
    finalizado, intento vencido y ausencia, con sus avances y notas disponibles.
 6. Iniciar una sesión restringida, verificar que se deba responder antes de
    avanzar y que el botón Anterior permanezca deshabilitado. Cerrar la sesión

@@ -38,11 +38,17 @@
   flex: 1;
   min-width: 0;
 }
+.campo-clave input::-ms-reveal {
+  display: none;
+}
 .alternar-clave {
-  font-size: 10px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
   background: #eaf0e8;
   border-radius: 8px;
-  padding: 11px;
 }
 .ventana-detalle > .error,
 .ventana-detalle > .aviso {
@@ -731,4 +737,27 @@ p {
   display: flex;
   justify-content: flex-end;
   margin: 0 2rem .65rem 0;
+}
+
+.tabla-usuarios.tabla-estudiantes thead th:first-child {
+  width: 57%;
+}
+.tabla-usuarios.tabla-estudiantes thead th:nth-child(2) {
+  width: 18%;
+}
+.tabla-usuarios.tabla-estudiantes thead th:last-child {
+  width: 25%;
+}
+@media (min-width: 1201px) {
+  .filtros.panel.filtros-estudiantes {
+    grid-template-columns: minmax(190px, 1fr) minmax(150px, 0.5fr) auto;
+  }
+}
+@media (max-width: 800px) {
+  .filtros-estudiantes label {
+    grid-column: 1 / -1;
+  }
+  .tabla-estudiantes .celda-estado {
+    justify-self: start;
+  }
 }

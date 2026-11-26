@@ -1,8 +1,14 @@
-<section aria-labelledby="titulo-administracion" [attr.aria-busy]="ocupado()">
+@let estudiantes = soloEstudiantes();
+<section [attr.aria-labelledby]="estudiantes ? 'titulo-estudiantes' : 'titulo-administracion'"
+  [attr.aria-busy]="ocupado()">
   <header class="encabezado-usuarios">
     <div>
-      <h1 id="titulo-administracion">Administración de <em>usuarios.</em></h1>
-      <p>Gestiona el acceso de tu institución.</p>
+      @if (estudiantes) {
+        <h1 id="titulo-estudiantes">Estudiantes</h1>
+      } @else {
+        <h1 id="titulo-administracion">Administración de <em>usuarios.</em></h1>
+        <p>Gestiona el acceso de tu institución.</p>
+      }
     </div>
     <div class="barra-administracion">
       <button
@@ -11,7 +17,7 @@
         data-tutorial="crear-perfil"
         (click)="abrirVentana('registro', $event)"
       >
-        <span aria-hidden="true">＋</span> Crear perfil
+        <span aria-hidden="true">＋</span> {{ estudiantes ? 'Registrar estudiante' : 'Crear perfil' }}
       </button>
       <button
         id="actualizar-usuarios"
@@ -47,9 +53,9 @@
     </p>
   }
   @if (cargado()) {
-    <form class="filtros panel" (ngSubmit)="filtrar()">
+    <form class="filtros panel" [class.filtros-estudiantes]="estudiantes" (ngSubmit)="filtrar()">
       <label class="busqueda-usuarios"
-        >Buscar usuarios<input
+        >{{ estudiantes ? 'Buscar estudiantes' : 'Buscar usuarios' }}<input
           type="search"
           name="busquedaUsuarios"
           placeholder="Nombre o correo"
@@ -58,14 +64,16 @@
           [ngModel]="busqueda()"
           (ngModelChange)="busqueda.set($event)"
       /></label>
-      <label
-        >Filtrar por rol<select name="rol" [(ngModel)]="rol" [disabled]="ocupado()">
-          <option value="">Todos los roles</option>
-          @for (rol of roles(); track rol) {
-            <option [value]="rol">{{ nombreEtiqueta(rol) }}</option>
-          }
-        </select></label
-      >
+      @if (!estudiantes) {
+        <label
+          >Filtrar por rol<select name="rol" [(ngModel)]="rol" [disabled]="ocupado()">
+            <option value="">Todos los roles</option>
+            @for (rol of roles(); track rol) {
+              <option [value]="rol">{{ nombreEtiqueta(rol) }}</option>
+            }
+          </select></label
+        >
+      }
       <label
         >Filtrar por estado<select name="estado" [(ngModel)]="estado" [disabled]="ocupado()">
           <option value="">Todos los estados</option>
@@ -88,21 +96,25 @@
     <div class="resumen-usuarios">
       <p role="status" aria-live="polite">
         <strong>{{ usuarios().length }}</strong>
-        {{ usuarios().length === 1 ? 'usuario encontrado' : 'usuarios encontrados' }}
+        @if (estudiantes) {
+          {{ usuarios().length === 1 ? 'estudiante encontrado' : 'estudiantes encontrados' }}
+        } @else {
+          {{ usuarios().length === 1 ? 'usuario encontrado' : 'usuarios encontrados' }}
+        }
       </p>
       @if (busquedaAplicada()) {
         <span>Resultados por nombre o correo</span>
       }
     </div>
-    <div class="usuarios" aria-label="Usuarios encontrados">
-      <table class="tabla-usuarios">
+    <div class="usuarios" [attr.aria-label]="estudiantes ? 'Estudiantes encontrados' : 'Usuarios encontrados'">
+      <table class="tabla-usuarios" [class.tabla-estudiantes]="estudiantes">
         <caption class="solo-lectores">
-          Cuentas de la institución. Acciones disponibles para cada usuario.
+          {{ estudiantes ? 'Listado de estudiantes' : 'Cuentas de la institución. Acciones disponibles para cada usuario.' }}
         </caption>
         <thead>
           <tr>
-            <th scope="col">Usuario</th>
-            <th scope="col">Rol</th>
+            <th scope="col">{{ estudiantes ? 'Estudiante' : 'Usuario' }}</th>
+            @if (!estudiantes) { <th scope="col">Rol</th> }
             <th scope="col">Estado</th>
             <th scope="col">Acciones</th>
           </tr>
@@ -121,9 +133,11 @@
                   </div>
                 </div>
               </th>
-              <td class="celda-rol"><psico-etiqueta-usuario [valor]="usuario.rol" /></td>
+              @if (!estudiantes) {
+                <td class="celda-rol"><psico-etiqueta-usuario [valor]="usuario.rol" /></td>
+              }
               <td class="celda-estado">
-                <psico-etiqueta-usuario [valor]="usuario.activo ? 'ACTIVO' : 'INACTIVO'" />
+                <psico-etiqueta-usuario [valor]="estadoCuenta(usuario.activo)" />
               </td>
               <td class="celda-acciones">
                 <div class="acciones">
@@ -135,41 +149,43 @@
                   >
                     Ver detalle <span aria-hidden="true">↗</span>
                   </button>
-                  <div
-                    class="accion-estado"
-                    [class.con-motivo]="usuario.id === api.usuario()?.id"
-                    [attr.tabindex]="usuario.id === api.usuario()?.id ? 0 : null"
-                    [attr.role]="usuario.id === api.usuario()?.id ? 'group' : null"
-                    [attr.aria-label]="usuario.id === api.usuario()?.id ? 'Desactivar cuenta propia' : null"
-                    [attr.aria-describedby]="
-                      usuario.id === api.usuario()?.id ? 'motivo-estado-' + usuario.id : null
-                    "
-                  >
-                    <button
-                      class="boton secundario"
-                      [attr.aria-label]="
-                        (usuario.activo ? 'Desactivar' : 'Reactivar') + ' ' + usuario.nombre
-                      "
-                      [disabled]="ocupado() || usuario.id === api.usuario()?.id"
+                  @if (!estudiantes) {
+                    <div
+                      class="accion-estado"
+                      [class.con-motivo]="usuario.id === api.usuario()?.id"
+                      [attr.tabindex]="usuario.id === api.usuario()?.id ? 0 : null"
+                      [attr.role]="usuario.id === api.usuario()?.id ? 'group' : null"
+                      [attr.aria-label]="usuario.id === api.usuario()?.id ? 'Desactivar cuenta propia' : null"
                       [attr.aria-describedby]="
                         usuario.id === api.usuario()?.id ? 'motivo-estado-' + usuario.id : null
                       "
-                      (click)="abrirVentana('estado', $event, usuario)"
                     >
-                      {{ usuario.activo ? 'Desactivar' : 'Reactivar' }}
-                    </button>
-                    @if (usuario.id === api.usuario()?.id) {
-                      <small role="tooltip" class="motivo-estado" [id]="'motivo-estado-' + usuario.id"
-                        >No puedes desactivar tu propia cuenta.</small
+                      <button
+                        class="boton secundario"
+                        [attr.aria-label]="
+                          (usuario.activo ? 'Desactivar' : 'Reactivar') + ' ' + usuario.nombre
+                        "
+                        [disabled]="ocupado() || usuario.id === api.usuario()?.id"
+                        [attr.aria-describedby]="
+                          usuario.id === api.usuario()?.id ? 'motivo-estado-' + usuario.id : null
+                        "
+                        (click)="abrirVentana('estado', $event, usuario)"
                       >
-                    }
-                  </div>
+                        {{ usuario.activo ? 'Desactivar' : 'Reactivar' }}
+                      </button>
+                      @if (usuario.id === api.usuario()?.id) {
+                        <small role="tooltip" class="motivo-estado" [id]="'motivo-estado-' + usuario.id"
+                          >No puedes desactivar tu propia cuenta.</small
+                        >
+                      }
+                    </div>
+                  }
                 </div>
               </td>
             </tr>
           } @empty {
             <tr>
-              <td class="usuarios-vacios" colspan="4">
+              <td class="usuarios-vacios" [attr.colspan]="estudiantes ? 3 : 4">
                 <strong>No encontramos coincidencias.</strong>
                 <p>Prueba otro nombre o correo, o limpia los filtros.</p>
               </td>
@@ -179,7 +195,7 @@
       </table>
     </div>
     @if (totalPaginas() > 1) {
-      <nav class="paginacion-usuarios" aria-label="Paginación de usuarios">
+      <nav class="paginacion-usuarios" [attr.aria-label]="estudiantes ? 'Paginación de estudiantes' : 'Paginación de usuarios'">
         <button
           type="button"
           class="boton secundario"
@@ -214,13 +230,14 @@
   <button
     type="button"
     class="cerrar-detalle"
-    [attr.aria-label]="vistaModal() === 'detalle' ? 'Cerrar detalle de usuario' : 'Cerrar ventana'"
+    [attr.aria-label]="vistaModal() === 'detalle'
+      ? (estudiantes ? 'Cerrar detalle de estudiante' : 'Cerrar detalle de usuario') : 'Cerrar ventana'"
     [disabled]="ocupado()"
     (click)="cerrarDetalle()"
   >
     ×
   </button>
-  @if (pasosTutorial[vistaModal()]; as pasos) {
+  @if (pasosTutorial()[vistaModal()]; as pasos) {
     <psico-tutorial class="tutorial-modal" [pasos]="pasos" />
   }
   @if (error()) {
@@ -247,7 +264,7 @@
   }
   @if (vistaModal() === 'detalle') {
     @if (seleccionado(); as usuario) {
-      <p class="sobretitulo">NUESTRA COMUNIDAD</p>
+      @if (!estudiantes) { <p class="sobretitulo">NUESTRA COMUNIDAD</p> }
       <div class="encabezado-detalle">
         <span class="avatar-detalle" aria-hidden="true">{{ usuario.nombre.charAt(0) }}</span>
         <div>
@@ -256,17 +273,19 @@
         </div>
       </div>
       <dl class="datos-detalle">
-        <div>
-          <dt>Rol</dt>
-          <dd><psico-etiqueta-usuario [valor]="usuario.rol" /></dd>
-        </div>
+        @if (!estudiantes) {
+          <div>
+            <dt>Rol</dt>
+            <dd><psico-etiqueta-usuario [valor]="usuario.rol" /></dd>
+          </div>
+        }
         <div>
           <dt>Estado de la cuenta</dt>
           <dd>
-            <psico-etiqueta-usuario [valor]="usuario.activo ? 'ACTIVO' : 'INACTIVO'" />
+            <psico-etiqueta-usuario [valor]="estadoCuenta(usuario.activo)" />
           </dd>
         </div>
-        @if (usuario.rol === 'DOCENTE') {
+        @if (!estudiantes && usuario.rol === 'DOCENTE') {
           <div>
             <dt>Creación de casos</dt>
             <dd>{{ usuario.puedeCrearCasos ? 'Habilitada' : 'Sin permiso' }}</dd>
@@ -327,7 +346,7 @@
               {{ usuario.rol === 'ADMINISTRADOR' ? 'Editar mi perfil' : 'Editar ' + perfilEditable }}
             </button>
           }
-          @if (usuario.rol === 'DOCENTE') {
+          @if (!estudiantes && usuario.rol === 'DOCENTE') {
             @if (!confirmarPermiso()) {
               <button id="cambiar-permiso-docente" type="button" class="boton secundario" [disabled]="ocupado()"
                 (click)="prepararCambioPermiso(true)">
@@ -335,15 +354,17 @@
               </button>
             }
           }
-          <button
-            class="boton secundario"
-            [disabled]="ocupado() || usuario.id === api.usuario()?.id"
-            (click)="abrirVentana('rol')"
-          >
-            Cambiar rol
-          </button>
+          @if (!estudiantes) {
+            <button
+              class="boton secundario"
+              [disabled]="ocupado() || usuario.id === api.usuario()?.id"
+              (click)="abrirVentana('rol')"
+            >
+              Cambiar rol
+            </button>
+          }
         </div>
-        @if (usuario.rol === 'DOCENTE' && confirmarPermiso()) {
+        @if (!estudiantes && usuario.rol === 'DOCENTE' && confirmarPermiso()) {
           <div class="confirmacion">
             <p>¿{{ usuario.puedeCrearCasos ? 'Retirar' : 'Conceder' }} a {{ usuario.nombre }} el permiso para crear casos?</p>
             <div class="acciones">
@@ -352,7 +373,7 @@
             </div>
           </div>
         }
-        @if (usuario.id === api.usuario()?.id) {
+        @if (!estudiantes && usuario.id === api.usuario()?.id) {
           <p class="nota-modal">
             Tu propio rol de administrador debe conservarse para mantener el acceso.
           </p>
@@ -360,20 +381,24 @@
       }
     }
   } @else if (vistaModal() === 'registro') {
-    <p class="sobretitulo">AMPLIAR NUESTRA COMUNIDAD</p>
-    <h2 id="detalle-usuario" class="titulo-modal" tabindex="-1">Crear perfil</h2>
+    @if (!estudiantes) { <p class="sobretitulo">AMPLIAR NUESTRA COMUNIDAD</p> }
+    <h2 id="detalle-usuario" class="titulo-modal" tabindex="-1">
+      {{ estudiantes ? 'Registrar estudiante' : 'Crear perfil' }}
+    </h2>
     <form
       #registro="ngForm"
       (ngSubmit)="registro.valid && registrarPerfil()"
       [attr.aria-busy]="ocupado()"
     >
-      <label>
-        Rol del perfil
-        <select name="rolPerfil" [(ngModel)]="tipoRegistro" [disabled]="ocupado()">
-          <option value="DOCENTE">Docente</option>
-          <option value="ESTUDIANTE">Estudiante</option>
-        </select>
-      </label>
+      @if (!estudiantes) {
+        <label>
+          Rol del perfil
+          <select name="rolPerfil" [(ngModel)]="tipoRegistro" [disabled]="ocupado()">
+            <option value="DOCENTE">Docente</option>
+            <option value="ESTUDIANTE">Estudiante</option>
+          </select>
+        </label>
+      }
       <label
         >Nombre {{ tipoRegistro === 'ESTUDIANTE' ? 'del estudiante' : 'del docente' }}<input
           name="nombreNuevo"
@@ -412,10 +437,19 @@
           type="button"
           class="alternar-clave"
           [disabled]="ocupado()"
+          [attr.aria-label]="mostrarClave ? 'Ocultar contraseña' : 'Mostrar contraseña'"
           [attr.aria-pressed]="mostrarClave"
           (click)="mostrarClave = !mostrarClave"
         >
-          {{ mostrarClave ? 'Ocultar contraseña' : 'Mostrar contraseña' }}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" />
+            <circle cx="12" cy="12" r="2.5" />
+            @if (mostrarClave) {
+              <path d="m4 3 16 18" />
+            }
+          </svg>
         </button>
       </div>
       <small id="ayuda-clave-docente" class="nota-modal"
@@ -423,8 +457,8 @@
         acceso con la persona por un canal privado.</small
       >
       <div class="acciones pie-detalle">
-        <button class="boton" [disabled]="ocupado() || registro.invalid">
-          {{ ocupado() ? 'Registrando…' : 'Crear cuenta ' + (tipoRegistro === 'ESTUDIANTE' ? 'estudiantil' : 'docente') }}</button><button
+        <button class="boton" [disabled]="ocupado() || registro.invalid || !nuevoPerfil.nombre.trim()">
+          {{ ocupado() ? 'Registrando…' : estudiantes ? 'Crear estudiante' : 'Crear cuenta ' + (tipoRegistro === 'ESTUDIANTE' ? 'estudiantil' : 'docente') }}</button><button
           type="button"
           class="boton secundario"
           [disabled]="ocupado()"
