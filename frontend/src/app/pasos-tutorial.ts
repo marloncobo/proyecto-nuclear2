@@ -27,7 +27,7 @@ export const pasosAplicacion: Record<string, readonly PasoTutorial[]> = {
     menuDocente,
     paso('[data-tutorial="crear-caso"]', 'Crear un caso', 'Abre el editor para redactar un caso, sus preguntas y su rúbrica.'),
     paso('.paneles-inicio', 'Resumen del espacio', 'Consulta el estado de tus casos y encuentros recientes.'),
-    paso('[data-tutorial="registrar-estudiante"]', 'Registrar estudiante', 'Crea una cuenta que luego podrás seleccionar en grupos y sesiones.'),
+    paso('[data-tutorial="estudiantes-docente"]', 'Estudiantes', 'Consulta, registra y edita estudiantes desde el listado.'),
     cuenta,
   ],
   casos: [
@@ -47,6 +47,11 @@ export const pasosAplicacion: Record<string, readonly PasoTutorial[]> = {
     paso('.filtros-espacios', 'Buscar espacios', 'Filtra los grupos por nombre o período.'),
     paso('.acciones-espacio .primario', 'Programar un encuentro', 'Abre una sesión nueva con este espacio y sus estudiantes preseleccionados.'),
     paso('.acciones-espacio .secundario', 'Editar espacio', 'Cambia los datos permitidos y la lista predeterminada para futuros encuentros.'),
+  ],
+  estudiantes: [
+    paso('[data-tutorial="crear-perfil"]', 'Registrar estudiante', 'Crea una cuenta con nombre, correo institucional y contraseña inicial.'),
+    paso('.filtros-estudiantes', 'Buscar estudiantes', 'Busca por nombre o correo y filtra por estado.'),
+    paso('.tabla-estudiantes .cuenta, #titulo-estudiantes', 'Consultar y editar', 'Abre el detalle de un estudiante para ver o editar su nombre y correo.'),
   ],
   resultados: [
     paso('.panel-reporte', 'Consultar resultados', 'Elige una sesión para consultar el progreso, las notas y el detalle de cada intento.'),
@@ -87,10 +92,6 @@ export const pasosModales: Record<string, readonly PasoTutorial[]> = {
     paso('.modal psico-selector-estudiantes', 'Estudiantes predeterminados', 'Marca qué estudiantes deben aparecer preseleccionados al programar un encuentro con este grupo.'),
     paso('.modal form .primario', 'Guardar espacio', 'Guarda la configuración para los próximos encuentros.'),
   ],
-  'alta-estudiante': [
-    paso('.modal form', 'Registrar estudiante', 'Escribe el nombre, correo institucional y contraseña inicial de la cuenta.'),
-    paso('.modal form .primario', 'Crear estudiante', 'Guarda la cuenta para que aparezca al elegir estudiantes en los grupos y sesiones.'),
-  ],
   'detalle-sesion': [
     paso('.horarios-sesion', 'Horarios de la sesión', 'Compara los horarios programados con la apertura y el cierre reales cuando estén registrados.'),
     paso('.modal-detalle-sesion input[type="search"]', 'Buscar estudiante', 'Filtra los intentos por el nombre o el correo del estudiante.'),
@@ -115,6 +116,11 @@ export const pasosModalesAdministracion: Record<string, readonly PasoTutorial[]>
   registro: [paso('select[name="rolPerfil"]', 'Elegir el rol', 'Elige Docente o Estudiante y completa el nombre, correo institucional y contraseña inicial.')],
   estado: [paso('#detalle-usuario', 'Cambiar estado', 'Confirma si quieres habilitar o deshabilitar el acceso a la cuenta.')],
   rol: [paso('#detalle-usuario', 'Cambiar rol', 'Confirma qué permisos tendrá esta cuenta al ingresar.')],
+};
+
+export const pasosModalesEstudiantesDocente: Record<string, readonly PasoTutorial[]> = {
+  detalle: [paso('#detalle-usuario', 'Detalle del estudiante', 'Consulta el estado y edita el nombre y el correo de la cuenta.')],
+  registro: [paso('.ventana-detalle form', 'Registrar estudiante', 'Completa el nombre, el correo institucional y la contraseña inicial.')],
 };
 
 export const pasosEstudiante: Record<string, readonly PasoTutorial[]> = {

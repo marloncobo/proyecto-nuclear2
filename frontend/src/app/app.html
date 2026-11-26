@@ -48,6 +48,7 @@
           <button
             [class.activo]="vista() === item.id"
             [attr.aria-current]="vista() === item.id ? 'page' : null"
+            [attr.data-tutorial]="item.id === 'estudiantes' ? 'estudiantes-docente' : null"
             (click)="navegar(item.id)"
           >
             <span class="icono-menu" aria-hidden="true">{{ item.icono }}</span>{{ item.nombre }}
@@ -59,14 +60,6 @@
             @if (vista() === item.id) {
               <span class="punto"></span>
             }
-          </button>
-        }
-        @if (api.conectado() && api.usuario()?.rol === 'DOCENTE') {
-          <button type="button" title="Registrar estudiante" data-tutorial="registrar-estudiante" (click)="abrir('alta-estudiante')">
-            <span class="icono-menu" aria-hidden="true">＋</span>Registrar estudiante
-          </button>
-          <button type="button" (click)="abrir('editar-estudiante')" [disabled]="ocupado()">
-            <span class="icono-menu" aria-hidden="true">✎</span>Editar estudiante
           </button>
         }
       </nav>
@@ -97,21 +90,7 @@
       <header class="cabecera">
         <span class="ruta"
           ><span class="origen-ruta">Tu campus</span> <span class="separador-ruta">/</span>
-          <strong>{{
-            vista() === 'administracion'
-              ? 'Administración'
-              : vista() === 'inicio'
-                ? 'Mi espacio'
-                : vista() === 'casos'
-                  ? 'Biblioteca de casos'
-                  : vista() === 'espacios'
-                    ? 'Espacios académicos'
-                    : vista() === 'sesiones'
-                      ? 'Sesiones'
-                      : vista() === 'resultados'
-                        ? 'Resultados'
-                        : 'Notificaciones'
-          }}</strong></span
+          <strong>{{ nombreVista() }}</strong></span
         >
         <div class="acciones-cabecera">
           <psico-tutorial
@@ -142,6 +121,10 @@
         @if (api.usuario()?.rol === 'ADMINISTRADOR') {
           @for (cuenta of [api.usuario()!]; track cuenta.id) {
             <psico-administracion />
+          }
+        } @else if (vista() === 'estudiantes' && api.usuario()?.rol === 'DOCENTE') {
+          @for (cuenta of [api.usuario()!]; track cuenta.id) {
+            <psico-administracion [soloEstudiantes]="true" />
           }
         } @else {
           @if (vista() === 'inicio') {
@@ -1250,79 +1233,6 @@
               <button class="boton primario" [disabled]="ocupado() || cargandoEstudiantes()">
                 {{ ocupado() ? 'Programando…' : 'Programar sesión ↗' }}
               </button>
-            </form>
-          }
-          @case ('editar-estudiante') {
-            <h2 id="titulo-modal">Editar estudiante</h2>
-            @if (ocupado() && !estudianteEditado.id) {
-              <p role="status">Cargando estudiantes…</p>
-            } @else if (!estudiantesParaEditar().length && !error()) {
-              <p>No hay estudiantes disponibles.</p>
-            }
-            <form #edicion="ngForm" (ngSubmit)="edicion.valid && guardarEstudiante()" [attr.aria-busy]="ocupado()">
-              <label>
-                Estudiante
-                <select name="estudiante" [ngModel]="estudianteEditado.id"
-                  (ngModelChange)="seleccionarEstudianteParaEditar($event)"
-                  [disabled]="ocupado()" required>
-                  <option value="">Selecciona un estudiante</option>
-                  @for (estudiante of estudiantesParaEditar(); track estudiante.id) {
-                    <option [value]="estudiante.id">{{ estudiante.nombre }} · {{ estudiante.correo }}</option>
-                  }
-                </select>
-              </label>
-              @if (estudianteEditado.id) {
-                <label>
-                  Nombre del estudiante
-                  <input name="nombre" [(ngModel)]="estudianteEditado.nombre" required maxlength="120"
-                    [disabled]="ocupado()" />
-                </label>
-                <label>
-                  Correo del estudiante
-                  <input name="correo" type="email" [(ngModel)]="estudianteEditado.correo" required email
-                    maxlength="180" [disabled]="ocupado()" />
-                </label>
-                <button class="boton primario"
-                  [disabled]="ocupado() || edicion.invalid || !estudianteEditado.nombre.trim()">
-                  Guardar estudiante
-                </button>
-              }
-              <button type="button" class="boton secundario" (click)="cerrar()" [disabled]="ocupado()">Cancelar</button>
-            </form>
-          }
-          @case ('alta-estudiante') {
-            <h2 id="titulo-modal">Registrar estudiante</h2>
-            <form #alta="ngForm" (ngSubmit)="alta.valid && registrarEstudiante()">
-              <label
-                >Nombre del estudiante<input
-                  name="nombre"
-                  [(ngModel)]="altaEstudiante.nombre"
-                  required
-                  maxlength="120"
-              /></label>
-              <label
-                >Correo del estudiante<input
-                  name="correo"
-                  type="email"
-                  [(ngModel)]="altaEstudiante.correo"
-                  required
-                  email
-                  maxlength="180"
-              /></label>
-              <label
-                >Contraseña inicial<input
-                  name="clave"
-                  type="password"
-                  [(ngModel)]="altaEstudiante.clave"
-                  required
-                  minlength="8"
-                  maxlength="72"
-                  autocomplete="new-password"
-              /></label>
-              <button class="boton primario" [disabled]="ocupado() || alta.invalid">
-                Crear estudiante
-              </button>
-              <button type="button" class="boton secundario" (click)="cerrar()">Cancelar</button>
             </form>
           }
           @case ('detalle-sesion') {
