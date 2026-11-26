@@ -41,7 +41,7 @@ Consultar no calcula notas, modifica intentos ni envia notificaciones.
 una fila por estudiante e intento. Incluye `nombreEstudiante`, `correoEstudiante`,
 `idEstudiante`, `idIntento`, `estado`, `calificacion` y `ausencia`. El frontend
 usa estas filas para enlazar sesion → estudiante → historial de intentos, sin
-pedir UUID al docente, y permite exportar en Excel todas las filas de la sesión. La hoja incluye el caso, el espacio, el horario en Colombia, filtros y encabezados fijos. Las calificaciones y los conteos se exportan como números. Una calificación pendiente se deja en blanco y una ausencia consolidada conserva su cero.
+pedir UUID al docente, y permite exportar en Excel todas las filas de la sesión. La hoja incluye el caso, el espacio, el horario en Colombia y filtros por columna en una sola vista de desplazamiento. Las calificaciones y los conteos se exportan como números. Una calificación pendiente se deja en blanco y una ausencia consolidada conserva su cero.
 
 Al pasar una sesion a `FINALIZADO`, tanto manual como automaticamente, el puerto
 `ConsolidadorReporteSesion` registra en la misma transaccion a cada convocado

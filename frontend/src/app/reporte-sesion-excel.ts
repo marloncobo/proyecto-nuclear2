@@ -41,12 +41,9 @@ export async function generarReporteSesionExcel(
   }];
   const hoja = libro.addWorksheet('Participación', {
     properties: { tabColor: { argb: azul } },
-    // Las celdas combinadas del título y la nota deben quedar en un solo panel.
     views: [{
-      state: 'frozen',
-      ySplit: filaEncabezados,
-      topLeftCell: 'A8',
-      activeCell: 'A8',
+      state: 'normal',
+      activeCell: 'A1',
       showGridLines: false,
       zoomScale: 90,
     }],
