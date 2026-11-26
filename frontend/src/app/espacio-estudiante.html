@@ -237,8 +237,15 @@
                 (click)="operar('retroceder')"
               >
                 Anterior</button
-              ><button class="secundario" [disabled]="ocupado()" (click)="operar('finalizar')">
-                Entregar</button
+              ><button
+                class="secundario"
+                type="button"
+                aria-haspopup="dialog"
+                [disabled]="ocupado() || segundosRestantes() === 0"
+                (click)="confirmacionEntrega.showModal()"
+              >
+                Entregar
+              </button
               ><button
                 class="primario"
                 [disabled]="
@@ -268,8 +275,35 @@
             <p id="descripcion-confirmacion-avance">La pregunta actual quedará sin responder.</p>
             <footer class="acciones-confirmacion">
               <button class="secundario" type="button" autofocus (click)="confirmacionAvance.close()">Volver a la pregunta</button>
-              <button class="primario" type="button" [disabled]="segundosRestantes() === 0" (click)="confirmarAvance(confirmacionAvance)">
+              <button class="primario" type="button" [disabled]="segundosRestantes() === 0" (click)="confirmarAccion(confirmacionAvance, 'avanzar')">
                 Pasar sin responder
+              </button>
+            </footer>
+          </div>
+        </dialog>
+        <dialog
+          #confirmacionEntrega
+          class="dialogo-cuenta"
+          aria-labelledby="titulo-confirmacion-entrega"
+          aria-describedby="descripcion-confirmacion-entrega"
+          (click)="$event.target === confirmacionEntrega && confirmacionEntrega.close()"
+        >
+          <div class="contenido-cuenta">
+            <h2 id="titulo-confirmacion-entrega">¿Entregar la simulación?</h2>
+            <p id="descripcion-confirmacion-entrega">
+              Al confirmar se cerrará el intento y tus respuestas quedarán definitivas.
+            </p>
+            <footer class="acciones-confirmacion">
+              <button class="secundario" type="button" autofocus (click)="confirmacionEntrega.close()">
+                Seguir respondiendo
+              </button>
+              <button
+                class="primario"
+                type="button"
+                [disabled]="ocupado() || segundosRestantes() === 0"
+                (click)="confirmarAccion(confirmacionEntrega, 'finalizar')"
+              >
+                Confirmar entrega
               </button>
             </footer>
           </div>

@@ -1109,7 +1109,7 @@ test('un enlace de convocatoria conserva el destino y el inicio es explícito', 
   await comprobarAncho();
 });
 
-test('estudiante: conserva el plazo al salir y confirma solo si avanza sin respuesta', async ({ page: pagina }) => {
+test('estudiante: conserva el plazo y confirma al omitir una respuesta o entregar la simulación', async ({ page: pagina }) => {
   const ahora = '2026-11-30T12:00:00Z';
   await pagina.clock.install({ time: new Date(ahora) });
   await simularApi(pagina, 'ESTUDIANTE');
@@ -1127,6 +1127,7 @@ test('estudiante: conserva el plazo al salir y confirma solo si avanza sin respu
     opciones: [{ id: 'o1', texto: 'Escuchar al grupo' }],
   }));
   let avances = 0;
+  let entregas = 0;
   await pagina.route('**/api/estudiante/actividades', (ruta) => ruta.fulfill({ json: [actividad] }));
   await pagina.route('**/api/estudiante/actividades/sesion', (ruta) =>
     ruta.fulfill({ json: { actividad, preguntas, intento } }));
@@ -1139,6 +1140,16 @@ test('estudiante: conserva el plazo al salir y confirma solo si avanza sin respu
     intento = { ...intento, respuestas: { p2: 'o1' } };
     return ruta.fulfill({ json: intento });
   });
+  await pagina.route('**/api/participaciones/intento/finalizar', (ruta) => {
+    entregas++;
+    intento = { ...intento, estado: 'FINALIZADO' };
+    return ruta.fulfill({ json: intento });
+  });
+  await pagina.route('**/api/estudiante/resultados', (ruta) =>
+    ruta.fulfill({ json: entregas ? [{
+      idIntento: intento.id, nombreCaso: actividad.nombreCaso, fin: ahora,
+      calificacion: null, respuestas: [], valoraciones: [],
+    }] : [] }));
 
   await ingresar(pagina, 'alumna@example.test');
   const continuar = pagina.getByRole('button', { name: 'Continuar actividad' });
@@ -1171,4 +1182,22 @@ test('estudiante: conserva el plazo al salir y confirma solo si avanza sin respu
   await expect(pagina.getByText('Pregunta 3 de 3', { exact: true })).toBeVisible();
   await expect(confirmacion).toHaveCount(0);
   expect(avances).toBe(2);
+
+  const entregar = pagina.getByRole('button', { name: 'Entregar', exact: true });
+  const confirmacionEntrega = pagina.getByRole('dialog', { name: '¿Entregar la simulación?' });
+  const seguir = confirmacionEntrega.getByRole('button', { name: 'Seguir respondiendo' });
+  await entregar.press('Enter');
+  await expect(seguir).toBeFocused();
+  expect(entregas).toBe(0);
+  await seguir.click();
+  await expect(entregar).toBeFocused();
+  await expect(pagina.getByText('Pregunta 3 de 3', { exact: true })).toBeVisible();
+  expect(entregas).toBe(0);
+
+  await entregar.click();
+  await expect(confirmacionEntrega).toBeInViewport();
+  await confirmacionEntrega.getByRole('button', { name: 'Confirmar entrega' }).click();
+  await expect(pagina).toHaveURL(/\/estudiante\/resultados$/);
+  await expect(pagina.getByRole('heading', { name: actividad.nombreCaso })).toBeVisible();
+  expect(entregas).toBe(1);
 });

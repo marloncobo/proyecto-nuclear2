@@ -174,14 +174,16 @@ export class EspacioEstudiante {
   }
 
   async actualizarActividades() {
-    await this.ejecutar(async () => {
-      const [actividades, resultados] = await Promise.all([
-        this.api.listarActividadesEstudiante(),
-        this.api.listarResultadosEstudiante(),
-      ]);
-      this.actividades.set(actividades);
-      this.resultados.set(resultados);
-    });
+    await this.ejecutar(() => this.cargarActividadesYResultados());
+  }
+
+  private async cargarActividadesYResultados() {
+    const [actividades, resultados] = await Promise.all([
+      this.api.listarActividadesEstudiante(),
+      this.api.listarResultadosEstudiante(),
+    ]);
+    this.actividades.set(actividades);
+    this.resultados.set(resultados);
   }
 
   async navegar(vista: 'actividades' | 'resultados' | 'notificaciones') {
@@ -237,9 +239,9 @@ export class EspacioEstudiante {
     else dialogo.showModal();
   }
 
-  confirmarAvance(dialogo: HTMLDialogElement) {
+  confirmarAccion(dialogo: HTMLDialogElement, accion: 'avanzar' | 'finalizar') {
     dialogo.close();
-    if (this.segundosRestantes() > 0) void this.operar('avanzar');
+    if (this.segundosRestantes() > 0) void this.operar(accion);
   }
 
   async operar(accion: string, datos: unknown = {}, metodo = 'POST') {
@@ -253,8 +255,11 @@ export class EspacioEstudiante {
       );
       this.intento.set(actualizado);
       if (actualizado.estado !== 'EN_PROGRESO') {
-        await this.cargarInicio();
-        this.verResultado(actualizado.id);
+        try {
+          await this.cargarActividadesYResultados();
+        } finally {
+          this.verResultado(actualizado.id);
+        }
       }
     });
   }
