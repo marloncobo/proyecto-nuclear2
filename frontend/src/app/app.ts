@@ -36,6 +36,10 @@ export class Aplicacion {
   readonly api = inject(ServicioApi);
   private readonly enrutador = inject(Router);
   readonly demostracion = signal(false);
+  readonly puedeCrearCasos = computed(() =>
+    this.demostracion() ||
+    (this.api.usuario()?.rol === 'DOCENTE' && this.api.usuario()?.puedeCrearCasos === true),
+  );
   readonly vista = signal('inicio');
   readonly menuMovilAbierto = signal(false);
   readonly inicioTutorial = signal(false);

@@ -30,29 +30,25 @@ export class Administracion implements OnInit {
   });
   readonly nombreEtiqueta = nombreEtiqueta;
   readonly pasosTutorial = pasosModalesAdministracion;
-  readonly permisoDocente = signal<boolean | null>(null);
   readonly confirmarPermiso = signal(false);
-  readonly errorPermiso = signal('');
 
-  async cargarPermiso() {
-    this.errorPermiso.set('');
-    try {
-      const permiso = await this.api.consultarPermiso('DOCENTE');
-      this.permisoDocente.set(permiso.habilitado);
-    } catch {
-      this.errorPermiso.set('No se pudo consultar el permiso docente.');
-    }
+  prepararCambioPermiso(confirmar: boolean) {
+    this.confirmarPermiso.set(confirmar);
+    this.error.set('');
+    const selector = confirmar ? '#confirmar-permiso-docente' : '#cambiar-permiso-docente';
+    setTimeout(() => this.ventanaDetalle()?.nativeElement.querySelector<HTMLElement>(selector)?.focus());
   }
 
   async cambiarPermiso() {
-    const permiso = this.permisoDocente();
-    if (permiso === null) return;
+    const usuario = this.seleccionado();
+    if (usuario?.rol !== 'DOCENTE' || !this.confirmarPermiso()) return;
     await this.ejecutar(async () => {
-      await this.api.configurarPermiso(!permiso);
-      this.permisoDocente.set(!permiso);
+      const actualizado = await this.api.configurarPermiso(usuario.id, !usuario.puedeCrearCasos);
+      this.actualizar(actualizado);
       this.confirmarPermiso.set(false);
-      await this.refrescarListado();
-      this.aviso.set('Permiso docente actualizado.');
+      this.aviso.set('Permiso de creación actualizado.');
+      setTimeout(() => this.ventanaDetalle()?.nativeElement
+        .querySelector<HTMLElement>('#detalle-usuario')?.focus());
     });
   }
 
@@ -112,7 +108,6 @@ export class Administracion implements OnInit {
 
   ngOnInit() {
     void this.cargar();
-    void this.cargarPermiso();
   }
 
   async ejecutar(accion: () => Promise<void>) {
@@ -193,6 +188,7 @@ export class Administracion implements OnInit {
     }
     if (tipo === 'rol' && this.seleccionado()) this.nuevoRol = this.seleccionado()!.rol as Rol;
     this.confirmarCambio = false;
+    this.confirmarPermiso.set(false);
     this.error.set('');
     this.aviso.set('');
     this.vistaModal.set(tipo);
@@ -212,6 +208,7 @@ export class Administracion implements OnInit {
     this.nuevoPerfil = { nombre: '', correo: '', clave: '' };
     this.mostrarClave = false;
     this.confirmarCambio = false;
+    this.confirmarPermiso.set(false);
     this.editando = false;
     this.error.set('');
     this.aviso.set('');

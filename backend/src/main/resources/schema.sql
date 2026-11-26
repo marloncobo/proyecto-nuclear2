@@ -27,6 +27,10 @@ CREATE TABLE IF NOT EXISTS usuario (
     id_rol CHAR(36) NOT NULL,
     FOREIGN KEY (id_rol) REFERENCES rol(id_rol)
 );
+CREATE TABLE IF NOT EXISTS permiso_creacion_casos (
+    id_usuario CHAR(36) PRIMARY KEY,
+    FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario)
+);
 CREATE TABLE IF NOT EXISTS espacio_academico (
     id_espacio CHAR(36) PRIMARY KEY,
     nombre VARCHAR(150) NOT NULL,
@@ -51,6 +55,19 @@ WHERE NOT EXISTS (SELECT 1 FROM rol WHERE nombre = 'ESTUDIANTE');
 INSERT INTO permiso (id_permiso, nombre, descripcion)
 SELECT '00000000-0000-0000-0000-000000000004', 'CREAR_CASOS', 'Permite al rol docente crear casos'
 WHERE NOT EXISTS (SELECT 1 FROM permiso WHERE nombre = 'CREAR_CASOS');
+
+-- Transición única del permiso general. Quitar la asignación anterior impide
+-- volver a conceder el permiso a docentes revocados o nuevos en cada arranque.
+INSERT INTO permiso_creacion_casos (id_usuario)
+SELECT u.id_usuario FROM usuario u
+JOIN rol r ON r.id_rol = u.id_rol
+JOIN rol_permiso rp ON rp.id_rol = r.id_rol
+JOIN permiso p ON p.id_permiso = rp.id_permiso
+WHERE r.nombre = 'DOCENTE' AND p.nombre = 'CREAR_CASOS'
+  AND NOT EXISTS (SELECT 1 FROM permiso_creacion_casos pc WHERE pc.id_usuario = u.id_usuario);
+DELETE FROM rol_permiso
+WHERE id_rol = (SELECT id_rol FROM rol WHERE nombre = 'DOCENTE')
+  AND id_permiso = (SELECT id_permiso FROM permiso WHERE nombre = 'CREAR_CASOS');
 
 -- Construccion de casos (Builder). Columnas y relaciones del ModeloER.drawio.
 -- El tiempo puede omitirse en un borrador; publicar exigira completarlo.

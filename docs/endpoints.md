@@ -36,8 +36,7 @@ las rutas requieren `Authorization: Bearer <token>` y cuerpos JSON con
 | `PUT /api/identidad/usuarios/{idUsuario}/estado` | Administrador | `activo` | Usuario activado o desactivado. |
 | `PUT /api/identidad/usuarios/{idUsuario}/rol` | Administrador | `rol` | Usuario con el rol actualizado. |
 | `GET /api/identidad/roles` | Administrador | — | Roles disponibles. |
-| `GET /api/identidad/roles/{rol}/creacion-casos` | Administrador | — | Estado del permiso de creación de casos. |
-| `PUT /api/identidad/roles/{rol}/creacion-casos` | Administrador | `habilitado` | Configura el permiso de creación de casos. |
+| `PUT /api/identidad/usuarios/{idUsuario}/creacion-casos` | Administrador | `habilitado` | Configura el permiso individual de un docente y devuelve su perfil actualizado. |
 | `POST /api/identidad/estudiantes` | Docente | `correo`, `nombre` | Estudiante creado o cuenta estudiantil existente. |
 | `GET /api/identidad/estudiantes?correo={correo}` | Docente | Correo institucional exacto | Estudiante activo encontrado. |
 | `GET /api/identidad/estudiantes/listado` | Docente | — | Estudiantes activos disponibles. |

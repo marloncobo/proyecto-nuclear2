@@ -136,10 +136,11 @@ class PruebaSeguridadIdentidad {
     @DisplayName("RF-02: administrador configura permisos mediante ruta y campo en espanol")
     void administradorConfiguraPermisosConCamposEnEspanol() throws Exception {
         UUID idAdministrador = UUID.randomUUID();
-        mvc.perform(put("/api/identidad/roles/DOCENTE/creacion-casos")
+        UUID idDocente = UUID.randomUUID();
+        mvc.perform(put("/api/identidad/usuarios/{id}/creacion-casos", idDocente)
                         .with(user(idAdministrador.toString()).roles("ADMINISTRADOR"))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"habilitado\":true}"))
-                .andExpect(status().isNoContent());
-        verify(identidades).configurarCreacionCasos(idAdministrador, Rol.DOCENTE, true);
+                .andExpect(status().isOk());
+        verify(identidades).configurarCreacionCasos(idAdministrador, idDocente, true);
     }
 }

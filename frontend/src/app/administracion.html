@@ -200,24 +200,6 @@
       </nav>
     }
   }
-  <section class="panel" aria-labelledby="titulo-permisos">
-    <h2 id="titulo-permisos">Roles y permisos</h2>
-    <p>El permiso de creación de casos se aplica a todos los docentes.</p>
-    @if (permisoDocente() !== null) {
-      <p>Creación de casos: {{ permisoDocente() ? 'Habilitada' : 'Sin permiso' }}</p>
-      @if (confirmarPermiso()) {
-        <button type="button" class="boton" [disabled]="ocupado()" (click)="cambiarPermiso()">Confirmar permiso</button>
-        <button type="button" class="boton secundario" [disabled]="ocupado()" (click)="confirmarPermiso.set(false)">Cancelar</button>
-      } @else {
-        <button type="button" class="boton" [disabled]="ocupado()" (click)="confirmarPermiso.set(true)">
-          {{ permisoDocente() ? 'Retirar' : 'Conceder' }} permiso de creación
-        </button>
-      }
-    } @else if (errorPermiso()) {
-      <p>{{ errorPermiso() }}</p>
-      <button type="button" class="boton secundario" (click)="cargarPermiso()">Reintentar</button>
-    }
-  </section>
 </section>
 
 <dialog
@@ -284,10 +266,12 @@
             <psico-etiqueta-usuario [valor]="usuario.activo ? 'ACTIVO' : 'INACTIVO'" />
           </dd>
         </div>
-        <div>
-          <dt>Creación de casos</dt>
-          <dd>{{ usuario.puedeCrearCasos ? 'Habilitada' : 'Sin permiso' }}</dd>
-        </div>
+        @if (usuario.rol === 'DOCENTE') {
+          <div>
+            <dt>Creación de casos</dt>
+            <dd>{{ usuario.puedeCrearCasos ? 'Habilitada' : 'Sin permiso' }}</dd>
+          </div>
+        }
         <div class="identificador-detalle">
           <dt>Identificador</dt>
           <dd>{{ usuario.id }}</dd>
@@ -338,6 +322,12 @@
             >
               Editar docente
             </button>
+            @if (!confirmarPermiso()) {
+              <button id="cambiar-permiso-docente" type="button" class="boton secundario" [disabled]="ocupado()"
+                (click)="prepararCambioPermiso(true)">
+                {{ usuario.puedeCrearCasos ? 'Retirar' : 'Conceder' }} permiso de creación
+              </button>
+            }
           }
           <button
             class="boton secundario"
@@ -347,6 +337,15 @@
             Cambiar rol
           </button>
         </div>
+        @if (usuario.rol === 'DOCENTE' && confirmarPermiso()) {
+          <div class="confirmacion">
+            <p>¿{{ usuario.puedeCrearCasos ? 'Retirar' : 'Conceder' }} a {{ usuario.nombre }} el permiso para crear casos?</p>
+            <div class="acciones">
+              <button id="confirmar-permiso-docente" type="button" class="boton" [disabled]="ocupado()" (click)="cambiarPermiso()">Confirmar permiso</button>
+              <button type="button" class="boton secundario" [disabled]="ocupado()" (click)="prepararCambioPermiso(false)">Cancelar cambio de permiso</button>
+            </div>
+          </div>
+        }
         @if (usuario.id === api.usuario()?.id) {
           <p class="nota-modal">
             Tu propio rol de administrador debe conservarse para mantener el acceso.

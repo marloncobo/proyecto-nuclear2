@@ -24,7 +24,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class PruebaServicioUsuarios {
     @Mock RepositorioUsuarios usuarios;
-    @Mock PermisosRol permisos;
+    @Mock PermisosUsuario permisos;
     private final BCryptPasswordEncoder claves = new BCryptPasswordEncoder(4);
     private ServicioUsuarios servicio;
     private Usuario administrador;
@@ -61,7 +61,6 @@ class PruebaServicioUsuarios {
         assertThrows(AccesoDenegado.class, () -> servicio.listarUsuarios(docente.id(), null, null));
         assertThrows(AccesoDenegado.class, () -> servicio.consultarUsuario(docente.id(), administrador.id()));
         assertThrows(AccesoDenegado.class, () -> servicio.listarRoles(docente.id()));
-        assertThrows(AccesoDenegado.class, () -> servicio.consultarCreacionCasos(docente.id(), Rol.DOCENTE));
         verifyNoInteractions(permisos);
     }
 
@@ -105,7 +104,7 @@ class PruebaServicioUsuarios {
         when(usuarios.buscarPorId(docente.id())).thenReturn(Optional.of(docente));
         assertThrows(AccesoDenegado.class, () -> servicio.registrarDocente(docente.id(), "otro@universidad.edu.co", "Otro", "clave-ficticia"));
         assertThrows(AccesoDenegado.class, () -> servicio.cambiarRol(docente.id(), administrador.id(), Rol.DOCENTE));
-        assertThrows(AccesoDenegado.class, () -> servicio.configurarCreacionCasos(docente.id(), Rol.DOCENTE, true));
+        assertThrows(AccesoDenegado.class, () -> servicio.configurarCreacionCasos(docente.id(), docente.id(), true));
         verify(usuarios, never()).guardar(any());
         verifyNoInteractions(permisos);
     }
@@ -135,6 +134,7 @@ class PruebaServicioUsuarios {
         when(usuarios.buscarPorId(docente.id())).thenReturn(Optional.of(docente));
         assertEquals("ADMINISTRADOR", servicio.cambiarRol(administrador.id(), docente.id(), Rol.ADMINISTRADOR).rol());
         verify(usuarios).guardar(docente.conRol(Rol.ADMINISTRADOR));
+        verify(permisos).retirarCreacionCasos(docente.id());
     }
 
     @Test
@@ -145,21 +145,22 @@ class PruebaServicioUsuarios {
     }
 
     @Test
-    @DisplayName("RF-02 / ER ROL_PERMISO: administrador concede y retira permiso al rol docente")
-    void administradorGestionaPermisosDelRol() {
+    @DisplayName("RF-02: administrador concede y retira el permiso individual")
+    void administradorGestionaPermisoIndividual() {
         when(usuarios.buscarPorId(administrador.id())).thenReturn(Optional.of(administrador));
-        servicio.configurarCreacionCasos(administrador.id(), Rol.DOCENTE, true);
-        servicio.configurarCreacionCasos(administrador.id(), Rol.DOCENTE, false);
-        verify(permisos).configurarCreacionCasos(Rol.DOCENTE, true);
-        verify(permisos).configurarCreacionCasos(Rol.DOCENTE, false);
-        assertThrows(IllegalArgumentException.class, () -> servicio.configurarCreacionCasos(administrador.id(), Rol.ESTUDIANTE, true));
+        when(usuarios.buscarPorId(docente.id())).thenReturn(Optional.of(docente));
+        assertTrue(servicio.configurarCreacionCasos(administrador.id(), docente.id(), true).puedeCrearCasos());
+        servicio.configurarCreacionCasos(administrador.id(), docente.id(), false);
+        verify(permisos).configurarCreacionCasos(docente.id(), true);
+        verify(permisos).configurarCreacionCasos(docente.id(), false);
+        assertThrows(IllegalArgumentException.class, () -> servicio.configurarCreacionCasos(administrador.id(), administrador.id(), true));
     }
 
     @Test
     @DisplayName("RF-02: el rol docente por si solo no autoriza crear casos")
     void exigePermisoEspecificoParaCasos() {
         when(usuarios.buscarPorId(docente.id())).thenReturn(Optional.of(docente));
-        when(permisos.puedeCrearCasos(Rol.DOCENTE)).thenReturn(false, true);
+        when(permisos.puedeCrearCasos(docente.id())).thenReturn(false, true);
         assertThrows(AccesoDenegado.class, () -> servicio.exigirCreacionCasos(docente.id()));
         assertDoesNotThrow(() -> servicio.exigirCreacionCasos(docente.id()));
     }

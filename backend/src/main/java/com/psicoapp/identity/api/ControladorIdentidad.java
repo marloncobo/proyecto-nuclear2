@@ -59,11 +59,6 @@ public class ControladorIdentidad {
         return identidades.listarRoles(UUID.fromString(principal.getName()));
     }
 
-    @GetMapping("/roles/{rol}/creacion-casos")
-    public SolicitudPermiso consultarCreacionCasos(Principal principal, @PathVariable Rol rol) {
-        return new SolicitudPermiso(identidades.consultarCreacionCasos(UUID.fromString(principal.getName()), rol));
-    }
-
     @GetMapping("/estudiantes")
     public DatosUsuario buscarEstudiante(Principal principal,
             @RequestParam String correo) {
@@ -138,9 +133,9 @@ public class ControladorIdentidad {
         return identidades.cambiarRol(UUID.fromString(principal.getName()), idUsuario, solicitud.rol());
     }
 
-    @PutMapping("/roles/{rol}/creacion-casos")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void configurarCreacionCasos(Principal principal, @PathVariable Rol rol, @Valid @RequestBody SolicitudPermiso solicitud) {
-        identidades.configurarCreacionCasos(UUID.fromString(principal.getName()), rol, solicitud.habilitado());
+    @PutMapping("/usuarios/{idUsuario}/creacion-casos")
+    public ServicioUsuarios.DatosUsuarioAdministrado configurarCreacionCasos(Principal principal,
+            @PathVariable UUID idUsuario, @Valid @RequestBody SolicitudPermiso solicitud) {
+        return identidades.configurarCreacionCasos(UUID.fromString(principal.getName()), idUsuario, solicitud.habilitado());
     }
 }

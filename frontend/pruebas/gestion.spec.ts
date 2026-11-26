@@ -124,7 +124,6 @@ test('administración: roles, filtros, detalle, edición y errores sin perder el
 }) => {
   const estado = await simularApi(pagina);
   await ingresar(pagina);
-  await expect(pagina.getByRole('heading', { name: 'Roles y permisos' })).toBeVisible();
   await expect(pagina.getByRole('heading', { name: 'Administración de usuarios.' })).toBeVisible();
   await expect(
     pagina.getByRole('button', { name: 'Biblioteca de casos', exact: true }),
@@ -232,13 +231,54 @@ test('administración: confirmación de estado y reactivación', async ({ page: 
       .filter((solicitud) => solicitud.metodo === 'PUT')
       .every((solicitud) => solicitud.autorizacion === 'Bearer token-ficticio'),
   ).toBeTruthy();
-  await pagina.getByRole('button', { name: 'Retirar permiso de creación' }).click();
-  await pagina.getByRole('button', { name: 'Confirmar permiso' }).click();
-  await expect(pagina.getByRole('button', { name: 'Conceder permiso de creación' })).toBeVisible();
-  expect(estado.permiso).toBe(false);
   await pagina.getByRole('button', { name: 'Cerrar sesión', exact: true }).click();
   await expect(pagina.getByRole('heading', { name: 'Administración de usuarios.' })).toHaveCount(0);
   expect(await pagina.evaluate(() => [localStorage.length, sessionStorage.length])).toEqual([0, 0]);
+});
+
+test('administración: concede y retira el permiso de creación de un solo docente', async ({
+  page: pagina,
+}) => {
+  const estado = await simularApi(pagina);
+  const docente = estado.usuarios.find((usuario) => usuario.rol === 'DOCENTE')!;
+  const otro = { ...docente, id: 'otro-docente', nombre: 'Otro docente', correo: 'otro@example.test' };
+  estado.usuarios.push(otro);
+  await ingresar(pagina);
+  await pagina.getByRole('button', { name: 'Ver detalle de Docente original' }).click();
+  const detalle = pagina.getByRole('dialog');
+  const confirmar = detalle.getByRole('button', { name: 'Confirmar permiso' });
+  await detalle.getByRole('button', { name: 'Retirar permiso de creación' }).click();
+  await expect(confirmar).toBeFocused();
+  await confirmar.press('Enter');
+  const conceder = detalle.getByRole('button', { name: 'Conceder permiso de creación' });
+  await expect(conceder).toBeVisible();
+  expect(docente.puedeCrearCasos).toBe(false);
+  expect(otro.puedeCrearCasos).toBe(true);
+  await conceder.click();
+  await confirmar.click();
+  await expect(detalle.getByRole('button', { name: 'Retirar permiso de creación' })).toBeVisible();
+  expect(docente.puedeCrearCasos).toBe(true);
+  expect(estado.solicitudes.filter((solicitud) => solicitud.ruta.endsWith('/creacion-casos')).map(
+    ({ ruta, datos }) => [ruta, datos.habilitado],
+  )).toEqual([
+    ['/api/identidad/usuarios/docente/creacion-casos', false],
+    ['/api/identidad/usuarios/docente/creacion-casos', true],
+  ]);
+
+  await detalle.getByRole('button', { name: 'Cerrar detalle de usuario' }).click();
+  await pagina.getByRole('button', { name: 'Ver detalle de Alumna de prueba' }).click();
+  await expect(detalle).toBeVisible();
+  await expect(detalle.getByRole('button', { name: /permiso de creación/ })).toHaveCount(0);
+});
+
+test('docente sin permiso individual no tiene el botón para crear casos', async ({ page: pagina }) => {
+  const estado = await simularApi(pagina, 'DOCENTE');
+  estado.usuarios.find((usuario) => usuario.rol === 'DOCENTE')!.puedeCrearCasos = false;
+  await ingresar(pagina, 'docente@example.test');
+  await expect(pagina.getByRole('button', { name: /Crear un caso/ })).toHaveCount(0);
+  await pagina.getByRole('button', { name: 'Biblioteca de casos' }).click();
+  await expect(pagina.getByRole('heading', { name: 'Biblioteca de casos.' })).toBeVisible();
+  await expect(pagina.getByRole('button', { name: /Crear un caso/ })).toHaveCount(0);
 });
 
 test('docente: registra desde el menú lateral y selecciona al estudiante en una sesión', async ({

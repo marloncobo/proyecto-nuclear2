@@ -28,7 +28,6 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
   const estado = {
     rol,
     usuarios: [administrador, docente, estudiante],
-    permiso: true,
     espacio: { id: 'espacio-real', nombre: 'Psicología social', periodo: '2026-2', estudiantes: [] as string[] },
     conflictoEspacio: false,
     conflictoDocente: false,
@@ -108,16 +107,6 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
       notificacion.leida = true;
       return ruta.fulfill({ status: 204 });
     }
-    if (url.pathname === '/api/identidad/roles/DOCENTE/creacion-casos') {
-      if (metodo === 'PUT') {
-        estado.permiso = datos.habilitado;
-        for (const usuario of estado.usuarios) {
-          if (usuario.rol === 'DOCENTE') usuario.puedeCrearCasos = estado.permiso;
-        }
-        return ruta.fulfill({ status: 204 });
-      }
-      return ruta.fulfill({ json: { habilitado: estado.permiso } });
-    }
     if (url.pathname === '/api/identidad/estudiantes/listado')
       return ruta.fulfill({ json: estado.usuarios.filter((usuario) => usuario.rol === 'ESTUDIANTE' && usuario.activo) });
     if (metodo === 'GET' && ['/api/casos', '/api/sesiones'].includes(url.pathname))
@@ -139,6 +128,11 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
       if (!usuario) return ruta.fulfill({ status: 404, json: {} });
       if (metodo === 'GET' && estado.falloDetalle)
         return ruta.fulfill({ status: 503, json: { detail: 'No se pudo consultar el detalle' } });
+      if (metodo === 'PUT' && url.pathname.endsWith('/creacion-casos')) {
+        if (usuario.rol !== 'DOCENTE') return ruta.fulfill({ status: 400, json: {} });
+        usuario.puedeCrearCasos = datos.habilitado;
+        return ruta.fulfill({ json: usuario });
+      }
       if (metodo === 'PUT' && url.pathname.endsWith('/rol')) {
         if (estado.rechazarRol)
           return ruta.fulfill({
@@ -146,7 +140,7 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
             json: { detail: 'El personal requiere una contraseña' },
           });
         usuario.rol = datos.rol;
-        usuario.puedeCrearCasos = datos.rol === 'DOCENTE' && estado.permiso;
+        if (datos.rol !== 'DOCENTE') usuario.puedeCrearCasos = false;
         if (estado.desactivarDuranteCambioRol) usuario.activo = false;
         const { activo, ...respuesta } = usuario;
         return ruta.fulfill({ json: respuesta });
@@ -162,7 +156,7 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
         nombre: datos.nombre,
         correo: datos.correo,
         rol: 'DOCENTE',
-        puedeCrearCasos: estado.permiso,
+        puedeCrearCasos: false,
         activo: true,
       };
       estado.usuarios.push(nuevo);

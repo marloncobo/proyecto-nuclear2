@@ -150,9 +150,11 @@
                   Diseña experiencias que inviten a pensar.<br />Acompaña a tus estudiantes a
                   comprender su mundo.
                 </p>
-                <button class="boton primario" data-tutorial="crear-caso" (click)="abrir('crear')">
-                  <span aria-hidden="true">＋</span> Crear un caso <span aria-hidden="true">↗</span>
-                </button>
+                @if (puedeCrearCasos()) {
+                  <button class="boton primario" data-tutorial="crear-caso" (click)="abrir('crear')">
+                    <span aria-hidden="true">＋</span> Crear un caso <span aria-hidden="true">↗</span>
+                  </button>
+                }
               </div>
               <div class="arte" aria-hidden="true">
                 <div class="anillo anillo-uno"></div>
@@ -278,9 +280,11 @@
                 <h1>Biblioteca de <em>casos.</em></h1>
                 <p class="subtitulo">Situaciones para cuestionar, dialogar y descubrir.</p>
               </div>
-              <button class="boton primario" data-tutorial="crear-caso" (click)="abrir('crear')">
-                ＋ Crear un caso
-              </button>
+              @if (puedeCrearCasos()) {
+                <button class="boton primario" data-tutorial="crear-caso" (click)="abrir('crear')">
+                  ＋ Crear un caso
+                </button>
+              }
             </div>
             <div class="herramientas">
               <label class="buscador"
@@ -1066,7 +1070,7 @@
               </div>
 
               <div class="acciones-modal acciones-detalle-caso">
-                @if (caso.estado === 'BORRADOR') {
+                @if (caso.estado === 'BORRADOR' && puedeCrearCasos()) {
                   <button class="boton secundario" (click)="abrir('crear', caso)">
                     Editar borrador
                   </button>

@@ -292,11 +292,8 @@ export class ServicioApi {
   listarRoles() {
     return this.consultar<Rol[]>('/identidad/roles');
   }
-  consultarPermiso(rol: Rol) {
-    return this.consultar<{ habilitado: boolean }>(`/identidad/roles/${rol}/creacion-casos`);
-  }
-  configurarPermiso(habilitado: boolean) {
-    return this.enviar<void>('/identidad/roles/DOCENTE/creacion-casos', { habilitado }, 'PUT');
+  configurarPermiso(idUsuario: string, habilitado: boolean) {
+    return this.enviar<UsuarioAdministrado>(`/identidad/usuarios/${idUsuario}/creacion-casos`, { habilitado }, 'PUT');
   }
   editarEspacio(id: string, datos: Omit<Espacio, 'id'>) {
     return this.enviar<Espacio>(`/academico/espacios/${encodeURIComponent(id)}`, datos, 'PUT');

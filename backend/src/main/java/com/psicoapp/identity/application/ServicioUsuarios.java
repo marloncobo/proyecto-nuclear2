@@ -24,10 +24,10 @@ public class ServicioUsuarios implements DirectorioIdentidad {
 
     private final RepositorioUsuarios usuarios;
     private final PasswordEncoder claves;
-    private final PermisosRol permisos;
+    private final PermisosUsuario permisos;
     private final Set<String> dominiosInstitucionales;
 
-    public ServicioUsuarios(RepositorioUsuarios usuarios, PasswordEncoder claves, PermisosRol permisos,
+    public ServicioUsuarios(RepositorioUsuarios usuarios, PasswordEncoder claves, PermisosUsuario permisos,
             @Value("${psicoapp.identidad.dominios-institucionales}") String dominios) {
         this.usuarios = usuarios;
         this.claves = claves;
@@ -86,12 +86,6 @@ public class ServicioUsuarios implements DirectorioIdentidad {
     }
 
     @Transactional(readOnly = true)
-    public boolean consultarCreacionCasos(UUID idActor, Rol rol) {
-        exigirRol(idActor, Rol.ADMINISTRADOR);
-        return rol == Rol.DOCENTE && permisos.puedeCrearCasos(rol);
-    }
-
-    @Transactional(readOnly = true)
     public DatosUsuario buscarEstudiante(UUID idActor, String correo) {
         exigirGestorEstudiantes(idActor);
         return usuarios.buscarPorCorreo(validarCorreoInstitucional(correo))
@@ -127,15 +121,19 @@ public class ServicioUsuarios implements DirectorioIdentidad {
             validarCorreoInstitucional(actualizado.correo());
         }
         usuarios.guardar(actualizado);
+        if (rol != Rol.DOCENTE) permisos.retirarCreacionCasos(idUsuario);
         return representarUsuario(actualizado);
     }
 
-    public void configurarCreacionCasos(UUID idActor, Rol rol, boolean habilitado) {
+    public DatosUsuarioAdministrado configurarCreacionCasos(UUID idActor, UUID idUsuario, boolean habilitado) {
         exigirRol(idActor, Rol.ADMINISTRADOR);
-        if (rol != Rol.DOCENTE) {
-            throw new IllegalArgumentException("El permiso de creación de casos corresponde al rol docente");
+        Usuario usuario = buscarUsuario(idUsuario);
+        if (usuario.rol() != Rol.DOCENTE) {
+            throw new IllegalArgumentException("El permiso de creación de casos solo se concede a docentes");
         }
-        permisos.configurarCreacionCasos(rol, habilitado);
+        permisos.configurarCreacionCasos(idUsuario, habilitado);
+        return new DatosUsuarioAdministrado(usuario.id(), usuario.correo(), usuario.nombre(),
+                usuario.rol().name(), habilitado, usuario.activo());
     }
 
     @Override
@@ -294,6 +292,6 @@ public class ServicioUsuarios implements DirectorioIdentidad {
 
     private DatosUsuario representarUsuario(Usuario usuario) {
         return new DatosUsuario(usuario.id(), usuario.correo(), usuario.nombre(), usuario.rol().name(),
-                usuario.rol() == Rol.DOCENTE && permisos.puedeCrearCasos(usuario.rol()));
+                usuario.rol() == Rol.DOCENTE && permisos.puedeCrearCasos(usuario.id()));
     }
 }

@@ -40,7 +40,7 @@ Este archivo desarrolla las fichas de la sección 6 del [plan de pruebas](plan-p
 | [CP-ID-004](#cp-id-004) | CU-02 — Impedir alta docente por otro docente | CU-02 | Disponible |
 | [CP-ID-005](#cp-id-005) | CU-03 — Asignar y restituir rol | CU-03 | Disponible |
 | [CP-ID-006](#cp-id-006) | CU-03 — Evitar que el administrador retire su propio rol | CU-03 | Disponible |
-| [CP-ID-007](#cp-id-007) | CU-03 — Conceder y retirar permiso al rol docente | CU-03 | Disponible |
+| [CP-ID-007](#cp-id-007) | CU-03 — Conceder y retirar permiso a un docente | CU-03 | Disponible |
 | [CP-ID-008](#cp-id-008) | CU-03 — Rechazar administración de permisos no autorizada | CU-03 | Disponible |
 | [CP-ID-009](#cp-id-009) | Soporte de CU-02/CU-03 — Autenticar personal | CU-02, CU-03 (precondición de acceso; no es CU-01) | Disponible |
 | [CP-ID-010](#cp-id-010) | Soporte de CU-13 — Registrar y reutilizar identidad estudiantil | CU-13 (preparación de identidad; convocatoria pendiente) | Disponible |
@@ -301,7 +301,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 
 <a id="cp-id-007"></a>
 
-## CP-ID-007 — CU-03 — Conceder y retirar permiso al rol docente
+## CP-ID-007 — CU-03 — Conceder y retirar permiso a un docente
 
 ### Información global del caso de prueba
 
@@ -315,7 +315,7 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 | Requisitos / reglas | RF-02, RF-03; RN-10 |
 | Actor | Administrador; dos docentes como comprobadores |
 | Disponibilidad | Disponible para ejecutar |
-| Descripción del caso de prueba | Verificar la asignación de CREAR_CASOS al rol según ROL_PERMISO, con efecto sobre todos los docentes. |
+| Descripción del caso de prueba | Verificar la asignación individual de CREAR_CASOS y que otro docente conserva su permiso original. |
 
 ### Caso de prueba
 
@@ -323,12 +323,12 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 
 | Paso | Acción | Datos de entrada — campo y valor | Tipo de escenario | Respuesta esperada de la aplicación | Coincide: sí | Coincide: no | Respuesta del sistema |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Enviar PUT /api/identidad/roles/DOCENTE/creacion-casos como administrador. | habilitado=true | Positivo | HTTP 204. | — | — | Pendiente |
-| 2 | Consultar /api/identidad/yo con cada uno de los dos docentes. | Credenciales de ambos docentes. | Positivo | HTTP 200; puedeCrearCasos=true en ambos. | — | — | Pendiente |
-| 3 | Retirar el permiso y consultar nuevamente ambas identidades. | habilitado=false | Positivo / revocación | PUT devuelve 204 y las dos consultas muestran puedeCrearCasos=false. | — | — | Pendiente |
-| 4 | Restituir el valor inicial del permiso. | Valor guardado en las precondiciones. | Restauración | El rol queda con su configuración original. | — | — | Pendiente |
+| 1 | Enviar PUT /api/identidad/usuarios/{idDocente}/creacion-casos como administrador. | habilitado=true | Positivo | HTTP 200 con puedeCrearCasos=true. | — | — | Pendiente |
+| 2 | Consultar /api/identidad/yo con cada uno de los dos docentes. | Credenciales de ambos docentes. | Positivo | HTTP 200. El docente seleccionado tiene permiso y el otro conserva su valor inicial. | — | — | Pendiente |
+| 3 | Retirar el permiso y consultar nuevamente ambas identidades. | habilitado=false | Positivo / revocación | PUT devuelve 200 y la cuenta seleccionada pasa a puedeCrearCasos=false. | — | — | Pendiente |
+| 4 | Restituir el valor inicial del permiso. | Valor guardado en las precondiciones. | Restauración | La cuenta recupera su configuración original. | — | — | Pendiente |
 
-**Postcondiciones:** Solo cambia la relación ROL_PERMISO. No se crean permisos individuales. No se evalúa una creación real de caso porque ese módulo está pendiente.
+**Postcondiciones:** Solo cambia la concesión individual de la cuenta seleccionada.
 
 **Evidencias:** pendientes. Adjuntar captura o transcripción saneada de cada paso y de la postcondición. No adjuntar credenciales, cabeceras de autorización, códigos reales ni hashes.
 
@@ -362,14 +362,14 @@ Los enlaces de cada identificador usan anclas explícitas. En las fichas, «—�
 
 ### Caso de prueba
 
-**Precondiciones:** Docente y administrador activos. Anotar el permiso inicial del rol docente. Se aplican las condiciones comunes del [plan](plan-pruebas.md#52-preparación-común-de-la-ejecución).
+**Precondiciones:** Docente, estudiante y administrador activos. Anotar el permiso inicial de la cuenta docente. Se aplican las condiciones comunes del [plan](plan-pruebas.md#52-preparación-común-de-la-ejecución).
 
 | Paso | Acción | Datos de entrada — campo y valor | Tipo de escenario | Respuesta esperada de la aplicación | Coincide: sí | Coincide: no | Respuesta del sistema |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Enviar PUT /api/identidad/roles/DOCENTE/creacion-casos como docente. | habilitado=true | Negativo / autorización | HTTP 403; el permiso no cambia. | — | — | Pendiente |
-| 2 | Enviar PUT /api/identidad/roles/ESTUDIANTE/creacion-casos como administrador. | habilitado=true | Negativo / regla implementada | HTTP 400; CREAR_CASOS solo se configura para DOCENTE en este MVP. | — | — | Pendiente |
+| 1 | Enviar PUT /api/identidad/usuarios/{idDocente}/creacion-casos como docente. | habilitado=true | Negativo / autorización | HTTP 403. El permiso queda intacto. | — | — | Pendiente |
+| 2 | Enviar PUT /api/identidad/usuarios/{idEstudiante}/creacion-casos como administrador. | habilitado=true | Negativo / regla implementada | HTTP 400. CREAR_CASOS solo se concede a docentes. | — | — | Pendiente |
 
-**Postcondiciones:** No se alteran los permisos de ninguno de los roles.
+**Postcondiciones:** Se conservan los permisos de ambas cuentas.
 
 **Evidencias:** pendientes. Adjuntar captura o transcripción saneada de cada paso y de la postcondición. No adjuntar credenciales, cabeceras de autorización, códigos reales ni hashes.
 

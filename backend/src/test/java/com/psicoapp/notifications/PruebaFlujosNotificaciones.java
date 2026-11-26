@@ -82,7 +82,7 @@ class PruebaFlujosNotificaciones {
         identidades.inicializarAdministrador(admin, "clave-ficticia");
         UUID administrador = usuarios.buscarPorCorreo(admin).orElseThrow().id();
         docente = identidades.registrarDocente(administrador, "docente-" + sufijo + "@universidad.example", "Docente", "clave-ficticia").id();
-        identidades.configurarCreacionCasos(administrador, Rol.DOCENTE, true);
+        identidades.configurarCreacionCasos(administrador, docente, true);
         correoEstudiante = "alumno-" + sufijo + "@universidad.example";
         estudiante = identidades.registrarEstudiante(docente, correoEstudiante, "Estudiante", "clave-estudiante").id();
         identidades.cambiarClaveInicial(estudiante, "clave-estudiante-personal");
@@ -169,7 +169,7 @@ class PruebaFlujosNotificaciones {
     // CP-NO-005: fallos de Gmail no cambian datos academicos y se reintentan con espera.
     @Test
     void falloGmailConservaConvocatoriaYReintentaSinFiltrarError() {
-        UUID id = ids().getFirst();
+        UUID id = correoConvocatoria();
         doThrow(new IllegalStateException("dato secreto " + codigo)).doNothing()
                 .when(correo).enviar(anyString(), anyString(), anyString());
         entrega.entregar(id);
