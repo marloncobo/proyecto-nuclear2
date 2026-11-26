@@ -66,6 +66,8 @@ public class ConfiguracionIdentidad {
                                 "ROLE_DOCENTE", "ROLE_ADMINISTRADOR", "ROLE_ESTUDIANTE")
                         .requestMatchers(HttpMethod.PUT, "/api/identidad/estudiantes/*/clave-inicial")
                                 .hasAnyRole("DOCENTE", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/identidad/estudiantes/*")
+                                .hasAnyRole("DOCENTE", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/api/identidad/estudiantes").hasAnyRole("DOCENTE", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.GET, "/api/identidad/estudiantes",
                                 "/api/identidad/estudiantes/listado").hasAnyRole("DOCENTE", "ADMINISTRADOR")
@@ -91,7 +93,7 @@ public class ConfiguracionIdentidad {
             @Value("${psicoapp.identidad.clave-administrador}") String clave) {
         return argumentos -> {
             if (!correo.isBlank() || !clave.isBlank()) {
-                identidades.inicializarAdministrador(correo, clave);
+                identidades.inicializarPrimerAdministrador(correo, clave);
             }
         };
     }

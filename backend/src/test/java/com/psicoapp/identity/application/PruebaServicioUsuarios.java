@@ -62,7 +62,7 @@ class PruebaServicioUsuarios {
         var resultado = servicio.editarDocente(administrador.id(), docente.id(), " NUEVO@universidad.edu.co ", " Nuevo ");
         assertEquals("nuevo@universidad.edu.co", resultado.correo());
         assertEquals("Nuevo", resultado.nombre());
-        verify(usuarios).actualizarDatosDocente(docente.id(), "nuevo@universidad.edu.co", "Nuevo");
+        verify(usuarios).actualizarDatos(docente.id(), Rol.DOCENTE, "nuevo@universidad.edu.co", "Nuevo");
         verify(usuarios, never()).guardar(any());
     }
 
@@ -74,7 +74,7 @@ class PruebaServicioUsuarios {
         when(usuarios.buscarPorCorreo(administrador.correo())).thenReturn(Optional.of(administrador));
         assertThrows(Conflicto.class, () -> servicio.editarDocente(administrador.id(), docente.id(), administrador.correo(), "Duplicado"));
         assertThrows(Conflicto.class, () -> servicio.cambiarEstado(administrador.id(), administrador.id(), false));
-        verify(usuarios, never()).actualizarDatosDocente(any(), any(), any());
+        verify(usuarios, never()).actualizarDatos(any(), any(), any(), any());
         verify(usuarios, never()).actualizarEstado(any(), anyBoolean());
     }
 
@@ -224,7 +224,7 @@ class PruebaServicioUsuarios {
                 administrador.id(), cuentaExterna.id(), Rol.DOCENTE));
 
         verify(usuarios, never()).guardar(any());
-        verify(usuarios, never()).actualizarDatosDocente(any(), anyString(), anyString());
+        verify(usuarios, never()).actualizarDatos(any(), any(), anyString(), anyString());
     }
 
     @Test

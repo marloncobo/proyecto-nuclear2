@@ -113,7 +113,11 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
       return ruta.fulfill({ status: 204 });
     }
     if (url.pathname === '/api/identidad/estudiantes/listado')
-      return ruta.fulfill({ json: estado.usuarios.filter((usuario) => usuario.rol === 'ESTUDIANTE' && usuario.activo) });
+      return ruta.fulfill({
+        json: estado.usuarios.filter((usuario) =>
+          usuario.rol === 'ESTUDIANTE' && (usuario.activo || url.searchParams.get('paraEdicion') === 'true'),
+        ),
+      });
     if (metodo === 'GET' && ['/api/casos', '/api/sesiones'].includes(url.pathname))
       return ruta.fulfill({ json: [] });
     if (url.pathname === '/api/identidad/estudiantes' && metodo === 'POST') {
@@ -127,6 +131,18 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
       };
       estado.usuarios.push(nuevo);
       return ruta.fulfill({ status: 201, json: nuevo });
+    }
+    if (metodo === 'PUT' && /^\/api\/identidad\/(usuarios|estudiantes)\/[^/]+$/.test(url.pathname)) {
+      const usuario = estado.usuarios.find((actual) => actual.id === url.pathname.split('/')[4]);
+      if (!usuario) return ruta.fulfill({ status: 404, json: {} });
+      if (estado.conflictoDocente || estado.usuarios.some(
+        (actual) => actual.id !== usuario.id && actual.correo === datos.correo,
+      )) {
+        return ruta.fulfill({ status: 409, json: { detail: 'El correo ya está registrado' } });
+      }
+      usuario.nombre = datos.nombre;
+      usuario.correo = datos.correo;
+      return ruta.fulfill({ json: usuario });
     }
     if (url.pathname.startsWith('/api/identidad/usuarios/')) {
       const usuario = estado.usuarios.find((usuario) => usuario.id === url.pathname.split('/')[4]);
@@ -167,12 +183,6 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
       estado.usuarios.push(nuevo);
       const { activo, ...respuesta } = nuevo;
       return ruta.fulfill({ status: 201, json: respuesta });
-    }
-    if (url.pathname.startsWith('/api/identidad/docentes/')) {
-      if (estado.conflictoDocente)
-        return ruta.fulfill({ status: 409, json: { detail: 'El correo ya está registrado' } });
-      Object.assign(docente, datos);
-      return ruta.fulfill({ json: docente });
     }
     if (url.pathname === '/api/academico/espacios') return ruta.fulfill({ json: [estado.espacio] });
     if (url.pathname.startsWith('/api/academico/espacios/') && metodo === 'PUT') {

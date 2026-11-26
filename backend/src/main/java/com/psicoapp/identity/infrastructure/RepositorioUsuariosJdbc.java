@@ -24,11 +24,11 @@ public class RepositorioUsuariosJdbc implements RepositorioUsuarios {
     }
 
     @Override
-    public void actualizarDatosDocente(UUID id, String correo, String nombre) {
+    public void actualizarDatos(UUID id, Rol rolEsperado, String correo, String nombre) {
         if (jdbc.sql("UPDATE usuario SET correo = ?, nombre = ? WHERE id_usuario = ? "
-                + "AND id_rol = (SELECT id_rol FROM rol WHERE nombre = 'DOCENTE')")
-                .params(correo, nombre, id.toString()).update() != 1) {
-            throw new Conflicto("La cuenta ya no tiene rol docente");
+                + "AND id_rol = (SELECT id_rol FROM rol WHERE nombre = ?)")
+                .params(correo, nombre, id.toString(), rolEsperado.name()).update() != 1) {
+            throw new Conflicto("El rol de la cuenta cambió. Vuelve a consultar sus datos");
         }
     }
 

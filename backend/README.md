@@ -370,8 +370,8 @@ Configura estas variables en `.env` (sin versionar secretos):
 | `PSICOAPP_NOTIFICACIONES_AVISOS_DOCENTE_DEMORA_INICIAL_MS` | Demora del primer barrido después del arranque, en milisegundos; predeterminado `1000` |
 
 El arranque crea las tablas de identidad, espacios, casos y sesiones si no existen e inserta los roles y el permiso
-sin duplicarlos. El administrador inicial se crea solo si no existe; no se
-sobrescribe su contraseña en cada arranque. Sin variables de administrador no
+sin duplicarlos. El arranque crea la cuenta configurada si no hay ningún
+administrador activo y mantiene los datos de las cuentas existentes. Sin variables de administrador no
 se crea una cuenta predeterminada. Sin dominios configurados no se admiten
 nuevos estudiantes. El usuario MySQL debe poder crear las tablas y consultar y
 modificar sus registros. El esquema no migra tablas preexistentes incompatibles.

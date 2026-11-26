@@ -170,6 +170,76 @@ class PruebaGestionIdentidadAcademica {
     }
 
     @Test
+    @DisplayName("RF-02/03: docente y administrador editan estudiantes sin cambiar su acceso")
+    void editaEstudiantesConAmbosRoles() throws Exception {
+        identidades.asignarClaveInicial(docente, estudiante, CLAVE);
+        var anterior = usuarios.buscarPorId(estudiante).orElseThrow();
+        String nuevoCorreo = "nuevo-" + correoEstudiante;
+        String cambio = """
+                {"correo":"%s","nombre":" Estudiante editado ","rol":"ADMINISTRADOR","activo":false}
+                """.formatted(nuevoCorreo);
+        mvc.perform(put("/api/identidad/estudiantes/{id}", estudiante).with(portador(mvc, correoDocente, CLAVE))
+                        .contentType(MediaType.APPLICATION_JSON).content(cambio))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(estudiante.toString()))
+                .andExpect(jsonPath("$.nombre").value("Estudiante editado"))
+                .andExpect(jsonPath("$.rol").value("ESTUDIANTE"))
+                .andExpect(jsonPath("$.activo").value(true));
+        mvc.perform(escribir(put("/api/identidad/usuarios/{id}", estudiante),
+                """
+                {"correo":"%s","nombre":"Estudiante revisado"}
+                """.formatted(nuevoCorreo)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.correo").value(nuevoCorreo));
+        var posterior = usuarios.buscarPorId(estudiante).orElseThrow();
+        assertEquals(anterior.hashClave(), posterior.hashClave());
+        assertEquals(anterior.fechaCreacion(), posterior.fechaCreacion());
+        assertTrue(posterior.claveInicial());
+        assertTrue(usuarios.buscarPorCorreo(correoEstudiante).isEmpty());
+
+        mvc.perform(put("/api/identidad/estudiantes/{id}", docente).with(portador(mvc, correoDocente, CLAVE))
+                        .contentType(MediaType.APPLICATION_JSON).content(cambio))
+                .andExpect(status().isForbidden());
+        mvc.perform(put("/api/identidad/usuarios/{id}", estudiante).with(portador(mvc, correoDocente, CLAVE))
+                        .contentType(MediaType.APPLICATION_JSON).content(cambio))
+                .andExpect(status().isForbidden());
+        mvc.perform(put("/api/identidad/estudiantes/{id}", estudiante).with(portador(mvc, nuevoCorreo, CLAVE))
+                        .contentType(MediaType.APPLICATION_JSON).content(cambio))
+                .andExpect(status().isForbidden());
+        mvc.perform(escribir(put("/api/identidad/usuarios/{id}", estudiante),
+                """
+                {"correo":"alumno@externo.test","nombre":"Dominio externo"}
+                """))
+                .andExpect(status().isBadRequest());
+        identidades.cambiarEstado(administrador, estudiante, false);
+        mvc.perform(get("/api/identidad/estudiantes/listado").with(portador(mvc, correoDocente, CLAVE)))
+                .andExpect(jsonPath("$[?(@.id == '%s')]".formatted(estudiante)).isEmpty());
+        mvc.perform(get("/api/identidad/estudiantes/listado").param("paraEdicion", "true")
+                        .with(portador(mvc, correoDocente, CLAVE)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == '%s')]".formatted(estudiante)).isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("RF-03: un administrador solo edita su propio perfil administrativo")
+    void protegeOtrosAdministradoresYConservaElNuevoCorreoEnElArranque() throws Exception {
+        String otroCorreo = "otro-" + correoAdministrador;
+        identidades.inicializarAdministrador(otroCorreo, CLAVE);
+        UUID otro = usuarios.buscarPorCorreo(otroCorreo).orElseThrow().id();
+        String nuevoCorreo = administrador + "@externo.test";
+        String cambio = """
+                {"correo":"%s","nombre":"Perfil renovado"}
+                """.formatted(nuevoCorreo);
+        mvc.perform(escribir(put("/api/identidad/usuarios/{id}", otro), cambio))
+                .andExpect(status().isForbidden());
+        mvc.perform(escribir(put("/api/identidad/usuarios/{id}", administrador), cambio))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.correo").value(nuevoCorreo));
+        identidades.inicializarPrimerAdministrador(correoAdministrador, CLAVE);
+        assertTrue(usuarios.buscarPorCorreo(correoAdministrador).isEmpty());
+        mvc.perform(get("/api/identidad/yo").with(portador(mvc, nuevoCorreo, CLAVE)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(administrador.toString()));
+    }
+
+    @Test
     @DisplayName("RF-02/03: desactivacion efectiva e idempotente sin perder credenciales")
     void desactivaYReactivaConProteccionPropia() throws Exception {
         var anterior = usuarios.buscarPorId(docente).orElseThrow();

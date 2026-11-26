@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/identidad")
 public class ControladorIdentidad {
-    public record SolicitudEdicionDocente(@NotBlank @Email @Size(max = 180) String correo,
+    public record SolicitudEdicionUsuario(@NotBlank @Email @Size(max = 180) String correo,
             @NotBlank @Size(max = 120) String nombre) { }
     public record SolicitudEstado(@NotNull Boolean activo) { }
 
@@ -47,8 +47,20 @@ public class ControladorIdentidad {
 
     @PutMapping("/docentes/{idUsuario}")
     public ServicioUsuarios.DatosUsuarioAdministrado editarDocente(Principal principal, @PathVariable UUID idUsuario,
-            @Valid @RequestBody SolicitudEdicionDocente solicitud) {
+            @Valid @RequestBody SolicitudEdicionUsuario solicitud) {
         return identidades.editarDocente(UUID.fromString(principal.getName()), idUsuario, solicitud.correo(), solicitud.nombre());
+    }
+
+    @PutMapping("/usuarios/{idUsuario}")
+    public ServicioUsuarios.DatosUsuarioAdministrado editarUsuario(Principal principal, @PathVariable UUID idUsuario,
+            @Valid @RequestBody SolicitudEdicionUsuario solicitud) {
+        return identidades.editarUsuario(UUID.fromString(principal.getName()), idUsuario, solicitud.correo(), solicitud.nombre());
+    }
+
+    @PutMapping("/estudiantes/{idUsuario}")
+    public ServicioUsuarios.DatosUsuarioAdministrado editarEstudiante(Principal principal, @PathVariable UUID idUsuario,
+            @Valid @RequestBody SolicitudEdicionUsuario solicitud) {
+        return identidades.editarEstudiante(UUID.fromString(principal.getName()), idUsuario, solicitud.correo(), solicitud.nombre());
     }
 
     @PutMapping("/usuarios/{idUsuario}/estado")
@@ -69,8 +81,10 @@ public class ControladorIdentidad {
     }
 
     @GetMapping("/estudiantes/listado")
-    public List<DatosUsuario> listarEstudiantes(Principal principal) {
-        return identidades.listarEstudiantes(UUID.fromString(principal.getName()));
+    public List<DatosUsuario> listarEstudiantes(Principal principal,
+            @RequestParam(defaultValue = "false") boolean paraEdicion) {
+        UUID idActor = UUID.fromString(principal.getName());
+        return paraEdicion ? identidades.listarEstudiantesParaEditar(idActor) : identidades.listarEstudiantes(idActor);
     }
     public record SolicitudDocente(@NotBlank @Email @Size(max = 180) String correo,
             @NotBlank @Size(max = 120) String nombre, @NotBlank @Size(min = 8, max = 72) String clave) {

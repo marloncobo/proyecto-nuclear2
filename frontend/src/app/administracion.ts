@@ -256,7 +256,12 @@ export class Administracion implements OnInit {
       primero.focus();
     }
   }
+  puedeEditar(usuario: UsuarioAdministrado) {
+    return usuario.rol !== 'ADMINISTRADOR' || usuario.id === this.api.usuario()?.id;
+  }
+
   editarDetalle(usuario: UsuarioAdministrado) {
+    if (!this.puedeEditar(usuario)) return;
     this.nombre = usuario.nombre;
     this.correo = usuario.correo;
     this.editando = true;
@@ -275,16 +280,16 @@ export class Administracion implements OnInit {
   }
   async guardar() {
     const usuario = this.seleccionado();
-    if (!usuario || usuario.rol !== 'DOCENTE') return;
+    if (!usuario || !this.puedeEditar(usuario)) return;
     await this.ejecutar(async () => {
-      const actualizado = await this.api.editarDocente(usuario.id, {
-        nombre: this.nombre,
-        correo: this.correo,
+      const actualizado = await this.api.editarUsuario(usuario.id, {
+        nombre: this.nombre.trim(),
+        correo: this.correo.trim(),
       });
       this.actualizar(actualizado);
       await this.refrescarListado();
       this.editando = false;
-      this.aviso.set('Datos del docente actualizados.');
+      this.aviso.set(usuario.rol === 'DOCENTE' ? 'Datos del docente actualizados.' : 'Datos actualizados.');
       setTimeout(() => document.querySelector<HTMLElement>('#detalle-usuario')?.focus());
     });
   }

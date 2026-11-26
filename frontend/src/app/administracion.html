@@ -277,6 +277,7 @@
           <dd>{{ usuario.id }}</dd>
         </div>
       </dl>
+      @let perfilEditable = usuario.rol === 'DOCENTE' ? 'docente' : usuario.rol === 'ESTUDIANTE' ? 'estudiante' : 'perfil';
       @if (editando) {
         <form
           #edicion="ngForm"
@@ -284,24 +285,27 @@
           [attr.aria-busy]="ocupado()"
         >
           <label
-            >Nombre del docente<input
-              name="nombreDocente"
+            >Nombre del {{ perfilEditable }}<input
+              name="nombre"
               [(ngModel)]="nombre"
               maxlength="120"
               required
               [disabled]="ocupado()"
           /></label>
           <label
-            >Correo del docente<input
-              name="correoDocente"
+            >Correo del {{ perfilEditable }}<input
+              name="correo"
               type="email"
               [(ngModel)]="correo"
               maxlength="180"
               required
+              email
               [disabled]="ocupado()"
           /></label>
           <div class="acciones pie-detalle">
-            <button class="boton" [disabled]="ocupado() || edicion.invalid">Guardar docente</button>
+            <button class="boton" [disabled]="ocupado() || edicion.invalid || !nombre.trim()">
+              {{ usuario.rol === 'ADMINISTRADOR' ? 'Guardar perfil' : 'Guardar ' + perfilEditable }}
+            </button>
             <button
               type="button"
               class="boton secundario"
@@ -314,14 +318,16 @@
         </form>
       } @else {
         <div class="acciones pie-detalle">
-          @if (usuario.rol === 'DOCENTE') {
+          @if (puedeEditar(usuario)) {
             <button
               class="boton editar-detalle"
               [disabled]="ocupado()"
               (click)="editarDetalle(usuario)"
             >
-              Editar docente
+              {{ usuario.rol === 'ADMINISTRADOR' ? 'Editar mi perfil' : 'Editar ' + perfilEditable }}
             </button>
+          }
+          @if (usuario.rol === 'DOCENTE') {
             @if (!confirmarPermiso()) {
               <button id="cambiar-permiso-docente" type="button" class="boton secundario" [disabled]="ocupado()"
                 (click)="prepararCambioPermiso(true)">
