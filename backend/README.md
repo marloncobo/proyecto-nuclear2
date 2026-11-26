@@ -172,9 +172,12 @@ controles independientes de convocatoria, estado y ventana temporal.
 
 Se agregan las tablas `notificacion` y `valoracion_docente` al esquema.
 El adaptador de infraestructura implementa el puerto de correo mediante la API HTTPS de Gmail.
+Los correos de convocatoria y retiro tienen una versión HTML y una alternativa de texto plano.
+La convocatoria muestra la apertura y el cierre en hora de Colombia, el tiempo para resolver,
+el lugar y el mensaje del docente cuando se proporcionan, y el botón de acceso a la actividad.
 **Antes de convocar:** configurar clave AES persistente, URL de acceso y Gmail
 segun la [guia de notificaciones](../docs/pruebas/notificaciones.md).
-El correo incluye el enlace de ingreso, la sesión, el caso y el mensaje docente, sin contraseñas ni códigos.
+El correo identifica la sesión mediante el enlace de ingreso. El estudiante se autentica con su cuenta institucional.
 Los avisos docentes se reconstruyen de forma idempotente desde sesiones, intentos
 y evaluaciones persistidos: recordatorio próximo, finalización, estudiantes que no
 completaron, evaluaciones disponibles y reporte disponible.

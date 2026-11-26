@@ -1,6 +1,7 @@
 package com.psicoapp.notifications.infrastructure;
 
 import com.psicoapp.notifications.application.*;
+import com.psicoapp.notifications.domain.ContenidoCorreo;
 import com.psicoapp.notifications.domain.SolicitudNotificacion;
 import java.util.*;
 import java.time.Instant;
@@ -9,9 +10,12 @@ import java.nio.charset.StandardCharsets;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.*;
+import tools.jackson.databind.json.JsonMapper;
 
 @Repository
 public class RepositorioNotificacionesJdbc implements RepositorioEntregas, RepositorioAvisos {
+    private static final String PREFIJO_CORREO = "psicoapp-correo-v1\n";
+    private static final JsonMapper FORMATO_CORREO = JsonMapper.builder().build();
     private final JdbcClient jdbc;
     private final CifradorNotificaciones cifrador;
     public RepositorioNotificacionesJdbc(JdbcClient jdbc, CifradorNotificaciones cifrador) {
@@ -22,8 +26,14 @@ public class RepositorioNotificacionesJdbc implements RepositorioEntregas, Repos
     public void registrar(SolicitudNotificacion solicitud) {
         UUID id = UUID.nameUUIDFromBytes((solicitud.idEvento() + ":" + solicitud.idUsuario() + ":" + solicitud.canal())
                 .getBytes(StandardCharsets.UTF_8));
-        String contenido = solicitud.canal() == SolicitudNotificacion.Canal.CORREO
-                ? cifrador.cifrar(solicitud.mensaje()) : solicitud.mensaje();
+        String contenido = solicitud.mensaje();
+        if (solicitud.canal() == SolicitudNotificacion.Canal.CORREO) {
+            if (solicitud.html() != null) {
+                contenido = PREFIJO_CORREO + FORMATO_CORREO.writeValueAsString(
+                        new ContenidoCorreo(solicitud.mensaje(), solicitud.html()));
+            }
+            contenido = cifrador.cifrar(contenido);
+        }
         jdbc.sql("""
                 INSERT INTO notificacion (id_notificacion,id_evento,id_usuario,id_sesion,id_intento,
                     canal,tipo,asunto,mensaje,estado_envio,fecha_creacion,proximo_intento,intentos,leida)
@@ -48,7 +58,11 @@ public class RepositorioNotificacionesJdbc implements RepositorioEntregas, Repos
                     fila.getString("canal"), fila.getString("tipo"), fila.getString("asunto"),
                     fila.getString("mensaje"), fila.getInt("intentos"))).optional();
     }
-    @Override public String recuperarContenido(Entrega entrega) { return cifrador.descifrar(entrega.contenido()); }
+    @Override public ContenidoCorreo recuperarContenido(Entrega entrega) {
+        String contenido = cifrador.descifrar(entrega.contenido());
+        if (!contenido.startsWith(PREFIJO_CORREO)) return new ContenidoCorreo(contenido, null);
+        return FORMATO_CORREO.readValue(contenido.substring(PREFIJO_CORREO.length()), ContenidoCorreo.class);
+    }
     @Override public void confirmar(UUID id, Instant ahora) {
         jdbc.sql("""
                 UPDATE notificacion SET estado_envio='ENVIADA',fecha_envio=?,ultimo_error=NULL,

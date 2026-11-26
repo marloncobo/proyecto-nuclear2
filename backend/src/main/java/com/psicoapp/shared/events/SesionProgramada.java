@@ -7,7 +7,8 @@ import java.util.UUID;
 
 /** Un evento por convocado. El codigo es sensible y nunca debe registrarse. */
 public record SesionProgramada(UUID idEvento, Instant instante, UUID idEstudiante,
-        UUID idSesion, Instant inicioPrevisto, String nombreCaso, String mensaje, URI url, String codigoAcceso)
+        UUID idSesion, Instant inicioPrevisto, Instant finPrevisto, int duracionMaximaMin,
+        String nombreCaso, String lugar, String mensaje, URI url, String codigoAcceso)
         implements EventoNotificacion {
     public SesionProgramada {
         Objects.requireNonNull(idEvento);
@@ -15,6 +16,7 @@ public record SesionProgramada(UUID idEvento, Instant instante, UUID idEstudiant
         Objects.requireNonNull(idEstudiante);
         Objects.requireNonNull(idSesion);
         Objects.requireNonNull(inicioPrevisto);
+        Objects.requireNonNull(finPrevisto);
         if (nombreCaso == null || nombreCaso.isBlank() || codigoAcceso == null || codigoAcceso.isBlank()) {
             throw new IllegalArgumentException("El caso y el codigo son obligatorios");
         }

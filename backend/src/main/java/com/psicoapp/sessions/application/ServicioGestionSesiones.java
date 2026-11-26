@@ -119,7 +119,7 @@ public class ServicioGestionSesiones implements ConsultaSesiones, AutorizacionDo
             var anterior = existentes.get(id);
             convocatorias.actualizar(new Convocatoria(anterior.id(), idSesion, id, anterior.resumenCodigo(), false));
             notificaciones.publicar(new ConvocatoriaModificada(UUID.randomUUID(), reloj.instant(), id, idSesion,
-                    ConvocatoriaModificada.TipoCambio.RETIRO, null));
+                    ConvocatoriaModificada.TipoCambio.RETIRO, null, nombreCaso));
             resultado.add(new DatosConvocatoria(anterior.id(), id, null, false));
         }
         for (UUID id : agregar) {
@@ -130,19 +130,16 @@ public class ServicioGestionSesiones implements ConsultaSesiones, AutorizacionDo
             if (anterior == null) convocatorias.guardar(nueva); else convocatorias.actualizar(nueva);
             var datos = eventoConvocatoria(sesion, id, codigo, nombreCaso);
             notificaciones.publicar(new ConvocatoriaModificada(datos.idEvento(), datos.instante(), id, idSesion,
-                    ConvocatoriaModificada.TipoCambio.ALTA, datos));
+                    ConvocatoriaModificada.TipoCambio.ALTA, datos, nombreCaso));
             resultado.add(new DatosConvocatoria(nueva.id(), id, codigo, true));
         }
         return representar(sesion, List.copyOf(resultado));
     }
 
     private SesionProgramada eventoConvocatoria(Sesion sesion, UUID estudiante, String codigo, String nombreCaso) {
-        String mensaje = "Inicio: " + sesion.inicioPrevisto() + "\nFin: " + sesion.finPrevisto()
-                + "\nDuracion maxima (min): " + sesion.duracionMaximaMin()
-                + (sesion.lugar() == null ? "" : "\nLugar: " + sesion.lugar())
-                + (sesion.mensaje() == null ? "" : "\n" + sesion.mensaje());
         return new SesionProgramada(UUID.randomUUID(), reloj.instant(), estudiante,
-                sesion.id(), sesion.inicioPrevisto(), nombreCaso, mensaje, urlAcceso, codigo);
+                sesion.id(), sesion.inicioPrevisto(), sesion.finPrevisto(), sesion.duracionMaximaMin(),
+                nombreCaso, sesion.lugar(), sesion.mensaje(), urlAcceso, codigo);
     }
 
     @Transactional(readOnly = true)

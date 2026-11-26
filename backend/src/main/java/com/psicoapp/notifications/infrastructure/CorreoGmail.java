@@ -2,11 +2,14 @@ package com.psicoapp.notifications.infrastructure;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.psicoapp.notifications.application.PuertoCorreo;
+import com.psicoapp.notifications.domain.ContenidoCorreo;
 import jakarta.mail.Message;
 import jakarta.mail.MessagingException;
 import jakarta.mail.Session;
 import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -66,7 +69,7 @@ public class CorreoGmail implements PuertoCorreo {
     }
 
     @Override
-    public void enviar(String destinatario, String asunto, String mensaje) {
+    public void enviar(String destinatario, String asunto, ContenidoCorreo mensaje) {
         if (remitente.isBlank() || idCliente.isBlank() || secretoCliente.isBlank() || tokenRenovacion.isBlank()) {
             throw new IllegalStateException("Gmail sin configurar");
         }
@@ -89,13 +92,24 @@ public class CorreoGmail implements PuertoCorreo {
         }
     }
 
-    private String codificarMensaje(String destinatario, String asunto, String mensaje)
+    private String codificarMensaje(String destinatario, String asunto, ContenidoCorreo mensaje)
             throws MessagingException, IOException {
         var correo = new MimeMessage(Session.getInstance(new Properties()));
         correo.setFrom(new InternetAddress(remitente, true));
         correo.setRecipient(Message.RecipientType.TO, new InternetAddress(destinatario, true));
         correo.setSubject(asunto, UTF_8);
-        correo.setText(mensaje, UTF_8);
+        if (mensaje.html() == null) {
+            correo.setText(mensaje.texto(), UTF_8);
+        } else {
+            var alternativas = new MimeMultipart("alternative");
+            var texto = new MimeBodyPart();
+            texto.setText(mensaje.texto(), UTF_8);
+            alternativas.addBodyPart(texto);
+            var html = new MimeBodyPart();
+            html.setText(mensaje.html(), UTF_8, "html");
+            alternativas.addBodyPart(html);
+            correo.setContent(alternativas);
+        }
         var contenido = new ByteArrayOutputStream();
         correo.writeTo(contenido);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(contenido.toByteArray());

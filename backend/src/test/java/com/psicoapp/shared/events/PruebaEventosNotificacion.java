@@ -46,19 +46,21 @@ class PruebaEventosNotificacion {
     void cambioValidaDestinatarioYRetiroSinCredenciales() {
         var datos = convocatoria(URI.create("https://universidad.example"), "codigo-ficticio");
         assertDoesNotThrow(() -> new ConvocatoriaModificada(UUID.randomUUID(), Instant.EPOCH,
-                datos.idEstudiante(), datos.idSesion(), ConvocatoriaModificada.TipoCambio.ALTA, datos));
+                datos.idEstudiante(), datos.idSesion(), ConvocatoriaModificada.TipoCambio.ALTA, datos, datos.nombreCaso()));
         assertThrows(IllegalArgumentException.class, () -> new ConvocatoriaModificada(
                 UUID.randomUUID(), Instant.EPOCH, UUID.randomUUID(), datos.idSesion(),
-                ConvocatoriaModificada.TipoCambio.ALTA, datos));
+                ConvocatoriaModificada.TipoCambio.ALTA, datos, datos.nombreCaso()));
         assertThrows(IllegalArgumentException.class, () -> new ConvocatoriaModificada(
                 UUID.randomUUID(), Instant.EPOCH, datos.idEstudiante(), datos.idSesion(),
-                ConvocatoriaModificada.TipoCambio.RETIRO, datos));
-        assertDoesNotThrow(() -> new ConvocatoriaModificada(UUID.randomUUID(), Instant.EPOCH,
-                datos.idEstudiante(), datos.idSesion(), ConvocatoriaModificada.TipoCambio.RETIRO, null));
+                ConvocatoriaModificada.TipoCambio.RETIRO, datos, datos.nombreCaso()));
+        var retiro = new ConvocatoriaModificada(UUID.randomUUID(), Instant.EPOCH,
+                datos.idEstudiante(), datos.idSesion(), ConvocatoriaModificada.TipoCambio.RETIRO, null, datos.nombreCaso());
+        assertFalse(retiro.toString().contains(datos.nombreCaso()));
     }
 
     private SesionProgramada convocatoria(URI url, String codigo) {
         return new SesionProgramada(UUID.randomUUID(), Instant.EPOCH, UUID.randomUUID(),
-                UUID.randomUUID(), Instant.EPOCH, "Caso formativo", "Mensaje reservado", url, codigo);
+                UUID.randomUUID(), Instant.EPOCH, Instant.EPOCH.plusSeconds(3600), 30,
+                "Caso formativo", null, "Mensaje reservado", url, codigo);
     }
 }

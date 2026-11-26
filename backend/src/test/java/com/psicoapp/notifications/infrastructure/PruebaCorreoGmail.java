@@ -1,8 +1,10 @@
 package com.psicoapp.notifications.infrastructure;
 
 import com.jayway.jsonpath.JsonPath;
+import com.psicoapp.notifications.domain.ContenidoCorreo;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
 import java.io.ByteArrayInputStream;
 import java.time.Clock;
 import java.util.Base64;
@@ -27,6 +29,7 @@ class PruebaCorreoGmail {
 
     @Test
     void enviaMimeUnicodeYReutilizaToken() throws Exception {
+        var mensaje = new ContenidoCorreo("Sesión de psicología", "<p>Sesión de psicología</p>");
         esperarToken();
         servidor.expect(times(2), requestTo(URL_ENVIO))
                 .andExpect(method(HttpMethod.POST))
@@ -41,7 +44,15 @@ class PruebaCorreoGmail {
                         assertEquals("avisos@universidad.example", correo.getFrom()[0].toString());
                         assertEquals("estudiante@universidad.example", correo.getAllRecipients()[0].toString());
                         assertEquals("Convocatoria académica", correo.getSubject());
-                        assertEquals("Sesión de psicología", correo.getContent());
+                        assertTrue(correo.isMimeType("multipart/alternative"));
+                        var alternativas = (MimeMultipart) correo.getContent();
+                        assertEquals(2, alternativas.getCount());
+                        var texto = alternativas.getBodyPart(0);
+                        assertTrue(texto.isMimeType("text/plain"));
+                        assertEquals(mensaje.texto(), texto.getContent());
+                        var html = alternativas.getBodyPart(1);
+                        assertTrue(html.isMimeType("text/html"));
+                        assertEquals(mensaje.html(), html.getContent());
                     } catch (jakarta.mail.MessagingException excepcion) {
                         throw new AssertionError(excepcion);
                     }
@@ -49,8 +60,8 @@ class PruebaCorreoGmail {
                 .andRespond(withSuccess("{\"id\":\"correo-ficticio\"}", MediaType.APPLICATION_JSON));
 
         var correo = crearCorreo("renovacion-ficticia");
-        correo.enviar("estudiante@universidad.example", "Convocatoria académica", "Sesión de psicología");
-        correo.enviar("estudiante@universidad.example", "Convocatoria académica", "Sesión de psicología");
+        correo.enviar("estudiante@universidad.example", "Convocatoria académica", mensaje);
+        correo.enviar("estudiante@universidad.example", "Convocatoria académica", mensaje);
         servidor.verify();
     }
 
@@ -61,7 +72,7 @@ class PruebaCorreoGmail {
                 .andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS).body("detalle privado"));
         var correo = crearCorreo("renovacion-ficticia");
         var fallo = assertThrows(IllegalStateException.class, () ->
-                correo.enviar("estudiante@universidad.example", "Aviso", "Mensaje"));
+                correo.enviar("estudiante@universidad.example", "Aviso", new ContenidoCorreo("Mensaje", null)));
         assertFalse(fallo.getMessage().contains("detalle privado"));
         assertNull(fallo.getCause());
         servidor.verify();
@@ -71,7 +82,7 @@ class PruebaCorreoGmail {
     void sinTokenDeRenovacionNoHaceSolicitudes() {
         var correo = crearCorreo("");
         assertThrows(IllegalStateException.class, () ->
-                correo.enviar("estudiante@universidad.example", "Aviso", "Mensaje"));
+                correo.enviar("estudiante@universidad.example", "Aviso", new ContenidoCorreo("Mensaje", null)));
         servidor.verify();
     }
 

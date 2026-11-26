@@ -54,9 +54,12 @@ Un fallo de Gmail conserva PENDIENTE, incrementa intentos, guarda solo ENVIO_FAL
 y reintenta a los 30, 60, 120 segundos, etc., con tope de espera de una hora.
 No se almacenan mensajes de excepcion del proveedor ni se registran credenciales.
 
-El correo usa texto plano. El cuerpo pendiente se cifra con AES-256-GCM y vector
-aleatorio por mensaje; incluye el codigo original requerido por RF-20/21.
-Se elimina al confirmar o cancelar la entrega. El hash de convocatoria permanece
+Las convocatorias y los retiros nuevos se preparan en HTML y texto plano.
+Ambas versiones se cifran juntas con AES-256-GCM y un vector aleatorio por
+mensaje. El enlace de convocatoria identifica la sesión sin incluir contraseñas
+ni códigos. El contenido cifrado se elimina al confirmar o cancelar la entrega.
+Los correos pendientes creados con el formato anterior conservan su texto plano.
+El hash de convocatoria permanece
 en `sessions`. Retirar cancela convocatorias pendientes; reincorporar rota el
 codigo y cancela retiros pendientes obsoletos para no enviar mensajes contradictorios.
 Los correos ya aceptados por el proveedor no pueden retirarse.
@@ -158,8 +161,9 @@ quedan en estado pendiente y todavia no aparecen como entregadas en el frontend.
 Google emite tokens de renovacion de siete dias para aplicaciones externas en modo de prueba con este alcance. Para operacion continua, configurar la audiencia y publicacion segun las politicas de la cuenta. [Vigencia de tokens OAuth](https://developers.google.com/identity/protocols/oauth2#expiration).
 
 El backend obtiene el token de acceso automaticamente y lo reutiliza hasta poco
-antes de vencer. Envia correo MIME de texto plano por HTTPS con tiempos de
-conexion y lectura de 5 segundos. Si faltan credenciales o Google rechaza la
+antes de vencer. Envía correo MIME por HTTPS con tiempos de conexión y lectura
+de 5 segundos. Los nuevos mensajes usan `multipart/alternative` para ofrecer
+HTML y texto plano. Si faltan credenciales o Google rechaza la
 solicitud, la entrega permanece pendiente para reintentar.
 
 Al arrancar, `schema.sql` agrega las tablas nuevas de forma idempotente. No modifica
