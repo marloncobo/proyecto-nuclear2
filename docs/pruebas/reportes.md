@@ -2,7 +2,7 @@
 
 Implementacion de RF-15 / CU-30, con historial independiente (RN-06) y
 retroalimentacion disponible solo al terminar el intento (RN-08/09).
-La descarga CSV del resumen de sesion reutiliza el contrato de consulta existente.
+La descarga Excel (`.xlsx`) del resumen de sesión reutiliza el contrato de consulta existente.
 La valoracion general docente RF-26 se implementa en `evaluation` al integrar
 notificaciones y ahora forma parte de la respuesta de reportes mediante
 `valoracionesGenerales`. Tambien puede registrarse desde el seguimiento docente.
@@ -41,7 +41,7 @@ Consultar no calcula notas, modifica intentos ni envia notificaciones.
 una fila por estudiante e intento. Incluye `nombreEstudiante`, `correoEstudiante`,
 `idEstudiante`, `idIntento`, `estado`, `calificacion` y `ausencia`. El frontend
 usa estas filas para enlazar sesion → estudiante → historial de intentos, sin
-pedir UUID al docente, y permite exportar el mismo resumen en CSV. Los intentos incluyen preguntas respondidas y totales, incluso cuando la calificación aún no está disponible.
+pedir UUID al docente, y permite exportar en Excel todas las filas de la sesión. La hoja incluye el caso, el espacio, el horario en Colombia, filtros y encabezados fijos. Las calificaciones y los conteos se exportan como números. Una calificación pendiente se deja en blanco y una ausencia consolidada conserva su cero.
 
 Al pasar una sesion a `FINALIZADO`, tanto manual como automaticamente, el puerto
 `ConsolidadorReporteSesion` registra en la misma transaccion a cada convocado
@@ -101,7 +101,7 @@ El dominio de reports no necesita entidades para esta consulta.
 
 Esta separacion aplica responsabilidad unica, segregacion de interfaces e
 inversion de dependencias. El resumen de sesion funciona como catalogo de
-navegacion y como fuente de la exportacion CSV del frontend.
+navegacion y como fuente de la exportación Excel del frontend.
 
 ## Verificacion JUnit
 

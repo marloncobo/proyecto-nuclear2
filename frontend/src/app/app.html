@@ -694,9 +694,10 @@
                     <button
                       type="button"
                       class="boton secundario"
+                      [disabled]="ocupado()"
                       (click)="descargarReporteSesion()"
                     >
-                      Descargar CSV
+                      Descargar Excel
                     </button>
                     <div class="lista-reporte-sesion">
                       @for (

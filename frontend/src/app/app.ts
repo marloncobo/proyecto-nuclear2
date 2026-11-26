@@ -915,16 +915,19 @@ export class Aplicacion {
   }
 
   async consultarReporteSesion() {
+    const idSesion = this.idSesionReporte;
+    const cuenta = this.api.usuario();
     await this.ejecutar(async () => {
       this.limpiarFiltrosResultados();
       this.reporteSesion.set(null);
       this.resultado.set(null);
       this.nombreEstudianteReporte = '';
-      this.reporteSesion.set(
-        await this.api.consultar<FilaReporteSesion[]>(
-          `/reportes/sesiones/${encodeURIComponent(this.idSesionReporte)}`,
-        ),
+      const filas = await this.api.consultar<FilaReporteSesion[]>(
+        `/reportes/sesiones/${encodeURIComponent(idSesion)}`,
       );
+      if (this.idSesionReporte === idSesion && this.api.usuario() === cuenta) {
+        this.reporteSesion.set(filas);
+      }
     });
   }
 
@@ -961,34 +964,34 @@ export class Aplicacion {
     await this.consultarReporte();
   }
 
-  descargarReporteSesion() {
+  async descargarReporteSesion() {
     const filas = this.reporteSesion();
-    if (!filas) return;
-    const escapar = (valor: unknown) => `"${String(valor ?? '').replaceAll('"', '""')}"`;
-    const csv = [
-      'Estudiante,Correo,Identificador,Intento,Estado,Calificación,Preguntas respondidas,Preguntas totales,Preguntas ausentes',
-      ...filas.map((fila) =>
-        [
-          fila.nombreEstudiante,
-          fila.correoEstudiante,
-          fila.idEstudiante,
-          fila.idIntento,
-          fila.estado,
-          fila.calificacion,
-          fila.preguntasRespondidas,
-          fila.preguntasTotales,
-          fila.ausencia?.detalles.length ?? 0,
-        ]
-          .map(escapar)
-          .join(','),
-      ),
-    ].join('\r\n');
-    const url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }));
-    const enlace = document.createElement('a');
-    enlace.href = url;
-    enlace.download = 'participacion.csv';
-    enlace.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const sesion = this.sesiones().find((actual) => actual.id === this.idSesionReporte);
+    const cuenta = this.api.usuario();
+    if (!filas || !sesion || !cuenta) return;
+    await this.ejecutar(async () => {
+      try {
+        const { generarReporteSesionExcel } = await import('./reporte-sesion-excel');
+        const { archivo, nombre } = await generarReporteSesionExcel({
+          id: sesion.id,
+          caso: this.nombreCaso(sesion.idCaso),
+          espacio: this.nombreEspacioAcademico(sesion.idEspacio),
+          inicio: sesion.inicioPrevisto,
+          fin: sesion.finPrevisto,
+        }, filas);
+        if (this.api.usuario() !== cuenta || this.reporteSesion() !== filas || this.vista() !== 'resultados') return;
+        const url = URL.createObjectURL(archivo);
+        const enlace = document.createElement('a');
+        enlace.href = url;
+        enlace.download = nombre;
+        document.body.append(enlace);
+        enlace.click();
+        enlace.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch {
+        throw new Error('No se pudo generar el reporte en Excel. Inténtalo de nuevo.');
+      }
+    });
   }
   nombreCaso(id: string) {
     return this.casos().find((caso) => caso.id === id)?.nombre ?? 'Caso no disponible';

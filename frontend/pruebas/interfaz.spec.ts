@@ -265,9 +265,10 @@ test('vista móvil sin desbordamiento horizontal', async ({ page: pagina }) => {
   await pagina.screenshot({ path: 'capturas/inicio-escritorio.png', fullPage: true });
 });
 
-test('reporte: evaluación pendiente y ausencia de intentos sin inventar notas', async ({
+test('reporte: Excel conserva notas, avance y ausencias como datos editables', async ({
   page: pagina,
-}) => {
+}, prueba) => {
+  let sinParticipaciones = false;
   await pagina.route('**/api/**', async (ruta) => {
     const direccion = new URL(ruta.request().url());
     if (direccion.pathname.endsWith('/ingreso'))
@@ -300,9 +301,13 @@ test('reporte: evaluación pendiente y ausencia de intentos sin inventar notas',
           },
         ],
       });
+    if (direccion.pathname === '/api/casos')
+      return ruta.fulfill({ json: [{ id: 'caso', nombre: 'Análisis de grupo' }] });
+    if (direccion.pathname === '/api/academico/espacios')
+      return ruta.fulfill({ json: [{ id: 'espacio', nombre: 'Psicología social', periodo: '2026-2' }] });
     if (direccion.pathname.endsWith('/reportes/sesiones/sesion'))
       return ruta.fulfill({
-        json: [
+        json: sinParticipaciones ? [] : [
           {
             idEstudiante: 'estudiante',
             nombreEstudiante: 'Ana Aprendiz',
@@ -360,18 +365,49 @@ test('reporte: evaluación pendiente y ausencia de intentos sin inventar notas',
   await expect(pagina.getByText('Ana Aprendiz', { exact: true })).toHaveCount(0);
   await pagina.getByLabel('Filtrar por estado').selectOption('AUSENTE');
   await expect(pagina.locator('.fila-reporte-sesion')).toHaveCount(1);
-  await pagina.getByRole('button', { name: 'Limpiar filtros' }).click();
+  const { Workbook } = (await import('exceljs')).default;
   const descargaPendiente = pagina.waitForEvent('download');
-  await pagina.getByRole('button', { name: 'Descargar CSV' }).click();
-  const archivo = await (await descargaPendiente).path();
-  const { readFile } = await import('node:fs/promises');
-  const csv = await readFile(archivo, 'utf8');
-  expect(csv).toContain('Preguntas respondidas,Preguntas totales');
-  expect(csv).toContain('"intento-1","FINALIZADO","","1","2","0"');
+  await pagina.getByRole('button', { name: 'Descargar Excel' }).click();
+  const descarga = await descargaPendiente;
+  expect(descarga.suggestedFilename()).toBe('participacion-analisis-de-grupo-sesion.xlsx');
+  const archivo = prueba.outputPath('participacion.xlsx');
+  await descarga.saveAs(archivo);
+  const libro = new Workbook();
+  await libro.xlsx.readFile(archivo);
+  const hoja = libro.getWorksheet('Participación')!;
+  expect(hoja.getCell('A1').value).toBe('Reporte de participación');
+  expect(hoja.getCell('B2').value).toBe('Análisis de grupo');
+  expect(hoja.getCell('B3').value).toBe('Psicología social · 2026-2');
+  expect(hoja.getCell('B4').text).toContain('10:00');
+  expect(hoja.views[0]).toMatchObject({ state: 'frozen', xSplit: 1, ySplit: 7 });
+  expect(hoja.autoFilter).toBe('A7:I9');
+  expect(hoja.getCell('E7').value).toBe('Preguntas respondidas');
+  expect(hoja.getCell('A8').value).toBe('Ana Aprendiz');
+  expect(hoja.getCell('D8').value).toBeNull();
+  expect(hoja.getCell('E8').value).toBe(1);
+  expect(hoja.getCell('F8').value).toBe(2);
+  expect(hoja.getCell('I8').value).toBe('intento-1');
+  expect(hoja.getCell('C9').value).toBe('Ausente');
+  expect(hoja.getCell('D9').value).toBe(0);
+  expect(hoja.getCell('D9').numFmt).toBe('0.00');
+  expect(hoja.getCell('G9').value).toBe(1);
+  expect(hoja.getCell('I9').value).toBeNull();
+
+  await pagina.getByRole('button', { name: 'Limpiar filtros' }).click();
   await pagina.getByRole('button', { name: 'Ver resultados de Ana Aprendiz' }).click();
   await expect(pagina.getByText('Evaluación pendiente.', { exact: false })).toBeVisible();
   await expect(pagina.locator('.intento-reporte .nota-calificacion')).toHaveCount(0);
   await expect(
     pagina.getByRole('heading', { name: 'Recorrido académico · Ana Aprendiz' }),
   ).toBeVisible();
+
+  sinParticipaciones = true;
+  await pagina.getByRole('button', { name: 'Preparar reporte' }).click();
+  await expect(pagina.getByText('La sesión todavía no tiene participaciones para mostrar.')).toBeVisible();
+  const descargaVaciaPendiente = pagina.waitForEvent('download');
+  await pagina.getByRole('button', { name: 'Descargar Excel' }).click();
+  const vacio = new Workbook();
+  await vacio.xlsx.readFile(await (await descargaVaciaPendiente).path());
+  expect(vacio.getWorksheet('Participación')?.getCell('A8').value)
+    .toBe('La sesión todavía no tiene participaciones para mostrar.');
 });
