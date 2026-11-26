@@ -89,7 +89,7 @@
   padding: 22px 26px;
   border-bottom: 1px solid var(--borde);
 }
-.lista-notificaciones article:last-child {
+.fila-aviso:last-child article {
   border-bottom: 0;
 }
 .lista-notificaciones article.no-leida {
@@ -119,6 +119,46 @@
   outline-offset: -3px;
 }
 .con-seleccion article > .marcar-leida { position: relative; z-index: 1; }
+.fila-aviso { position: relative; }
+.detalle-en-fila { margin: 12px; }
+.paginacion-notificaciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 12px;
+  padding: 14px;
+  border-top: 1px solid var(--borde);
+  color: var(--azul);
+  font-size: 13px;
+}
+.paginacion-notificaciones button {
+  min-height: 42px;
+  padding: 6px 12px;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  background: white;
+  color: inherit;
+  font: inherit;
+  font-weight: 650;
+}
+.paginacion-notificaciones button:hover:not(:disabled) { background: var(--salvia); }
+@media (min-width: 1080px) {
+  .con-seleccion {
+    width: calc((100% - 16px) * .68);
+    overflow: visible;
+  }
+  .con-seleccion .resumen-notificaciones { border-radius: 14px 14px 0 0; }
+  .con-seleccion .fila-aviso:last-child article { border-radius: 0 0 14px 14px; }
+  .con-seleccion:has(.paginacion-notificaciones) .fila-aviso:last-child article { border-radius: 0; }
+  .detalle-en-fila {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: calc(100% + 17px);
+    width: calc(100% * 32 / 68);
+    margin: 0;
+  }
+}
 .icono-notificacion {
   display: grid;
   width: 42px;

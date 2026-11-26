@@ -209,6 +209,84 @@ test('estudiante: abre el detalle de un aviso y navega al recurso correspondient
   await expect(pagina.getByRole('heading', { name: 'Otra actividad' })).toBeVisible();
 });
 
+test('estudiante: el detalle se abre junto a una notificación desplazada sin cambiar el scroll', async ({ page: pagina }) => {
+  const estado = await simularApi(pagina, 'ESTUDIANTE');
+  estado.notificaciones.push(...Array.from({ length: 5 }, (_, indice) => ({
+    id: `aviso-${indice}`, tipo: 'CONVOCATORIA', idSesion: null, idIntento: null,
+    mensaje: `Convocatoria ${indice + 1}`, fechaCreacion: '2026-11-26T13:00:00Z', leida: true,
+  })));
+  await ingresar(pagina, 'alumna@example.test');
+  await pagina.getByRole('button', { name: 'Notificaciones', exact: true }).click();
+  const lista = pagina.locator('.lista-notificaciones');
+  const detalle = pagina.getByRole('region', { name: 'Detalle de notificación' });
+  const fila = lista.locator('article').last();
+  const control = fila.getByRole('button', { name: 'Nueva convocatoria', exact: true });
+
+  for (const [width, height] of [[1440, 680], [390, 700]]) {
+    await pagina.setViewportSize({ width, height });
+    await control.scrollIntoViewIfNeeded();
+    await expect(control).toBeInViewport();
+    const scrollAnterior = await pagina.evaluate(() => window.scrollY);
+    expect(scrollAnterior).toBeGreaterThan(0);
+    await control.press('Enter');
+    await expect(detalle.getByRole('heading', { name: 'Detalle de notificación' })).toBeFocused();
+    expect(await pagina.evaluate(() => window.scrollY)).toBeCloseTo(scrollAnterior, 0);
+    const posicionFila = (await fila.boundingBox())!;
+    const posicionDetalle = (await detalle.boundingBox())!;
+    if (width > 1000) {
+      expect(posicionDetalle.y).toBeCloseTo(posicionFila.y, 0);
+      expect(posicionDetalle.x).toBeGreaterThan(posicionFila.x + posicionFila.width);
+    } else {
+      const distancia = posicionDetalle.y - posicionFila.y - posicionFila.height;
+      expect(distancia).toBeGreaterThanOrEqual(0);
+      expect(distancia).toBeLessThan(24);
+    }
+    await pagina.keyboard.press('Escape');
+    await expect(control).toBeFocused();
+  }
+
+  await lista.locator('article').first().getByRole('button', { name: 'Nueva convocatoria' }).click();
+  await expect(detalle).toContainText('Convocatoria 1');
+  await control.scrollIntoViewIfNeeded();
+  const alturaAnterior = (await fila.boundingBox())!.y;
+  await control.press('Enter');
+  await expect(detalle).toContainText('Convocatoria 5');
+  expect((await fila.boundingBox())!.y).toBeCloseTo(alturaAnterior, 0);
+});
+
+for (const rol of ['DOCENTE', 'ESTUDIANTE'] as const) {
+  test(`${rol}: pagina notificaciones y filtra avisos más antiguos que el primer lote`, async ({ page: pagina }) => {
+    const estado = await simularApi(pagina, rol);
+    estado.notificaciones.push(...Array.from({ length: 106 }, (_, indice) => ({
+      id: `aviso-${indice}`, tipo: indice === 105 ? 'RESULTADO' : 'CONVOCATORIA', idSesion: null,
+      idIntento: null, mensaje: `Aviso número ${indice + 1}`, fechaCreacion: '2026-11-26T13:00:00Z', leida: true,
+    })));
+    await ingresar(pagina, rol === 'DOCENTE' ? 'docente@example.test' : 'alumna@example.test');
+    await pagina.getByRole('button', { name: 'Notificaciones', exact: true }).click();
+    const panel = pagina.locator('psico-panel-notificaciones');
+    const filas = panel.locator('.lista-notificaciones article');
+    const paginador = panel.getByRole('navigation', { name: 'Paginación de notificaciones' });
+    const anterior = paginador.getByRole('button', { name: 'Anterior' });
+    await expect(paginador).toContainText('Página 1 de 22');
+    await expect(anterior).toBeDisabled();
+    await expect(filas).toHaveCount(5);
+    await expect(filas.first()).toContainText('Aviso número 1');
+    await paginador.getByRole('button', { name: 'Siguiente' }).click();
+    await expect(paginador).toContainText('Página 2 de 22');
+    await expect(filas.first()).toContainText('Aviso número 6');
+    await anterior.click();
+    await expect(filas.first()).toContainText('Aviso número 1');
+    await paginador.getByRole('button', { name: 'Siguiente' }).click();
+    await panel.getByLabel('Filtrar por tipo').selectOption('RESULTADO');
+    await expect(paginador).toHaveCount(0);
+    await expect(filas).toHaveCount(1);
+    await expect(filas.first()).toContainText('Aviso número 106');
+    await panel.getByRole('button', { name: 'Limpiar filtros' }).click();
+    await expect(paginador).toContainText('Página 1 de 22');
+    expect(estado.solicitudes.some((solicitud) => solicitud.ruta.includes('desplazamiento=100'))).toBe(true);
+  });
+}
+
 test('administración: roles, filtros, detalle, edición y errores sin perder el formulario', async ({
   page: pagina,
 }) => {

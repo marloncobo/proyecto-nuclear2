@@ -555,7 +555,7 @@ export class Aplicacion {
     this.cargandoNotificaciones.set(true);
     this.errorNotificaciones.set('');
     try {
-      const notificaciones = await this.api.listarNotificaciones(100);
+      const notificaciones = await this.api.listarHistorialNotificaciones();
       if (this.api.usuario() === usuario) this.notificaciones.set(notificaciones);
     } catch (error) {
       if (this.api.usuario() === usuario)

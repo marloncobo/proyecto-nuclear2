@@ -90,8 +90,11 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
     }
     if (url.pathname === '/api/identidad/roles')
       return ruta.fulfill({ json: ['ADMINISTRADOR', 'DOCENTE', 'ESTUDIANTE'] });
-    if (url.pathname === '/api/notificaciones' && metodo === 'GET')
-      return ruta.fulfill({ json: estado.notificaciones });
+    if (url.pathname === '/api/notificaciones' && metodo === 'GET') {
+      const inicio = Number(url.searchParams.get('desplazamiento') ?? 0);
+      const limite = Number(url.searchParams.get('limite') ?? 20);
+      return ruta.fulfill({ json: estado.notificaciones.slice(inicio, inicio + limite) });
+    }
     if (url.pathname === '/api/notificaciones/no-leidas' && metodo === 'GET')
       return ruta.fulfill({ json: estado.notificaciones.filter((aviso) => !aviso.leida).length });
     if (url.pathname === '/api/estudiante/actividades' && metodo === 'GET')

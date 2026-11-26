@@ -309,6 +309,20 @@ export class ServicioApi {
       throw new Error('El servicio devolvió una lista de notificaciones inválida.');
     return notificaciones;
   }
+
+  async listarHistorialNotificaciones() {
+    const usuario = this.usuario();
+    const limite = 100;
+    const avisos = new Map<string, AvisoNotificacion>();
+    for (let desplazamiento = 0; this.usuario() === usuario; desplazamiento += limite) {
+      const lote = await this.listarNotificaciones(limite, desplazamiento);
+      if (this.usuario() !== usuario) return [];
+      for (const aviso of lote) avisos.set(aviso.id, aviso);
+      if (lote.length < limite) return [...avisos.values()];
+    }
+    return [];
+  }
+
   contarNotificacionesNoLeidas() {
     return this.consultar<number>('/notificaciones/no-leidas');
   }

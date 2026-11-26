@@ -192,7 +192,7 @@ export class EspacioEstudiante {
       const [actividades, resultados, notificaciones] = await Promise.all([
         this.api.listarActividadesEstudiante(),
         this.api.listarResultadosEstudiante(),
-        this.api.listarNotificaciones(100),
+        this.api.listarHistorialNotificaciones(),
         this.actualizarNoLeidas(),
       ]);
       this.actividades.set(actividades);
@@ -233,7 +233,7 @@ export class EspacioEstudiante {
       await this.ejecutar(async () => {
         await Promise.all([
           this.actualizarNoLeidas(),
-          this.api.listarNotificaciones(100).then((avisos) => this.notificaciones.set(avisos)),
+          this.api.listarHistorialNotificaciones().then((avisos) => this.notificaciones.set(avisos)),
         ]);
       });
     }
@@ -309,17 +309,28 @@ export class EspacioEstudiante {
   }
 
   seleccionarAviso(aviso: AvisoNotificacion, control: HTMLButtonElement) {
+    const fila = control.closest('article');
+    const posicion = fila?.getBoundingClientRect().top;
     this.controlAviso = control;
     this.idAvisoSeleccionado.set(aviso.id);
     this.error.set('');
-    afterNextRender(() => this.tituloDetalleAviso()?.nativeElement.focus(), { injector: this.inyector });
+    afterNextRender(() => {
+      if (this.controlAviso !== control || !control.isConnected) return;
+      if (fila && posicion !== undefined) {
+        const desplazamiento = fila.getBoundingClientRect().top - posicion;
+        if (Math.abs(desplazamiento) > 1) window.scrollBy({ top: desplazamiento, behavior: 'instant' });
+      }
+      this.tituloDetalleAviso()?.nativeElement.focus({ preventScroll: true });
+    }, { injector: this.inyector });
   }
 
-  cerrarDetalleAviso() {
+  cerrarDetalleAviso(restaurarFoco = true) {
     this.idAvisoSeleccionado.set(null);
     this.error.set('');
-    if (this.controlAviso?.isConnected) this.controlAviso.focus();
-    else this.tituloNotificaciones()?.nativeElement.focus();
+    if (restaurarFoco) {
+      const destino = this.controlAviso?.isConnected ? this.controlAviso : this.tituloNotificaciones()?.nativeElement;
+      destino?.focus({ preventScroll: true });
+    }
     this.controlAviso = null;
   }
 

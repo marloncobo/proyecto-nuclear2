@@ -530,14 +530,7 @@ main p, main small { color: #536970; overflow-wrap: anywhere; }
 .detalle-resultado small { display: block; margin-top: .35rem; }
 .detalle-resultado .acierto { color: #365d50; font-weight: 700; }
 
-.notificaciones-estudiante {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: start;
-  gap: 16px;
-}
 .detalle-aviso {
-  grid-row: 1;
   padding: clamp(16px, 2vw, 22px);
   border: 1px solid var(--borde);
   border-radius: 15px;
@@ -594,13 +587,6 @@ main p, main small { color: #536970; overflow-wrap: anywhere; }
 .datos-detalle-aviso dd { margin: 3px 0 0; font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
 .acciones-detalle-aviso { display: grid; gap: 8px; margin-top: 16px; }
 .aviso-leido { text-align: center; }
-
-@media (min-width: 1080px) {
-  .notificaciones-estudiante.con-detalle {
-    grid-template-columns: minmax(0, 1fr) minmax(260px, 32%);
-  }
-  .detalle-aviso { grid-column: 2; }
-}
 
 blockquote {
   margin: .85rem 0 0;
