@@ -233,11 +233,12 @@
   height: 40px;
   display: grid;
   place-items: center;
-  color: #567063;
+  color: var(--azul);
+  background: var(--salvia);
   border-radius: 5px;
 }
-.alternar-clave:hover {
-  background: #eaf0e8;
+.alternar-clave:hover:not(:disabled) {
+  background: #dbe6dc;
 }
 .boton-ingresar,
 .boton-demostracion {

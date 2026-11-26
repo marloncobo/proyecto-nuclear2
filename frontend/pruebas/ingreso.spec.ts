@@ -55,9 +55,13 @@ test('campos inválidos no envían solicitudes y la contraseña se puede mostrar
     return ruta.fulfill({ status: 401, json: {} });
   });
   await pagina.goto('/ingreso');
+  const ojo = pagina.getByRole('button', { name: 'Mostrar contraseña' });
+  await expect(ojo).toBeVisible();
+  await expect(ojo.locator('svg')).toBeVisible();
   await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
   await expect(pagina.getByText('Escribe un correo institucional válido.')).toBeVisible();
   await expect(pagina.getByText('Escribe tu contraseña.')).toBeVisible();
+  await expect(ojo).toBeVisible();
   await pagina.getByLabel('Correo institucional').fill('correo-invalido');
   await pagina.getByLabel('Contraseña', { exact: true }).fill('una-clave');
   await pagina.getByRole('button', { name: 'Mostrar contraseña' }).click();
@@ -396,14 +400,22 @@ test('evita doble envío y limpia la contraseña al fallar el acceso', async ({ 
   });
   await pagina.goto('/ingreso');
   await completarFormulario(pagina);
+  await pagina.getByRole('button', { name: 'Mostrar contraseña' }).click();
   await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
   await expect(pagina.getByRole('button', { name: 'Iniciando sesión…' })).toBeDisabled();
+  const ocultar = pagina.getByRole('button', { name: 'Ocultar contraseña' });
+  await expect(ocultar).toBeVisible();
+  await expect(ocultar).toBeDisabled();
   await expect(pagina.getByLabel('Correo institucional')).toHaveAttribute('readonly', '');
   await pagina.getByLabel('Contraseña', { exact: true }).press('Enter');
   resolver();
   await expect(pagina.getByRole('alert')).toHaveText('Correo o clave incorrectos.');
   await expect(pagina.getByRole('alert')).toBeFocused();
   await expect(pagina.getByLabel('Contraseña', { exact: true })).toHaveValue('');
+  const mostrar = pagina.getByRole('button', { name: 'Mostrar contraseña' });
+  await expect(mostrar).toBeVisible();
+  await expect(mostrar).toBeEnabled();
+  await expect(mostrar.locator('svg')).toBeVisible();
   expect(solicitudes).toBe(1);
 });
 
