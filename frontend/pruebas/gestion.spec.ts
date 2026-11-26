@@ -780,6 +780,59 @@ test('administración: búsqueda en API, contador y limpieza de filtros combinad
   await expect(pagina.locator('.cuenta')).toHaveCount(3);
 });
 
+test('administración: pagina de diez en diez y vuelve a la primera página al filtrar', async ({
+  page: pagina,
+}) => {
+  await pagina.setViewportSize({ width: 1440, height: 1000 });
+  const estado = await simularApi(pagina);
+  estado.usuarios.push(
+    ...Array.from({ length: 20 }, (_, indice) => ({
+      id: `lote-${indice}`,
+      nombre: `Usuario del lote ${indice + 1}`,
+      correo: `lote-${indice + 1}@example.test`,
+      rol: 'ESTUDIANTE',
+      activo: true,
+      puedeCrearCasos: false,
+    })),
+  );
+  await ingresar(pagina);
+
+  const filas = pagina.locator('.tabla-usuarios .cuenta');
+  const paginador = pagina.getByRole('navigation', { name: 'Paginación de usuarios' });
+  const anterior = paginador.getByRole('button', { name: 'Anterior' });
+  const siguiente = paginador.getByRole('button', { name: 'Siguiente' });
+  await expect(filas).toHaveCount(10);
+  await expect(pagina.locator('.resumen-usuarios')).toContainText('23 usuarios encontrados');
+  await expect(paginador).toContainText('Página 1 de 3');
+  await expect(anterior).toBeDisabled();
+  const primeraCuenta = await filas.first().innerText();
+
+  await siguiente.click();
+  await expect(paginador).toContainText('Página 2 de 3');
+  await expect(filas).toHaveCount(10);
+  await expect(filas.first()).not.toHaveText(primeraCuenta);
+
+  for (const pantalla of [{ width: 768, height: 1024 }, { width: 390, height: 844 }]) {
+    await pagina.setViewportSize(pantalla);
+    await expect(siguiente).toBeVisible();
+    expect(await paginador.evaluate((elemento) => elemento.scrollWidth <= elemento.clientWidth))
+      .toBe(true);
+  }
+  await siguiente.press('Enter');
+  await expect(paginador).toContainText('Página 3 de 3');
+  await expect(filas).toHaveCount(3);
+  await expect(siguiente).toBeDisabled();
+  await anterior.click();
+  await expect(paginador).toContainText('Página 2 de 3');
+
+  const buscar = pagina.getByLabel('Buscar usuarios');
+  await buscar.fill('Usuario del lote');
+  await buscar.press('Enter');
+  await expect(paginador).toContainText('Página 1 de 2');
+  await expect(filas).toHaveCount(10);
+  await expect(pagina.locator('.resumen-usuarios')).toContainText('20 usuarios encontrados');
+});
+
 test('administración: tabla compacta, etiquetas y explicación de cuenta propia', async ({
   page: pagina,
 }) => {

@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnInit, effect, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, OnInit, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ServicioApi, Rol, UsuarioAdministrado } from './servicio-api';
 import { EtiquetaUsuario, nombreEtiqueta } from './etiqueta-usuario';
@@ -20,7 +20,14 @@ export class Administracion implements OnInit {
   readonly requiereRecargarDetalle = signal(false);
   readonly rolAplicado = signal('');
   readonly estadoAplicado = signal('');
-  readonly usuariosVisibles = this.usuarios;
+  private readonly usuariosPorPagina = 10;
+  private readonly paginaSolicitada = signal(1);
+  readonly totalPaginas = computed(() => Math.max(1, Math.ceil(this.usuarios().length / this.usuariosPorPagina)));
+  readonly paginaActual = computed(() => Math.min(this.paginaSolicitada(), this.totalPaginas()));
+  readonly usuariosVisibles = computed(() => {
+    const inicio = (this.paginaActual() - 1) * this.usuariosPorPagina;
+    return this.usuarios().slice(inicio, inicio + this.usuariosPorPagina);
+  });
   readonly nombreEtiqueta = nombreEtiqueta;
   readonly pasosTutorial = pasosModalesAdministracion;
   readonly permisoDocente = signal<boolean | null>(null);
@@ -76,6 +83,10 @@ export class Administracion implements OnInit {
       limpiar(() => clearTimeout(temporizador));
     });
   }
+  cambiarPagina(desplazamiento: number) {
+    const pagina = this.paginaActual() + desplazamiento;
+    if (pagina >= 1 && pagina <= this.totalPaginas()) this.paginaSolicitada.set(pagina);
+  }
   private async refrescarListado() {
     try {
       const usuarios = await this.api.listarUsuarios(
@@ -84,6 +95,7 @@ export class Administracion implements OnInit {
         this.busquedaAplicada(),
       );
       this.usuarios.set(usuarios);
+      this.paginaSolicitada.set(this.paginaActual());
       this.requiereActualizar.set(false);
     } catch {
       // La escritura ya se confirmó: no presentar un fallo de lectura como si no se hubiese guardado.
@@ -127,6 +139,7 @@ export class Administracion implements OnInit {
         this.api.listarRoles(),
       ]);
       this.usuarios.set(usuarios);
+      this.paginaSolicitada.set(1);
       this.rolAplicado.set(rol);
       this.estadoAplicado.set(estado);
       this.busquedaAplicada.set(busqueda);
@@ -143,6 +156,7 @@ export class Administracion implements OnInit {
         busqueda = this.busqueda().trim();
       const usuarios = await this.api.listarUsuarios(rol, estado, busqueda);
       this.usuarios.set(usuarios);
+      this.paginaSolicitada.set(1);
       this.rolAplicado.set(rol);
       this.estadoAplicado.set(estado);
       this.busquedaAplicada.set(busqueda);

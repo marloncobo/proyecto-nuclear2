@@ -87,8 +87,8 @@
     </form>
     <div class="resumen-usuarios">
       <p role="status" aria-live="polite">
-        <strong>{{ usuariosVisibles().length }}</strong>
-        {{ usuariosVisibles().length === 1 ? 'usuario encontrado' : 'usuarios encontrados' }}
+        <strong>{{ usuarios().length }}</strong>
+        {{ usuarios().length === 1 ? 'usuario encontrado' : 'usuarios encontrados' }}
       </p>
       @if (busquedaAplicada()) {
         <span>Resultados por nombre o correo</span>
@@ -178,6 +178,27 @@
         </tbody>
       </table>
     </div>
+    @if (totalPaginas() > 1) {
+      <nav class="paginacion-usuarios" aria-label="Paginación de usuarios">
+        <button
+          type="button"
+          class="boton secundario"
+          [disabled]="ocupado() || paginaActual() === 1"
+          (click)="cambiarPagina(-1)"
+        >
+          Anterior
+        </button>
+        <span role="status">Página {{ paginaActual() }} de {{ totalPaginas() }}</span>
+        <button
+          type="button"
+          class="boton secundario"
+          [disabled]="ocupado() || paginaActual() === totalPaginas()"
+          (click)="cambiarPagina(1)"
+        >
+          Siguiente
+        </button>
+      </nav>
+    }
   }
   <section class="panel" aria-labelledby="titulo-permisos">
     <h2 id="titulo-permisos">Roles y permisos</h2>
