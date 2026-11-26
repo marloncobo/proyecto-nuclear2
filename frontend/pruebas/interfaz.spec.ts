@@ -379,7 +379,14 @@ test('reporte: Excel conserva notas, avance y ausencias como datos editables', a
   expect(hoja.getCell('B2').value).toBe('Análisis de grupo');
   expect(hoja.getCell('B3').value).toBe('Psicología social · 2026-2');
   expect(hoja.getCell('B4').text).toContain('10:00');
-  expect(hoja.views[0]).toMatchObject({ state: 'frozen', xSplit: 1, ySplit: 7 });
+  expect(libro.views).toMatchObject([{ activeTab: 0, visibility: 'visible' }]);
+  expect(hoja.views[0]).toMatchObject({
+    state: 'frozen',
+    xSplit: 0,
+    ySplit: 7,
+    topLeftCell: 'A8',
+    activeCell: 'A8',
+  });
   expect(hoja.autoFilter).toBe('A7:I9');
   expect(hoja.getCell('E7').value).toBe('Preguntas respondidas');
   expect(hoja.getCell('A8').value).toBe('Ana Aprendiz');

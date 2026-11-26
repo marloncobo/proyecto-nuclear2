@@ -3,12 +3,12 @@ import type { FilaReporteSesion } from './servicio-api';
 
 const columnas = [
   { titulo: 'Estudiante', width: 32 },
-  { titulo: 'Correo institucional', width: 39 },
-  { titulo: 'Estado', width: 19 },
-  { titulo: 'Calificación', width: 17 },
-  { titulo: 'Preguntas respondidas', width: 19 },
-  { titulo: 'Preguntas totales', width: 18 },
-  { titulo: 'Preguntas ausentes', width: 18 },
+  { titulo: 'Correo institucional', width: 36 },
+  { titulo: 'Estado', width: 17 },
+  { titulo: 'Calificación', width: 15 },
+  { titulo: 'Preguntas respondidas', width: 18 },
+  { titulo: 'Preguntas totales', width: 16 },
+  { titulo: 'Preguntas ausentes', width: 16 },
   { titulo: 'ID del estudiante', width: 40 },
   { titulo: 'ID del intento', width: 40 },
 ];
@@ -36,9 +36,20 @@ export async function generarReporteSesionExcel(
 ) {
   const libro = new Workbook();
   libro.creator = 'Psicoapp';
+  libro.views = [{
+    x: 0, y: 0, width: 22000, height: 12000, firstSheet: 0, activeTab: 0, visibility: 'visible',
+  }];
   const hoja = libro.addWorksheet('Participación', {
     properties: { tabColor: { argb: azul } },
-    views: [{ state: 'frozen', xSplit: 1, ySplit: filaEncabezados, showGridLines: false }],
+    // Las celdas combinadas del título y la nota deben quedar en un solo panel.
+    views: [{
+      state: 'frozen',
+      ySplit: filaEncabezados,
+      topLeftCell: 'A8',
+      activeCell: 'A8',
+      showGridLines: false,
+      zoomScale: 90,
+    }],
   });
   hoja.columns = columnas.map(({ width }) => ({ width }));
   hoja.getColumn(4).numFmt = '0.00';
@@ -48,7 +59,7 @@ export async function generarReporteSesionExcel(
   titulo.value = 'Reporte de participación';
   titulo.font = { name: 'Calibri', size: 16, bold: true, color: { argb: azul } };
   titulo.alignment = { vertical: 'middle', indent: 1 };
-  hoja.getRow(1).height = 32;
+  hoja.getRow(1).height = 28;
 
   const datosSesion = [
     ['Caso', sesion.caso],
@@ -61,7 +72,7 @@ export async function generarReporteSesionExcel(
     hoja.getCell(numeroFila, 1).value = etiqueta;
     hoja.getCell(numeroFila, 2).value = valor;
     const fila = hoja.getRow(numeroFila);
-    fila.height = 22;
+    fila.height = 19;
     fila.font = { name: 'Calibri', size: 11, color: { argb: texto } };
     fila.alignment = { vertical: 'middle', indent: 1 };
     hoja.getCell(numeroFila, 1).font = { ...fila.font, bold: true };
@@ -72,12 +83,12 @@ export async function generarReporteSesionExcel(
   nota.value = 'Una fila por intento, ausencia o estudiante sin intento. La nota queda en blanco cuando aún no está disponible.';
   nota.font = { name: 'Calibri', size: 11, italic: true, color: { argb: 'FF4B6269' } };
   nota.alignment = { vertical: 'middle', indent: 1 };
-  hoja.getRow(5).height = 23;
-  hoja.getRow(6).height = 8;
+  hoja.getRow(5).height = 19;
+  hoja.getRow(6).height = 7;
 
   const encabezados = hoja.getRow(filaEncabezados);
   encabezados.values = columnas.map(({ titulo }) => titulo);
-  encabezados.height = 32;
+  encabezados.height = 34;
   encabezados.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
   encabezados.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: azul } };
   encabezados.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
@@ -100,7 +111,7 @@ export async function generarReporteSesionExcel(
     ]);
     const lineas = Math.max(
       Math.ceil(registro.nombreEstudiante.length / 30),
-      Math.ceil(registro.correoEstudiante.length / 37),
+      Math.ceil(registro.correoEstudiante.length / 34),
       1,
     );
     fila.height = Math.max(23, lineas * 14 + 4);
