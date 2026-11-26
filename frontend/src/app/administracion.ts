@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnInit, effect, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, OnInit, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ServicioApi, Rol, UsuarioAdministrado } from './servicio-api';
 import { EtiquetaUsuario, nombreEtiqueta } from './etiqueta-usuario';
@@ -20,32 +20,35 @@ export class Administracion implements OnInit {
   readonly requiereRecargarDetalle = signal(false);
   readonly rolAplicado = signal('');
   readonly estadoAplicado = signal('');
-  readonly usuariosVisibles = this.usuarios;
+  private readonly usuariosPorPagina = 10;
+  private readonly paginaSolicitada = signal(1);
+  readonly totalPaginas = computed(() => Math.max(1, Math.ceil(this.usuarios().length / this.usuariosPorPagina)));
+  readonly paginaActual = computed(() => Math.min(this.paginaSolicitada(), this.totalPaginas()));
+  readonly usuariosVisibles = computed(() => {
+    const inicio = (this.paginaActual() - 1) * this.usuariosPorPagina;
+    return this.usuarios().slice(inicio, inicio + this.usuariosPorPagina);
+  });
   readonly nombreEtiqueta = nombreEtiqueta;
   readonly pasosTutorial = pasosModalesAdministracion;
-  readonly permisoDocente = signal<boolean | null>(null);
   readonly confirmarPermiso = signal(false);
-  readonly errorPermiso = signal('');
 
-  async cargarPermiso() {
-    this.errorPermiso.set('');
-    try {
-      const permiso = await this.api.consultarPermiso('DOCENTE');
-      this.permisoDocente.set(permiso.habilitado);
-    } catch {
-      this.errorPermiso.set('No se pudo consultar el permiso docente.');
-    }
+  prepararCambioPermiso(confirmar: boolean) {
+    this.confirmarPermiso.set(confirmar);
+    this.error.set('');
+    const selector = confirmar ? '#confirmar-permiso-docente' : '#cambiar-permiso-docente';
+    setTimeout(() => this.ventanaDetalle()?.nativeElement.querySelector<HTMLElement>(selector)?.focus());
   }
 
   async cambiarPermiso() {
-    const permiso = this.permisoDocente();
-    if (permiso === null) return;
+    const usuario = this.seleccionado();
+    if (usuario?.rol !== 'DOCENTE' || !this.confirmarPermiso()) return;
     await this.ejecutar(async () => {
-      await this.api.configurarPermiso(!permiso);
-      this.permisoDocente.set(!permiso);
+      const actualizado = await this.api.configurarPermiso(usuario.id, !usuario.puedeCrearCasos);
+      this.actualizar(actualizado);
       this.confirmarPermiso.set(false);
-      await this.refrescarListado();
-      this.aviso.set('Permiso docente actualizado.');
+      this.aviso.set('Permiso de creación actualizado.');
+      setTimeout(() => this.ventanaDetalle()?.nativeElement
+        .querySelector<HTMLElement>('#detalle-usuario')?.focus());
     });
   }
 
@@ -76,6 +79,10 @@ export class Administracion implements OnInit {
       limpiar(() => clearTimeout(temporizador));
     });
   }
+  cambiarPagina(desplazamiento: number) {
+    const pagina = this.paginaActual() + desplazamiento;
+    if (pagina >= 1 && pagina <= this.totalPaginas()) this.paginaSolicitada.set(pagina);
+  }
   private async refrescarListado() {
     try {
       const usuarios = await this.api.listarUsuarios(
@@ -84,6 +91,7 @@ export class Administracion implements OnInit {
         this.busquedaAplicada(),
       );
       this.usuarios.set(usuarios);
+      this.paginaSolicitada.set(this.paginaActual());
       this.requiereActualizar.set(false);
     } catch {
       // La escritura ya se confirmó: no presentar un fallo de lectura como si no se hubiese guardado.
@@ -100,7 +108,6 @@ export class Administracion implements OnInit {
 
   ngOnInit() {
     void this.cargar();
-    void this.cargarPermiso();
   }
 
   async ejecutar(accion: () => Promise<void>) {
@@ -127,6 +134,7 @@ export class Administracion implements OnInit {
         this.api.listarRoles(),
       ]);
       this.usuarios.set(usuarios);
+      this.paginaSolicitada.set(1);
       this.rolAplicado.set(rol);
       this.estadoAplicado.set(estado);
       this.busquedaAplicada.set(busqueda);
@@ -143,6 +151,7 @@ export class Administracion implements OnInit {
         busqueda = this.busqueda().trim();
       const usuarios = await this.api.listarUsuarios(rol, estado, busqueda);
       this.usuarios.set(usuarios);
+      this.paginaSolicitada.set(1);
       this.rolAplicado.set(rol);
       this.estadoAplicado.set(estado);
       this.busquedaAplicada.set(busqueda);
@@ -179,6 +188,7 @@ export class Administracion implements OnInit {
     }
     if (tipo === 'rol' && this.seleccionado()) this.nuevoRol = this.seleccionado()!.rol as Rol;
     this.confirmarCambio = false;
+    this.confirmarPermiso.set(false);
     this.error.set('');
     this.aviso.set('');
     this.vistaModal.set(tipo);
@@ -198,6 +208,7 @@ export class Administracion implements OnInit {
     this.nuevoPerfil = { nombre: '', correo: '', clave: '' };
     this.mostrarClave = false;
     this.confirmarCambio = false;
+    this.confirmarPermiso.set(false);
     this.editando = false;
     this.error.set('');
     this.aviso.set('');

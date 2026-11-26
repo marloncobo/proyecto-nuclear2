@@ -35,8 +35,8 @@ abstract class FlujoBackend {
         String idDocente = id(mvc.perform(post("/api/identidad/docentes").with(portador(mvc, admin, clave))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"correo\":\""+docente+"\",\"nombre\":\"Docente\",\"clave\":\""+clave+"\"}"))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
-        mvc.perform(put("/api/identidad/roles/DOCENTE/creacion-casos").with(portador(mvc, admin, clave))
-                .contentType(MediaType.APPLICATION_JSON).content("{\"habilitado\":true}")).andExpect(status().isNoContent());
+        mvc.perform(put("/api/identidad/usuarios/{id}/creacion-casos", idDocente).with(portador(mvc, admin, clave))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"habilitado\":true}")).andExpect(status().isOk());
         String idEstudiante = id(mvc.perform(post("/api/identidad/estudiantes").with(portador(mvc, docente, clave))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"correo\":\""+estudiante+"\",\"nombre\":\"Alumno\",\"clave\":\""+clave+"\"}"))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());

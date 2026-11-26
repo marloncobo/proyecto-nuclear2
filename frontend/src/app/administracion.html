@@ -87,8 +87,8 @@
     </form>
     <div class="resumen-usuarios">
       <p role="status" aria-live="polite">
-        <strong>{{ usuariosVisibles().length }}</strong>
-        {{ usuariosVisibles().length === 1 ? 'usuario encontrado' : 'usuarios encontrados' }}
+        <strong>{{ usuarios().length }}</strong>
+        {{ usuarios().length === 1 ? 'usuario encontrado' : 'usuarios encontrados' }}
       </p>
       @if (busquedaAplicada()) {
         <span>Resultados por nombre o correo</span>
@@ -178,25 +178,28 @@
         </tbody>
       </table>
     </div>
-  }
-  <section class="panel" aria-labelledby="titulo-permisos">
-    <h2 id="titulo-permisos">Roles y permisos</h2>
-    <p>El permiso de creación de casos se aplica a todos los docentes.</p>
-    @if (permisoDocente() !== null) {
-      <p>Creación de casos: {{ permisoDocente() ? 'Habilitada' : 'Sin permiso' }}</p>
-      @if (confirmarPermiso()) {
-        <button type="button" class="boton" [disabled]="ocupado()" (click)="cambiarPermiso()">Confirmar permiso</button>
-        <button type="button" class="boton secundario" [disabled]="ocupado()" (click)="confirmarPermiso.set(false)">Cancelar</button>
-      } @else {
-        <button type="button" class="boton" [disabled]="ocupado()" (click)="confirmarPermiso.set(true)">
-          {{ permisoDocente() ? 'Retirar' : 'Conceder' }} permiso de creación
+    @if (totalPaginas() > 1) {
+      <nav class="paginacion-usuarios" aria-label="Paginación de usuarios">
+        <button
+          type="button"
+          class="boton secundario"
+          [disabled]="ocupado() || paginaActual() === 1"
+          (click)="cambiarPagina(-1)"
+        >
+          Anterior
         </button>
-      }
-    } @else if (errorPermiso()) {
-      <p>{{ errorPermiso() }}</p>
-      <button type="button" class="boton secundario" (click)="cargarPermiso()">Reintentar</button>
+        <span role="status">Página {{ paginaActual() }} de {{ totalPaginas() }}</span>
+        <button
+          type="button"
+          class="boton secundario"
+          [disabled]="ocupado() || paginaActual() === totalPaginas()"
+          (click)="cambiarPagina(1)"
+        >
+          Siguiente
+        </button>
+      </nav>
     }
-  </section>
+  }
 </section>
 
 <dialog
@@ -263,10 +266,12 @@
             <psico-etiqueta-usuario [valor]="usuario.activo ? 'ACTIVO' : 'INACTIVO'" />
           </dd>
         </div>
-        <div>
-          <dt>Creación de casos</dt>
-          <dd>{{ usuario.puedeCrearCasos ? 'Habilitada' : 'Sin permiso' }}</dd>
-        </div>
+        @if (usuario.rol === 'DOCENTE') {
+          <div>
+            <dt>Creación de casos</dt>
+            <dd>{{ usuario.puedeCrearCasos ? 'Habilitada' : 'Sin permiso' }}</dd>
+          </div>
+        }
         <div class="identificador-detalle">
           <dt>Identificador</dt>
           <dd>{{ usuario.id }}</dd>
@@ -317,6 +322,12 @@
             >
               Editar docente
             </button>
+            @if (!confirmarPermiso()) {
+              <button id="cambiar-permiso-docente" type="button" class="boton secundario" [disabled]="ocupado()"
+                (click)="prepararCambioPermiso(true)">
+                {{ usuario.puedeCrearCasos ? 'Retirar' : 'Conceder' }} permiso de creación
+              </button>
+            }
           }
           <button
             class="boton secundario"
@@ -326,6 +337,15 @@
             Cambiar rol
           </button>
         </div>
+        @if (usuario.rol === 'DOCENTE' && confirmarPermiso()) {
+          <div class="confirmacion">
+            <p>¿{{ usuario.puedeCrearCasos ? 'Retirar' : 'Conceder' }} a {{ usuario.nombre }} el permiso para crear casos?</p>
+            <div class="acciones">
+              <button id="confirmar-permiso-docente" type="button" class="boton" [disabled]="ocupado()" (click)="cambiarPermiso()">Confirmar permiso</button>
+              <button type="button" class="boton secundario" [disabled]="ocupado()" (click)="prepararCambioPermiso(false)">Cancelar cambio de permiso</button>
+            </div>
+          </div>
+        }
         @if (usuario.id === api.usuario()?.id) {
           <p class="nota-modal">
             Tu propio rol de administrador debe conservarse para mantener el acceso.

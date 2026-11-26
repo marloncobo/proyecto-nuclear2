@@ -6,6 +6,7 @@
 
 **Ambiente** Angular y Spring Boot locales, Microsoft Edge, MySQL 8.0 aislado y
 un buzón SMTP de pruebas en la misma máquina. Se usaron cuentas y casos ficticios.
+Esta evidencia es anterior a la migración del adaptador de correo a Gmail.
 
 ## Caso de demostración
 
@@ -61,5 +62,5 @@ la autorización docente y la descarga.
   de evaluación actual. [Correspondencia del DSL](../dise%C3%B1o/dsl.md#correspondencia-con-la-implementación-actual)
 - Confirmar la interpretación de RF-22 con el responsable académico. La app
   aplica la mitad del intervalo programado según RN-15.
-- Aceptar el proveedor SMTP institucional y acordar el catálogo de requisitos
-  no funcionales. El buzón local comprueba la entrega SMTP en pruebas.
+- Aceptar institucionalmente Gmail y acordar el catálogo de requisitos no
+  funcionales. El adaptador actual se comprueba con un servidor HTTP simulado.

@@ -20,7 +20,7 @@ El proyecto está en una fase inicial: el backend incluye una base de usuarios,
 roles, permisos y espacios académicos con MySQL, autenticación y pruebas JUnit.
 Tambien incluye construccion/publicacion de casos y programacion base/ciclo de
 vida de sesiones, participacion, evaluacion y notificaciones con entregas durables.
-Consulta [notificaciones](docs/pruebas/notificaciones.md) para configurar SMTP,
+Consulta [notificaciones](docs/pruebas/notificaciones.md) para configurar Gmail,
 URL de acceso y clave de cifrado antes de programar sesiones.
 El frontend para docentes y administradores está implementado en Angular 21; consulta [su guía y límites](frontend/README.md). Consulta el README del backend
 para conocer el alcance implementado y las integraciones pendientes.

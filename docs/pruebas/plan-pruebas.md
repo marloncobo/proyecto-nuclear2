@@ -36,7 +36,7 @@ La evaluación no incluye diagnósticos clínicos ni utiliza datos personales re
 | Módulo implementado | Caso de uso vigente | Alcance evaluado |
 | --- | --- | --- |
 | `identity` — identidad | CU-02 Gestionar docentes | Alta de docentes, validación de datos, duplicados y restricción al administrador. |
-| `identity` — identidad | CU-03 Asignar roles y permisos | Cambio de rol, permiso CREAR_CASOS del rol docente, revocación y rechazos por autorización o invariantes implementadas. |
+| `identity` — identidad | CU-03 Asignar roles y permisos | Cambio de rol, permiso individual CREAR_CASOS para docentes, revocación y rechazos por autorización. |
 | `identity` — identidad | CU-01 Autenticarse en la convocatoria | Rechazo seguro sin adaptador; escenarios reales de aceptación y rechazo planeados, bloqueados por la integración de convocatorias. |
 | `identity` — identidad | CU-13 Convocar estudiantes inicialmente | Solo registro y reutilización de la identidad estudiantil como preparación. No se prueba una convocatoria real con esta operación. |
 | `academic` — organización académica | CU-12 Programar sesión; apoyo de CU-13 | Alta y consulta del catálogo de espacios. La asociación con sesión y estudiantes se documenta como integración pendiente. |
@@ -106,7 +106,7 @@ Los casos negativos deben aislar el motivo de rechazo: por ejemplo, una prueba d
 6. Autenticarse con `POST /api/identidad/ingreso` y enviar el token en `Authorization: Bearer` para cada ruta protegida. No se usan HTTP Basic, cookies de autenticación ni CSRF.
 7. Preparar docentes mediante CP-ID-001 y estudiantes mediante CP-ID-010 cuando lo requiera una ficha. Sustituir los UUID de ejemplo por identificadores realmente obtenidos.
 8. Registrar el estado inicial afectado. Usar correos distintos si un caso requiere una cuenta inexistente. Los datos del plan no deben coincidir con identidades reales.
-9. Restaurar roles y permisos después de cada prueba que los modifique. La concesión de CREAR_CASOS afecta a **todo el rol docente**, no solo a una cuenta.
+9. Restaurar roles y permisos después de cada prueba que los modifique. La concesión de CREAR_CASOS afecta solo a la cuenta docente seleccionada.
 10. Las comprobaciones de persistencia se hacen por la API cuando sea posible. Si se necesita una consulta controlada de base de datos, usar acceso autorizado y lecturas; evidenciar únicamente los campos mínimos, sin claves, hashes o códigos.
 
 Para ejecutar solo las pruebas automatizadas existentes:

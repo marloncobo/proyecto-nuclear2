@@ -193,15 +193,19 @@ class PruebaGestionIdentidadAcademica {
     }
 
     @Test
-    @DisplayName("RF-03: consulta del catalogo de roles y del permiso compartido")
+    @DisplayName("RF-03: consulta del catalogo de roles y del permiso individual")
     void consultaRolesYPermisos() throws Exception {
         mvc.perform(comoAdministrador(get("/api/identidad/roles"))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(3));
-        for (Rol rol : Rol.values()) {
-            mvc.perform(comoAdministrador(get("/api/identidad/roles/{rol}/creacion-casos", rol)))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.habilitado").value(
-                            rol == Rol.DOCENTE && identidades.consultarIdentidad(docente).puedeCrearCasos()));
-        }
+        mvc.perform(comoAdministrador(get("/api/identidad/usuarios/{id}", docente)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.puedeCrearCasos").value(false));
+        mvc.perform(comoAdministrador(put("/api/identidad/usuarios/{id}/creacion-casos", docente))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"habilitado\":true}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.puedeCrearCasos").value(true));
+        assertDoesNotThrow(() -> identidades.exigirCreacionCasos(docente));
+        identidades.cambiarRol(administrador, docente, Rol.ADMINISTRADOR);
+        identidades.cambiarRol(administrador, docente, Rol.DOCENTE);
+        assertFalse(identidades.consultarIdentidad(docente).puedeCrearCasos());
     }
 
     @Test
@@ -225,12 +229,12 @@ class PruebaGestionIdentidadAcademica {
     @DisplayName("RF-02/03/04: seguridad HTTP y autorizacion de servicios")
     void restringeRolesYExigeJwt() throws Exception {
         for (String ruta : new String[] {"/api/identidad/usuarios", "/api/identidad/usuarios/" + docente,
-                "/api/identidad/roles", "/api/identidad/roles/DOCENTE/creacion-casos"}) {
+                "/api/identidad/roles"}) {
             mvc.perform(get(ruta)).andExpect(status().isUnauthorized());
             mvc.perform(get(ruta).with(portador(mvc, correoDocente, CLAVE))).andExpect(status().isForbidden());
             mvc.perform(get(ruta).with(user(estudiante.toString()).roles("ESTUDIANTE"))).andExpect(status().isForbidden());
         }
-        for (String ruta : new String[] {"/api/identidad/docentes/" + docente, "/api/identidad/usuarios/" + docente + "/estado"}) {
+        for (String ruta : new String[] {"/api/identidad/docentes/" + docente, "/api/identidad/usuarios/" + docente + "/estado", "/api/identidad/usuarios/" + docente + "/creacion-casos"}) {
             mvc.perform(put(ruta).with(portador(mvc, correoDocente, CLAVE)).contentType(MediaType.APPLICATION_JSON).content("{}"))
                     .andExpect(status().isForbidden());
             mvc.perform(comoAdministrador(put(ruta)).contentType(MediaType.APPLICATION_JSON).content("{}"))

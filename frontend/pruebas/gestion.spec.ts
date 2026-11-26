@@ -124,7 +124,6 @@ test('administración: roles, filtros, detalle, edición y errores sin perder el
 }) => {
   const estado = await simularApi(pagina);
   await ingresar(pagina);
-  await expect(pagina.getByRole('heading', { name: 'Roles y permisos' })).toBeVisible();
   await expect(pagina.getByRole('heading', { name: 'Administración de usuarios.' })).toBeVisible();
   await expect(
     pagina.getByRole('button', { name: 'Biblioteca de casos', exact: true }),
@@ -232,13 +231,54 @@ test('administración: confirmación de estado y reactivación', async ({ page: 
       .filter((solicitud) => solicitud.metodo === 'PUT')
       .every((solicitud) => solicitud.autorizacion === 'Bearer token-ficticio'),
   ).toBeTruthy();
-  await pagina.getByRole('button', { name: 'Retirar permiso de creación' }).click();
-  await pagina.getByRole('button', { name: 'Confirmar permiso' }).click();
-  await expect(pagina.getByRole('button', { name: 'Conceder permiso de creación' })).toBeVisible();
-  expect(estado.permiso).toBe(false);
   await pagina.getByRole('button', { name: 'Cerrar sesión', exact: true }).click();
   await expect(pagina.getByRole('heading', { name: 'Administración de usuarios.' })).toHaveCount(0);
   expect(await pagina.evaluate(() => [localStorage.length, sessionStorage.length])).toEqual([0, 0]);
+});
+
+test('administración: concede y retira el permiso de creación de un solo docente', async ({
+  page: pagina,
+}) => {
+  const estado = await simularApi(pagina);
+  const docente = estado.usuarios.find((usuario) => usuario.rol === 'DOCENTE')!;
+  const otro = { ...docente, id: 'otro-docente', nombre: 'Otro docente', correo: 'otro@example.test' };
+  estado.usuarios.push(otro);
+  await ingresar(pagina);
+  await pagina.getByRole('button', { name: 'Ver detalle de Docente original' }).click();
+  const detalle = pagina.getByRole('dialog');
+  const confirmar = detalle.getByRole('button', { name: 'Confirmar permiso' });
+  await detalle.getByRole('button', { name: 'Retirar permiso de creación' }).click();
+  await expect(confirmar).toBeFocused();
+  await confirmar.press('Enter');
+  const conceder = detalle.getByRole('button', { name: 'Conceder permiso de creación' });
+  await expect(conceder).toBeVisible();
+  expect(docente.puedeCrearCasos).toBe(false);
+  expect(otro.puedeCrearCasos).toBe(true);
+  await conceder.click();
+  await confirmar.click();
+  await expect(detalle.getByRole('button', { name: 'Retirar permiso de creación' })).toBeVisible();
+  expect(docente.puedeCrearCasos).toBe(true);
+  expect(estado.solicitudes.filter((solicitud) => solicitud.ruta.endsWith('/creacion-casos')).map(
+    ({ ruta, datos }) => [ruta, datos.habilitado],
+  )).toEqual([
+    ['/api/identidad/usuarios/docente/creacion-casos', false],
+    ['/api/identidad/usuarios/docente/creacion-casos', true],
+  ]);
+
+  await detalle.getByRole('button', { name: 'Cerrar detalle de usuario' }).click();
+  await pagina.getByRole('button', { name: 'Ver detalle de Alumna de prueba' }).click();
+  await expect(detalle).toBeVisible();
+  await expect(detalle.getByRole('button', { name: /permiso de creación/ })).toHaveCount(0);
+});
+
+test('docente sin permiso individual no tiene el botón para crear casos', async ({ page: pagina }) => {
+  const estado = await simularApi(pagina, 'DOCENTE');
+  estado.usuarios.find((usuario) => usuario.rol === 'DOCENTE')!.puedeCrearCasos = false;
+  await ingresar(pagina, 'docente@example.test');
+  await expect(pagina.getByRole('button', { name: /Crear un caso/ })).toHaveCount(0);
+  await pagina.getByRole('button', { name: 'Biblioteca de casos' }).click();
+  await expect(pagina.getByRole('heading', { name: 'Biblioteca de casos.' })).toBeVisible();
+  await expect(pagina.getByRole('button', { name: /Crear un caso/ })).toHaveCount(0);
 });
 
 test('docente: registra desde el menú lateral y selecciona al estudiante en una sesión', async ({
@@ -778,6 +818,59 @@ test('administración: búsqueda en API, contador y limpieza de filtros combinad
   await expect(pagina.getByLabel('Filtrar por rol')).toHaveValue('');
   await expect(pagina.getByLabel('Filtrar por estado')).toHaveValue('');
   await expect(pagina.locator('.cuenta')).toHaveCount(3);
+});
+
+test('administración: pagina de diez en diez y vuelve a la primera página al filtrar', async ({
+  page: pagina,
+}) => {
+  await pagina.setViewportSize({ width: 1440, height: 1000 });
+  const estado = await simularApi(pagina);
+  estado.usuarios.push(
+    ...Array.from({ length: 20 }, (_, indice) => ({
+      id: `lote-${indice}`,
+      nombre: `Usuario del lote ${indice + 1}`,
+      correo: `lote-${indice + 1}@example.test`,
+      rol: 'ESTUDIANTE',
+      activo: true,
+      puedeCrearCasos: false,
+    })),
+  );
+  await ingresar(pagina);
+
+  const filas = pagina.locator('.tabla-usuarios .cuenta');
+  const paginador = pagina.getByRole('navigation', { name: 'Paginación de usuarios' });
+  const anterior = paginador.getByRole('button', { name: 'Anterior' });
+  const siguiente = paginador.getByRole('button', { name: 'Siguiente' });
+  await expect(filas).toHaveCount(10);
+  await expect(pagina.locator('.resumen-usuarios')).toContainText('23 usuarios encontrados');
+  await expect(paginador).toContainText('Página 1 de 3');
+  await expect(anterior).toBeDisabled();
+  const primeraCuenta = await filas.first().innerText();
+
+  await siguiente.click();
+  await expect(paginador).toContainText('Página 2 de 3');
+  await expect(filas).toHaveCount(10);
+  await expect(filas.first()).not.toHaveText(primeraCuenta);
+
+  for (const pantalla of [{ width: 768, height: 1024 }, { width: 390, height: 844 }]) {
+    await pagina.setViewportSize(pantalla);
+    await expect(siguiente).toBeVisible();
+    expect(await paginador.evaluate((elemento) => elemento.scrollWidth <= elemento.clientWidth))
+      .toBe(true);
+  }
+  await siguiente.press('Enter');
+  await expect(paginador).toContainText('Página 3 de 3');
+  await expect(filas).toHaveCount(3);
+  await expect(siguiente).toBeDisabled();
+  await anterior.click();
+  await expect(paginador).toContainText('Página 2 de 3');
+
+  const buscar = pagina.getByLabel('Buscar usuarios');
+  await buscar.fill('Usuario del lote');
+  await buscar.press('Enter');
+  await expect(paginador).toContainText('Página 1 de 2');
+  await expect(filas).toHaveCount(10);
+  await expect(pagina.locator('.resumen-usuarios')).toContainText('20 usuarios encontrados');
 });
 
 test('administración: tabla compacta, etiquetas y explicación de cuenta propia', async ({

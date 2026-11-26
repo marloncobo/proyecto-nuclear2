@@ -101,6 +101,7 @@ class PruebaPersistenciaMysqlIT {
     void prepararDatos() {
         assertEquals(ESQUEMA, jdbc.sql("SELECT DATABASE()").query(String.class).single());
         // Estas operaciones solo se hacen sobre el esquema aleatorio creado arriba.
+        jdbc.sql("DELETE FROM permiso_creacion_casos").update();
         jdbc.sql("DELETE FROM rol_permiso").update();
         jdbc.sql("DELETE FROM usuario").update();
         jdbc.sql("DELETE FROM espacio_academico").update();
@@ -176,22 +177,24 @@ class PruebaPersistenciaMysqlIT {
     }
 
     @Test
-    @DisplayName("CP-ID-007/008: rol_permiso es idempotente, compartido y revocable")
+    @DisplayName("CP-ID-007/008: el permiso individual es idempotente y revocable")
     void permisosPersistenParaDosDocentes() throws Exception {
         for (boolean habilitado : new boolean[]{true, true, false, false}) {
-            modificar(put("/api/identidad/roles/DOCENTE/creacion-casos"), ADMINISTRADOR,
-                    "{\"habilitado\":" + habilitado + "}").andExpect(status().isNoContent());
-            assertEquals(habilitado ? 1 : 0, jdbc.sql("SELECT COUNT(*) FROM rol_permiso").query(Integer.class).single());
+            modificar(put("/api/identidad/usuarios/{id}/creacion-casos", idCuenta(DOCENTE)), ADMINISTRADOR,
+                    "{\"habilitado\":" + habilitado + "}").andExpect(status().isOk());
+            assertEquals(habilitado ? 1 : 0, jdbc.sql("SELECT COUNT(*) FROM permiso_creacion_casos").query(Integer.class).single());
             for (String correo : new String[]{DOCENTE, OTRO_DOCENTE}) {
                 mvc.perform(get("/api/identidad/yo").with(portador(mvc, correo, CLAVE)))
-                        .andExpect(status().isOk()).andExpect(jsonPath("$.puedeCrearCasos").value(habilitado));
+                        .andExpect(status().isOk()).andExpect(jsonPath("$.puedeCrearCasos").value(correo.equals(DOCENTE) && habilitado));
             }
         }
-        modificar(put("/api/identidad/roles/DOCENTE/creacion-casos"), DOCENTE,
+        modificar(put("/api/identidad/usuarios/{id}/creacion-casos", idCuenta(DOCENTE)), DOCENTE,
                 "{\"habilitado\":true}").andExpect(status().isForbidden());
-        modificar(put("/api/identidad/roles/ESTUDIANTE/creacion-casos"), ADMINISTRADOR,
+        var estudiante = identidades.registrarEstudiante(UUID.fromString(idCuenta(DOCENTE)),
+                "alumno@universidad.example", "Alumno");
+        modificar(put("/api/identidad/usuarios/{id}/creacion-casos", estudiante.id()), ADMINISTRADOR,
                 "{\"habilitado\":true}").andExpect(status().isBadRequest());
-        assertEquals(0, jdbc.sql("SELECT COUNT(*) FROM rol_permiso").query(Integer.class).single());
+        assertEquals(0, jdbc.sql("SELECT COUNT(*) FROM permiso_creacion_casos").query(Integer.class).single());
     }
 
     @Test
@@ -329,7 +332,7 @@ class PruebaPersistenciaMysqlIT {
         UUID idEspacio;
         try (var primera = arrancarBackend()) {
             var servicio = primera.getBean(ServicioUsuarios.class);
-            servicio.configurarCreacionCasos(idAdministrador, Rol.DOCENTE, true);
+            servicio.configurarCreacionCasos(idAdministrador, UUID.fromString(idCuenta(DOCENTE)), true);
             idEspacio = primera.getBean(FachadaAdministracion.class)
                     .crearEspacio(UUID.fromString(idCuenta(DOCENTE)), "Persistente", "2026-2").id();
         }
@@ -357,19 +360,19 @@ class PruebaPersistenciaMysqlIT {
     }
 
     @Test
-    @DisplayName("Persistencia: un fallo transaccional revierte el alta y el permiso del rol")
+    @DisplayName("Persistencia: un fallo transaccional revierte el alta y el permiso individual")
     void falloTransaccionalRevierteEscrituras() {
         var anterior = cuentas();
         var transaccion = new TransactionTemplate(transacciones);
         assertThrows(IllegalStateException.class, () -> transaccion.executeWithoutResult(estado -> {
             identidades.registrarDocente(idAdministrador, "transaccion@universidad.example", "Temporal", CLAVE);
-            identidades.configurarCreacionCasos(idAdministrador, Rol.DOCENTE, true);
+            identidades.configurarCreacionCasos(idAdministrador, UUID.fromString(idCuenta(DOCENTE)), true);
             assertEquals(4, cuentas().size());
-            assertEquals(1, jdbc.sql("SELECT COUNT(*) FROM rol_permiso").query(Integer.class).single());
+            assertEquals(1, jdbc.sql("SELECT COUNT(*) FROM permiso_creacion_casos").query(Integer.class).single());
             throw new IllegalStateException("Fallo controlado para verificar rollback");
         }));
         assertEquals(anterior, cuentas());
-        assertEquals(0, jdbc.sql("SELECT COUNT(*) FROM rol_permiso").query(Integer.class).single());
+        assertEquals(0, jdbc.sql("SELECT COUNT(*) FROM permiso_creacion_casos").query(Integer.class).single());
     }
 
     // Se omiten hashes en las instantáneas y en los mensajes de aserción.

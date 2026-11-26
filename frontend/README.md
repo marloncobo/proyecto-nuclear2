@@ -41,7 +41,7 @@ un 403 no cierra la sesión. No hay renovación automática. Consultar la
 - Administración con navegación propia según rol: listado de usuarios con búsqueda por nombre/correo en el servidor y filtros combinables de rol/estado, detalle y edición de docentes en una ventana modal, y activación/desactivación confirmada. La ventana se cierra con Escape, la cruz, el fondo o «Volver al listado» y devuelve el foco al botón de origen; durante el guardado permanece abierta. Los errores de edición se muestran dentro de ella. La cuenta propia no se puede desactivar.
 - Registro de docentes en un modal con nombre, correo y contraseña inicial (8 caracteres como mínimo, hasta 72 bytes). No se almacena la contraseña en el navegador; el formulario se limpia al cancelar o completar el registro. Un error conserva los campos para corregirlos. El nuevo docente se incorpora al listado si coincide con los filtros actuales.
 - Cambio de rol desde el detalle, con revisión y confirmación dentro de la misma ventana. Se conserva el estado activo/inactivo y se respetan los filtros del listado. No se permite retirar el rol de la propia cuenta administrativa. El servidor valida el dominio al convertir a estudiante y rechaza cuentas estudiantiles sin contraseña al convertirlas a personal.
-- La activación y desactivación de usuarios se confirman en modales. La configuración global del permiso de creación de casos requiere confirmación y afecta a todo el rol docente.
+- La activación y desactivación de usuarios se confirman en modales. Desde el detalle de cada docente, el administrador puede confirmar la concesión o revocación de su permiso para crear casos.
 - El espacio protegido `/estudiante` presenta actividades, simulación, resultados por intento y notificaciones. Un enlace `/ingreso?sesion=` conserva la sesión durante el login y el cambio obligatorio de contraseña inicial. Consultar la actividad no crea intentos: el tiempo comienza únicamente al pulsar «Iniciar actividad». Una actividad en curso recupera pregunta, respuestas y límite del backend. La navegación respeta la modalidad de la sesión y las explicaciones solo aparecen después del cierre.
 - El menú docente incluye «Notificaciones» con contador de no leídas e historial. Presenta recordatorios de sesiones próximas, cierres, estudiantes pendientes, evaluaciones disponibles y reportes listos; cada docente consulta y marca únicamente sus propios avisos.
 
@@ -61,7 +61,7 @@ El restablecimiento de contraseñas queda fuera del alcance de la interfaz. La a
 | Registrar docente        | `POST /api/identidad/docentes`                                                                     |
 | Editar docente           | `PUT /api/identidad/docentes/{id}`                                                                 |
 | Activar/desactivar       | `PUT /api/identidad/usuarios/{id}/estado`                                                          |
-| Permiso de creación      | `GET /api/identidad/roles/{rol}/creacion-casos`, `PUT /api/identidad/roles/DOCENTE/creacion-casos` |
+| Permiso de creación      | `GET /api/identidad/usuarios/{idUsuario}`, `PUT /api/identidad/usuarios/{idUsuario}/creacion-casos` |
 | Catálogo y cambio de rol | `GET /api/identidad/roles`, `PUT /api/identidad/usuarios/{id}/rol`                                 |
 
 Las escrituras envían el JWT Bearer y solo actualizan los datos visibles tras una respuesta correcta. No hay endpoints administrativos de borrado o recuperación de contraseñas en este contrato.

@@ -63,7 +63,6 @@ export const pasosAplicacion: Record<string, readonly PasoTutorial[]> = {
     paso('#actualizar-usuarios', 'Actualizar lista', 'Vuelve a consultar las cuentas y su estado actual.'),
     paso('.filtros', 'Buscar y filtrar cuentas', 'Busca por nombre o correo y combina los filtros de rol y estado.'),
     paso('.cuenta, #titulo-administracion', 'Administrar cuentas', 'Abre una cuenta para ver sus datos, editar lo permitido o cambiar su rol o estado.'),
-    paso('#titulo-permisos', 'Roles y permisos', 'Concede o retira al rol docente el permiso para crear casos.'),
     cuenta,
   ],
 };

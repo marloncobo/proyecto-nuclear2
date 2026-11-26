@@ -171,8 +171,8 @@ participacion conserva sus
 controles independientes de convocatoria, estado y ventana temporal.
 
 Se agregan las tablas `notificacion` y `valoracion_docente` al esquema.
-La dependencia nueva `spring-boot-starter-mail` implementa el puerto SMTP.
-**Antes de convocar:** configurar clave AES persistente, URL de acceso y SMTP
+El adaptador de infraestructura implementa el puerto de correo mediante la API HTTPS de Gmail.
+**Antes de convocar:** configurar clave AES persistente, URL de acceso y Gmail
 segun la [guia de notificaciones](../docs/pruebas/notificaciones.md).
 El correo incluye el enlace de ingreso, la sesión, el caso y el mensaje docente, sin contraseñas ni códigos.
 Los avisos docentes se reconstruyen de forma idempotente desde sesiones, intentos
@@ -289,16 +289,19 @@ un único módulo debe permanecer en ese módulo.
 ## Identidad y organización académica — MVP
 
 Se implementan usuarios, los tres roles, asignación de roles por administrador,
-permiso `CREAR_CASOS` para el rol docente, registro de estudiantes institucionales
+permiso individual `CREAR_CASOS` para cuentas docentes, registro de estudiantes institucionales
 y creación/consulta de espacios académicos con nombre y periodo. La persistencia
 usa MySQL y JDBC; las contraseñas se almacenan con BCrypt.
 
 La base de identidad y espacios en `src/main/resources/schema.sql` reproduce `USUARIO`,
 `ROL`, `PERMISO`, `ROL_PERMISO` y `ESPACIO_ACADEMICO` del
 [modelo ER](../docs/diseño/ModeloER.drawio). Los UUID se representan mediante
-`CHAR(36)`. Los permisos pertenecen al rol según el ER: conceder `CREAR_CASOS`
-afecta a todos los docentes. No hay permisos individuales ni tablas de membresía
-de estudiantes a espacios académicos en ese modelo.
+`CHAR(36)`. La tabla `permiso_creacion_casos` guarda una concesión por cuenta.
+Solo los docentes pueden recibirla y se retira al salir del rol docente.
+Al inicializar el esquema, si existía una concesión general, se copia una vez
+a los docentes existentes y se retira del rol. Los docentes nuevos empiezan
+sin permiso. Si la inicialización SQL está desactivada, aplica el
+[esquema actualizado](src/main/resources/schema.sql) antes de levantar el backend.
 
 La fachada acotada `FachadaAdministracion` coordina autorización mediante
 el contrato público `DirectorioIdentidad` y operaciones de espacios académicos.
@@ -354,6 +357,9 @@ Configura estas variables en `.env` (sin versionar secretos):
 | `PSICOAPP_JWT_CLAVE` | Clave HS256 Base64 de 32 bytes o más; vacía genera una clave efímera |
 | `PSICOAPP_CORS_ORIGENES` | Orígenes web exactos permitidos, separados por comas; vacío deshabilita CORS |
 | `PSICOAPP_NOTIFICACIONES_CLAVE_CIFRADO` | Clave AES-256-GCM Base64 para cifrar notificaciones |
+| `PSICOAPP_NOTIFICACIONES_REMITENTE` | Dirección de la cuenta Gmail autorizada |
+| `PSICOAPP_GMAIL_ID_CLIENTE`, `PSICOAPP_GMAIL_SECRETO_CLIENTE`, `PSICOAPP_GMAIL_TOKEN_RENOVACION` | Credenciales OAuth 2.0 de la cuenta remitente |
+| `PSICOAPP_NOTIFICACIONES_DESPACHO` | `true` habilita la entrega; `false` conserva los correos pendientes |
 | `PSICOAPP_NOTIFICACIONES_AVISOS_DOCENTE` | Habilita o pausa la generación de nuevos avisos docentes; predeterminado `true` |
 | `PSICOAPP_NOTIFICACIONES_RECORDATORIO_HORAS` | Anticipación del recordatorio de sesión, en horas; rango 1–168, predeterminado `24` |
 | `PSICOAPP_NOTIFICACIONES_AVISOS_DOCENTE_INTERVALO_MS` | Intervalo entre revisiones de avisos docentes, en milisegundos; predeterminado `60000` |
@@ -393,7 +399,7 @@ Para usarla fuera de localhost, servir la API mediante HTTPS.
 | `GET /api/identidad/yo` | Usuario autenticado: identidad y permiso, sin hashes |
 | `POST /api/identidad/docentes` | Administrador: `{ "correo": "docente@universidad.edu.co", "nombre": "Docente", "clave": "clave-ficticia" }` |
 | `PUT /api/identidad/usuarios/{idUsuario}/rol` | Administrador: `{ "rol": "DOCENTE" }`; también `ADMINISTRADOR` o `ESTUDIANTE` |
-| `PUT /api/identidad/roles/DOCENTE/creacion-casos` | Administrador: `{ "habilitado": true }` concede; `false` retira |
+| `PUT /api/identidad/usuarios/{idUsuario}/creacion-casos` | Administrador: `{ "habilitado": true }` concede y `false` retira para ese docente. Devuelve el perfil actualizado |
 | `POST /api/identidad/estudiantes` | Docente: `{ "correo": "estudiante@universidad.edu.co", "nombre": "Estudiante" }`; reutiliza cuentas estudiantiles existentes |
 | `POST /api/academico/espacios` | Docente: `{ "nombre": "Psicología social", "periodo": "2026-2" }` |
 | `GET /api/academico/espacios` | Docente: espacios disponibles |
@@ -403,7 +409,6 @@ Para usarla fuera de localhost, servir la API mediante HTTPS.
 | `PUT /api/identidad/docentes/{idUsuario}` | Administrador: `{ "correo": "docente@universidad.edu.co", "nombre": "Docente actualizado" }`; exige rol DOCENTE |
 | `PUT /api/identidad/usuarios/{idUsuario}/estado` | Administrador: `{ "activo": false }` desactiva; `true` reactiva |
 | `GET /api/identidad/roles` | Administrador: arreglo de los tres nombres de rol |
-| `GET /api/identidad/roles/{rol}/creacion-casos` | Administrador: `{ "habilitado": true }`; otros roles distintos de DOCENTE devuelven `false` |
 | `GET /api/identidad/estudiantes?correo=alumno@universidad.edu.co` | Docente: un estudiante activo por correo institucional exacto, normalizado; 404 si no existe |
 | `PUT /api/academico/espacios/{id}` | Docente: `{ "nombre": "Psicologia social", "periodo": "2027-1" }`; 409 si alguna sesion usa el espacio |
 
@@ -469,7 +474,7 @@ CP-AC-007. Usa controladores, autenticación, validación y servicios reales;
 solo sustituye los puertos de almacenamiento con dobles en memoria reiniciados
 antes de cada ejecución. Las modificaciones obtienen un JWT del endpoint real de
 ingreso. Comprueba también el estado posterior a los rechazos, la autorización
-después de cambiar un rol y los permisos compartidos entre dos docentes.
+después de cambiar un rol y el aislamiento del permiso entre docentes.
 Esta clase no verifica JDBC, transacciones, restricciones ni orden de MySQL, ni
 supervivencia de los datos al reiniciar; esas comprobaciones están en la suite
 de integración siguiente. Los flujos de convocatorias y programación incorporados

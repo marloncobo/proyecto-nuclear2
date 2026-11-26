@@ -17,7 +17,7 @@ El frontend para administradores, docentes y estudiantes usa Angular 21. Incluye
 
 El backend tambien incluye construccion/publicacion de casos y programacion
 sesiones con State, participacion, evaluacion y notificaciones con Observer.
-Las convocatorias se entregan por SMTP y los resultados/valoraciones mediante
+Las convocatorias se entregan mediante la API HTTPS de Gmail y los resultados/valoraciones mediante
 avisos internos persistentes. Consulta la [configuracion de notificaciones](docs/pruebas/notificaciones.md)
 antes de programar sesiones y los limites en el [README del backend](backend/README.md).
 

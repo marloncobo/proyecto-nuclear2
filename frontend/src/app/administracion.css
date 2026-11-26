@@ -382,6 +382,14 @@ p {
   overflow: hidden;
   background: white;
 }
+.paginacion-usuarios {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: .75rem;
+  margin: 1rem 0;
+}
 .tabla-usuarios {
   border-collapse: collapse;
   table-layout: fixed;

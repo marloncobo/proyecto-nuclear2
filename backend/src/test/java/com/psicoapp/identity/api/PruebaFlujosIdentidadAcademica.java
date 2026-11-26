@@ -5,7 +5,7 @@ import com.psicoapp.academic.api.ControladorEspaciosAcademicos;
 import com.psicoapp.academic.application.FachadaAdministracion;
 import com.psicoapp.academic.application.RepositorioEspaciosAcademicos;
 import com.psicoapp.academic.domain.EspacioAcademico;
-import com.psicoapp.identity.application.PermisosRol;
+import com.psicoapp.identity.application.PermisosUsuario;
 import com.psicoapp.identity.application.RepositorioUsuarios;
 import com.psicoapp.identity.application.ServicioUsuarios;
 import com.psicoapp.identity.domain.Rol;
@@ -14,7 +14,7 @@ import com.psicoapp.identity.infrastructure.ConfiguracionIdentidad;
 import com.psicoapp.identity.infrastructure.ProveedorAutenticacionIdentidad;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -58,23 +58,23 @@ class PruebaFlujosIdentidadAcademica {
     private static final String OTRO_DOCENTE = "otro.docente@universidad.example";
     private static final String ESTUDIANTE = "estudiante@universidad.example";
     private static final String ESPACIOS = "/api/academico/espacios";
-    private static final String PERMISOS = "/api/identidad/roles/DOCENTE/creacion-casos";
+    private static final String PERMISOS = "/api/identidad/usuarios/{id}/creacion-casos";
 
     @Autowired MockMvc mvc;
     @Autowired PasswordEncoder claves;
     @MockitoBean RepositorioUsuarios usuarios;
-    @MockitoBean PermisosRol permisos;
+    @MockitoBean PermisosUsuario permisos;
     @MockitoBean RepositorioEspaciosAcademicos espacios;
     @MockitoBean com.psicoapp.academic.application.ConsultaUsoEspacios usoEspacios;
     private final Map<UUID, Usuario> cuentas = new LinkedHashMap<>();
     private final Map<UUID, EspacioAcademico> catalogo = new LinkedHashMap<>();
-    private final EnumSet<Rol> rolesConPermiso = EnumSet.noneOf(Rol.class);
+    private final HashSet<UUID> cuentasConPermiso = new HashSet<>();
 
     @BeforeEach
     void preparar() {
         cuentas.clear();
         catalogo.clear();
-        rolesConPermiso.clear();
+        cuentasConPermiso.clear();
         // Solo los puertos de almacenamiento se sustituyen. La autenticación, las
         // validaciones, las reglas de negocio y los controladores son los reales.
         when(usuarios.buscarPorId(any())).thenAnswer(consulta -> Optional.ofNullable(cuentas.get(consulta.getArgument(0))));
@@ -85,13 +85,15 @@ class PruebaFlujosIdentidadAcademica {
             cuentas.put(usuario.id(), usuario);
             return null;
         }).when(usuarios).guardar(any());
-        when(permisos.puedeCrearCasos(any())).thenAnswer(consulta -> rolesConPermiso.contains(consulta.getArgument(0)));
+        when(permisos.puedeCrearCasos(any())).thenAnswer(consulta -> cuentasConPermiso.contains(consulta.getArgument(0)));
         doAnswer(operacion -> {
-            Rol rol = operacion.getArgument(0);
-            if (operacion.<Boolean>getArgument(1)) rolesConPermiso.add(rol);
-            else rolesConPermiso.remove(rol);
+            UUID id = operacion.getArgument(0);
+            if (operacion.<Boolean>getArgument(1)) cuentasConPermiso.add(id);
+            else cuentasConPermiso.remove(id);
             return null;
         }).when(permisos).configurarCreacionCasos(any(), anyBoolean());
+        doAnswer(operacion -> { cuentasConPermiso.remove(operacion.getArgument(0)); return null; })
+                .when(permisos).retirarCreacionCasos(any());
         when(espacios.buscarPorId(any())).thenAnswer(consulta -> Optional.ofNullable(catalogo.get(consulta.getArgument(0))));
         when(espacios.listarTodos()).thenAnswer(consulta -> new ArrayList<>(catalogo.values()));
         doAnswer(operacion -> {
@@ -166,7 +168,7 @@ class PruebaFlujosIdentidadAcademica {
         var inicial = Map.copyOf(cuentas);
         modificar(post("/api/identidad/docentes"), DOCENTE, datosDocente("nuevo@universidad.example", "Nuevo", CLAVE))
                 .andExpect(status().isForbidden());
-        modificar(put(PERMISOS), DOCENTE, "{\"habilitado\":true}").andExpect(status().isForbidden());
+        modificar(put(PERMISOS, cuenta(DOCENTE).id()), DOCENTE, "{\"habilitado\":true}").andExpect(status().isForbidden());
         assertEquals(inicial, cuentas);
         verify(usuarios, never()).guardar(any());
         verify(permisos, never()).configurarCreacionCasos(any(), anyBoolean());
@@ -180,11 +182,11 @@ class PruebaFlujosIdentidadAcademica {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(cuenta(DOCENTE).id().toString()))
                 .andExpect(jsonPath("$.rol").value("ADMINISTRADOR"));
         consultarIdentidad(DOCENTE).andExpect(jsonPath("$.rol").value("ADMINISTRADOR"));
-        modificar(put(PERMISOS), DOCENTE, "{\"habilitado\":true}").andExpect(status().isNoContent());
+        modificar(put(PERMISOS, cuenta(OTRO_DOCENTE).id()), DOCENTE, "{\"habilitado\":true}").andExpect(status().isOk());
         modificar(put(ruta), ADMINISTRADOR, "{\"rol\":\"DOCENTE\"}")
                 .andExpect(status().isOk()).andExpect(jsonPath("$.rol").value("DOCENTE"));
         consultarIdentidad(DOCENTE).andExpect(jsonPath("$.rol").value("DOCENTE"));
-        modificar(put(PERMISOS), DOCENTE, "{\"habilitado\":false}").andExpect(status().isForbidden());
+        modificar(put(PERMISOS, cuenta(DOCENTE).id()), DOCENTE, "{\"habilitado\":false}").andExpect(status().isForbidden());
     }
 
     @Test
@@ -199,25 +201,25 @@ class PruebaFlujosIdentidadAcademica {
     }
 
     @Test
-    @DisplayName("CP-ID-007: concesión y revocación del permiso afectan a dos docentes")
-    void permisoDelRolAfectaDosDocentes() throws Exception {
+    @DisplayName("CP-ID-007: el permiso de un docente no afecta a otro")
+    void permisoIndividualNoAfectaOtroDocente() throws Exception {
         for (boolean habilitado : new boolean[]{false, true, false}) {
-            modificar(put(PERMISOS), ADMINISTRADOR, "{\"habilitado\":" + habilitado + "}")
-                    .andExpect(status().isNoContent());
+            modificar(put(PERMISOS, cuenta(DOCENTE).id()), ADMINISTRADOR, "{\"habilitado\":" + habilitado + "}")
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.puedeCrearCasos").value(habilitado));
             for (String correo : new String[]{DOCENTE, OTRO_DOCENTE}) {
                 consultarIdentidad(correo).andExpect(status().isOk())
-                        .andExpect(jsonPath("$.puedeCrearCasos").value(habilitado));
+                        .andExpect(jsonPath("$.puedeCrearCasos").value(correo.equals(DOCENTE) && habilitado));
             }
         }
-        assertTrue(rolesConPermiso.isEmpty());
+        assertTrue(cuentasConPermiso.isEmpty());
     }
 
     @Test
     @DisplayName("CP-ID-008: no se concede CREAR_CASOS al rol estudiante por HTTP")
     void rechazaPermisoParaEstudiantePorHttp() throws Exception {
-        modificar(put("/api/identidad/roles/ESTUDIANTE/creacion-casos"), ADMINISTRADOR,
+        modificar(put(PERMISOS, cuenta(ESTUDIANTE).id()), ADMINISTRADOR,
                 "{\"habilitado\":true}").andExpect(status().isBadRequest());
-        assertTrue(rolesConPermiso.isEmpty());
+        assertTrue(cuentasConPermiso.isEmpty());
         verify(permisos, never()).configurarCreacionCasos(any(), anyBoolean());
     }
 
