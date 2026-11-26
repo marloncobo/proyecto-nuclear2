@@ -131,9 +131,9 @@ public class ServicioUsuarios implements DirectorioIdentidad {
     }
 
     @Transactional(readOnly = true)
-    public List<DatosUsuario> listarEstudiantesParaEditar(UUID idActor) {
+    public List<DatosUsuarioAdministrado> listarEstudiantesParaEditar(UUID idActor) {
         exigirGestorEstudiantes(idActor);
-        return usuarios.listar(Rol.ESTUDIANTE, null).stream().map(this::representarUsuario).toList();
+        return usuarios.listar(Rol.ESTUDIANTE, null).stream().map(this::representarAdministrado).toList();
     }
 
     private DatosUsuarioAdministrado representarAdministrado(Usuario usuario) {

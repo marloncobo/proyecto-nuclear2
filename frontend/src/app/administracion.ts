@@ -1,9 +1,9 @@
-import { Component, ElementRef, OnInit, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, OnInit, computed, effect, inject, input, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ServicioApi, Rol, UsuarioAdministrado } from './servicio-api';
 import { EtiquetaUsuario, nombreEtiqueta } from './etiqueta-usuario';
 import { TutorialGuiado } from './tutorial-guiado';
-import { pasosModalesAdministracion } from './pasos-tutorial';
+import { pasosModalesAdministracion, pasosModalesEstudiantesDocente } from './pasos-tutorial';
 
 @Component({
   selector: 'psico-administracion',
@@ -12,6 +12,7 @@ import { pasosModalesAdministracion } from './pasos-tutorial';
   styleUrl: './administracion.css',
 })
 export class Administracion implements OnInit {
+  readonly soloEstudiantes = input(false);
   readonly api = inject(ServicioApi);
   readonly usuarios = signal<UsuarioAdministrado[]>([]);
   readonly busqueda = signal('');
@@ -29,7 +30,9 @@ export class Administracion implements OnInit {
     return this.usuarios().slice(inicio, inicio + this.usuariosPorPagina);
   });
   readonly nombreEtiqueta = nombreEtiqueta;
-  readonly pasosTutorial = pasosModalesAdministracion;
+  readonly pasosTutorial = computed(() =>
+    this.soloEstudiantes() ? pasosModalesEstudiantesDocente : pasosModalesAdministracion,
+  );
   readonly confirmarPermiso = signal(false);
 
   prepararCambioPermiso(confirmar: boolean) {
@@ -83,9 +86,19 @@ export class Administracion implements OnInit {
     const pagina = this.paginaActual() + desplazamiento;
     if (pagina >= 1 && pagina <= this.totalPaginas()) this.paginaSolicitada.set(pagina);
   }
+  private async consultarListado(rol: string, estado: string, busqueda: string) {
+    if (!this.soloEstudiantes()) return this.api.listarUsuarios(rol, estado, busqueda);
+    const estudiantes = await this.api.listarEstudiantesParaEditar();
+    const consulta = busqueda.toLocaleLowerCase('es');
+    return estudiantes.filter((estudiante) =>
+      (!estado || estudiante.activo === (estado === 'true')) &&
+      [estudiante.nombre, estudiante.correo].some((dato) => dato.toLocaleLowerCase('es').includes(consulta)),
+    );
+  }
+
   private async refrescarListado() {
     try {
-      const usuarios = await this.api.listarUsuarios(
+      const usuarios = await this.consultarListado(
         this.rolAplicado(),
         this.estadoAplicado(),
         this.busquedaAplicada(),
@@ -130,8 +143,8 @@ export class Administracion implements OnInit {
         busqueda = this.busqueda().trim();
       this.cargado.set(false);
       const [usuarios, roles] = await Promise.all([
-        this.api.listarUsuarios(rol, estado, busqueda),
-        this.api.listarRoles(),
+        this.consultarListado(rol, estado, busqueda),
+        this.soloEstudiantes() ? [] : this.api.listarRoles(),
       ]);
       this.usuarios.set(usuarios);
       this.paginaSolicitada.set(1);
@@ -149,7 +162,7 @@ export class Administracion implements OnInit {
       const rol = this.rol,
         estado = this.estado,
         busqueda = this.busqueda().trim();
-      const usuarios = await this.api.listarUsuarios(rol, estado, busqueda);
+      const usuarios = await this.consultarListado(rol, estado, busqueda);
       this.usuarios.set(usuarios);
       this.paginaSolicitada.set(1);
       this.rolAplicado.set(rol);
@@ -163,7 +176,7 @@ export class Administracion implements OnInit {
     if (this.ocupado()) return;
     this.origenDetalle = evento.currentTarget as HTMLElement;
     await this.ejecutar(async () => {
-      const detalle = await this.api.consultarUsuario(usuario.id);
+      const detalle = this.soloEstudiantes() ? usuario : await this.api.consultarUsuario(usuario.id);
       this.seleccionado.set(detalle);
       this.nombre = detalle.nombre;
       this.correo = detalle.correo;
@@ -178,11 +191,11 @@ export class Administracion implements OnInit {
     evento?: Event,
     usuario?: UsuarioAdministrado,
   ) {
-    if (this.ocupado()) return;
+    if (this.ocupado() || (this.soloEstudiantes() && (tipo === 'rol' || tipo === 'estado'))) return;
     if (evento && !this.vistaModal()) this.origenDetalle = evento.currentTarget as HTMLElement;
     if (usuario) this.seleccionado.set(usuario);
     if (tipo === 'registro') {
-      this.tipoRegistro = 'DOCENTE';
+      this.tipoRegistro = this.soloEstudiantes() ? 'ESTUDIANTE' : 'DOCENTE';
       this.nuevoPerfil = { nombre: '', correo: '', clave: '' };
       this.mostrarClave = false;
     }
@@ -257,7 +270,12 @@ export class Administracion implements OnInit {
     }
   }
   puedeEditar(usuario: UsuarioAdministrado) {
+    if (this.soloEstudiantes()) return usuario.rol === 'ESTUDIANTE';
     return usuario.rol !== 'ADMINISTRADOR' || usuario.id === this.api.usuario()?.id;
+  }
+
+  estadoCuenta(activo: boolean | undefined) {
+    return activo === true ? 'ACTIVO' : activo === false ? 'INACTIVO' : 'NO_DISPONIBLE';
   }
 
   editarDetalle(usuario: UsuarioAdministrado) {
@@ -282,14 +300,19 @@ export class Administracion implements OnInit {
     const usuario = this.seleccionado();
     if (!usuario || !this.puedeEditar(usuario)) return;
     await this.ejecutar(async () => {
-      const actualizado = await this.api.editarUsuario(usuario.id, {
+      const datos = {
         nombre: this.nombre.trim(),
         correo: this.correo.trim(),
-      });
+      };
+      const actualizado = this.soloEstudiantes()
+        ? await this.api.editarEstudiante(usuario.id, datos)
+        : await this.api.editarUsuario(usuario.id, datos);
       this.actualizar(actualizado);
       await this.refrescarListado();
       this.editando = false;
-      this.aviso.set(usuario.rol === 'DOCENTE' ? 'Datos del docente actualizados.' : 'Datos actualizados.');
+      this.aviso.set(this.soloEstudiantes()
+        ? 'Datos del estudiante actualizados.'
+        : usuario.rol === 'DOCENTE' ? 'Datos del docente actualizados.' : 'Datos actualizados.');
       setTimeout(() => document.querySelector<HTMLElement>('#detalle-usuario')?.focus());
     });
   }
@@ -301,7 +324,7 @@ export class Administracion implements OnInit {
     if (this.seleccionado()?.id === usuario.id) this.seleccionado.set(usuario);
   }
   async cambiarEstado() {
-    if (this.ocupado()) return;
+    if (this.ocupado() || this.soloEstudiantes()) return;
     const usuario = this.seleccionado();
     if (!usuario || usuario.id === this.api.usuario()?.id) return;
     await this.ejecutar(async () => {
@@ -331,7 +354,7 @@ export class Administracion implements OnInit {
         correo: this.nuevoPerfil.correo.trim(),
         clave,
       };
-      if (this.tipoRegistro === 'ESTUDIANTE') await this.api.registrarEstudiante(datos);
+      if (this.soloEstudiantes() || this.tipoRegistro === 'ESTUDIANTE') await this.api.registrarEstudiante(datos);
       else await this.api.registrarDocente(datos);
       await this.refrescarListado();
     });
@@ -345,7 +368,7 @@ export class Administracion implements OnInit {
     }
   }
   async cambiarRol() {
-    if (this.ocupado()) return;
+    if (this.ocupado() || this.soloEstudiantes()) return;
     const usuario = this.seleccionado();
     if (
       !usuario ||

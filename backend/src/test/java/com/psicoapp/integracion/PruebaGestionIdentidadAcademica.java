@@ -216,7 +216,9 @@ class PruebaGestionIdentidadAcademica {
         mvc.perform(get("/api/identidad/estudiantes/listado").param("paraEdicion", "true")
                         .with(portador(mvc, correoDocente, CLAVE)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.id == '%s')]".formatted(estudiante)).isNotEmpty());
+                .andExpect(jsonPath("$[?(@.id == '%s' && @.activo == false)]".formatted(estudiante)).isNotEmpty())
+                .andExpect(jsonPath("$[?(@.rol != 'ESTUDIANTE')]").isEmpty())
+                .andExpect(jsonPath("$..hashClave").isEmpty());
     }
 
     @Test

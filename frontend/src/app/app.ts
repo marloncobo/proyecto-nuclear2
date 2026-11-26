@@ -56,10 +56,14 @@ export class Aplicacion {
           { id: 'casos', nombre: 'Biblioteca de casos', icono: '▤' },
           { id: 'sesiones', nombre: 'Sesiones', icono: '◷' },
           { id: 'espacios', nombre: 'Espacios académicos', icono: '◇' },
+          ...(this.api.usuario()?.rol === 'DOCENTE'
+            ? [{ id: 'estudiantes', nombre: 'Estudiantes', icono: '◎' }]
+            : []),
           { id: 'resultados', nombre: 'Resultados', icono: '↗' },
           { id: 'notificaciones', nombre: 'Notificaciones', icono: '◉' },
         ],
   );
+  readonly nombreVista = computed(() => this.menu().find((item) => item.id === this.vista())?.nombre);
   readonly casos = signal<Caso[]>(this.casosEjemplo());
   readonly sesiones = signal<Sesion[]>(this.sesionesEjemplo());
   readonly ahoraSesiones = signal(Date.now());
@@ -136,8 +140,6 @@ export class Aplicacion {
   readonly resultado = signal<Reporte[] | null>(null);
   readonly espacioEditado = signal<Espacio | null>(null);
   readonly estudiantes = signal<Usuario[]>([]);
-  readonly estudiantesParaEditar = signal<Usuario[]>([]);
-  estudianteEditado = { id: '', nombre: '', correo: '' };
   identificadorReporte = '';
   readonly cargandoEstudiantes = signal(false);
   readonly reporteSesion = signal<FilaReporteSesion[] | null>(null);
@@ -180,7 +182,6 @@ export class Aplicacion {
     );
   });
   valoraciones: Record<string, string> = {};
-  altaEstudiante = { nombre: '', correo: '', clave: '' };
   convocadosSeleccionados: string[] = [];
   idEstudiante = '';
   nombreEspacio = '';
@@ -336,15 +337,6 @@ export class Aplicacion {
     }
     if (tipo === 'programar')
       this.seleccionarEspacioSesion(this.programacion.idEspacio);
-    if (tipo === 'editar-estudiante') {
-      this.seleccionarEstudianteParaEditar('');
-      this.estudiantesParaEditar.set([]);
-      void this.ejecutar(async () => {
-        const docente = this.api.usuario();
-        const estudiantes = await this.api.consultar<Usuario[]>('/identidad/estudiantes/listado?paraEdicion=true');
-        if (this.api.usuario() === docente) this.estudiantesParaEditar.set(estudiantes);
-      });
-    }
     if ((tipo === 'programar' || tipo === 'convocados' || tipo === 'espacio') && this.api.conectado()) {
       void this.cargarEstudiantes();
     }
@@ -401,8 +393,6 @@ export class Aplicacion {
 
   cerrar() {
     if (!this.ocupado()) {
-      if (this.modal() === 'alta-estudiante')
-        this.altaEstudiante = { nombre: '', correo: '', clave: '' };
       this.modal.set('');
       this.error.set('');
       this.erroresPublicacion.set([]);
@@ -482,8 +472,6 @@ export class Aplicacion {
     this.estudiantesPredeterminados = [];
     this.borrador = null;
     this.estudiantes.set([]);
-    this.estudiantesParaEditar.set([]);
-    this.estudianteEditado = { id: '', nombre: '', correo: '' };
     this.notificaciones.set([]);
     this.estadoNotificaciones.set('');
     this.tipoNotificaciones.set('');
@@ -496,7 +484,6 @@ export class Aplicacion {
     this.busquedaResultados.set('');
     this.estadoResultados.set('');
     this.valoraciones = {};
-    this.altaEstudiante = { nombre: '', correo: '', clave: '' };
     this.convocadosSeleccionados = [];
     this.programacion = {
       idCaso: '',
@@ -706,50 +693,6 @@ export class Aplicacion {
         this.error.set(error instanceof Error ? error.message : 'No se pudo cargar la lista.');
     } finally {
       this.cargandoEstudiantes.set(false);
-    }
-  }
-
-  async registrarEstudiante() {
-    await this.ejecutar(async () => {
-      const estudiante = await this.api.registrarEstudiante(this.altaEstudiante);
-      this.altaEstudiante = { nombre: '', correo: '', clave: '' };
-      this.estudiantes.update((lista) =>
-        lista.some((actual) => actual.id === estudiante.id) ? lista : [...lista, estudiante],
-      );
-      this.modal.set('');
-      this.aviso.set('Estudiante registrado. Ya puedes seleccionarlo al programar una sesión.');
-      const menuAbierto = this.menuMovilAbierto();
-      this.menuMovilAbierto.set(false);
-      setTimeout(() => {
-        const destino = menuAbierto
-          ? document.getElementById('alternar-menu')
-          : this.focoAnterior;
-        destino?.focus();
-      });
-    });
-  }
-
-  seleccionarEstudianteParaEditar(id: string) {
-    const estudiante = this.estudiantesParaEditar().find((actual) => actual.id === id);
-    this.estudianteEditado = { id, nombre: estudiante?.nombre ?? '', correo: estudiante?.correo ?? '' };
-    this.error.set('');
-  }
-
-  async guardarEstudiante() {
-    if (this.ocupado() || this.api.usuario()?.rol !== 'DOCENTE') return;
-    const { id, nombre, correo } = this.estudianteEditado;
-    if (!id) return;
-    const docente = this.api.usuario();
-    await this.ejecutar(async () => {
-      const actualizado = await this.api.editarEstudiante(id, { nombre: nombre.trim(), correo: correo.trim() });
-      if (this.api.usuario() !== docente) return;
-      this.estudiantes.update((lista) =>
-        lista.map((estudiante) => (estudiante.id === id ? actualizado : estudiante)),
-      );
-    });
-    if (!this.error() && this.api.usuario() === docente) {
-      this.cerrar();
-      this.aviso.set('Datos del estudiante actualizados.');
     }
   }
 

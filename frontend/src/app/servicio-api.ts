@@ -272,6 +272,9 @@ export class ServicioApi {
   registrarEstudiante(datos: { nombre: string; correo: string; clave: string }) {
     return this.enviar<Usuario>('/identidad/estudiantes', datos);
   }
+  listarEstudiantesParaEditar() {
+    return this.consultar<UsuarioAdministrado[]>('/identidad/estudiantes/listado?paraEdicion=true');
+  }
   cambiarRolUsuario(id: string, rol: Rol) {
     return this.enviar<Usuario>(
       `/identidad/usuarios/${encodeURIComponent(id)}/rol`,
