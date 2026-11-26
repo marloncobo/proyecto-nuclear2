@@ -124,6 +124,91 @@ test('estudiante: filtra convocatorias y conserva los avisos leídos', async ({ 
   }
 });
 
+test('estudiante: abre el detalle de un aviso y navega al recurso correspondiente', async ({ page: pagina }) => {
+  await pagina.clock.install({ time: new Date('2026-11-26T14:00:00Z') });
+  const estado = await simularApi(pagina, 'ESTUDIANTE');
+  const fechaCreacion = '2026-11-26T13:00:00Z';
+  estado.notificaciones.push(
+    { id: 'aviso-resultado', tipo: 'RESULTADO', idSesion: 'anterior', idIntento: 'intento-2',
+      mensaje: 'Ya puedes consultar tu calificación.', fechaCreacion, leida: false },
+    { id: 'aviso-actividad', tipo: 'CONVOCATORIA', idSesion: 'sesion-2', idIntento: null,
+      mensaje: 'Te convocaron a una actividad.', fechaCreacion, leida: false },
+    { id: 'aviso-valoracion', tipo: 'VALORACION', idSesion: 'anterior', idIntento: 'intento-1',
+      mensaje: 'Tienes una valoración nueva.', fechaCreacion, leida: true },
+    { id: 'aviso-retirado', tipo: 'RECORDATORIO_SESION', idSesion: 'retirada', idIntento: null,
+      mensaje: 'Revisa la próxima sesión.', fechaCreacion, leida: true },
+  );
+  await pagina.route('**/api/estudiante/resultados', (ruta) => ruta.fulfill({
+    json: [
+      { idIntento: 'intento-1', idSesion: 'anterior', nombreCaso: 'Caso con valoración', calificacion: 3,
+        fin: fechaCreacion, respuestas: [], valoraciones: [{ id: 'valoracion', mensaje: 'Buen análisis.', fecha: fechaCreacion }] },
+      { idIntento: 'intento-2', idSesion: 'anterior', nombreCaso: 'Caso evaluado', calificacion: 2,
+        fin: fechaCreacion, respuestas: [], valoraciones: [] },
+    ],
+  }));
+  const actividad = {
+    inicioPrevisto: '2026-11-26T13:30:00Z', finPrevisto: '2026-11-26T15:00:00Z',
+    duracionMaximaMin: 30, accion: 'INICIAR', estadoSesion: 'EN_CURSO', lugar: 'Aula virtual',
+  };
+  await pagina.route('**/api/estudiante/actividades', (ruta) => ruta.fulfill({
+    json: [
+      { ...actividad, idSesion: 'sesion-1', nombreCaso: 'Otra actividad' },
+      { ...actividad, idSesion: 'sesion-2', nombreCaso: 'Actividad convocada' },
+    ],
+  }));
+
+  await ingresar(pagina, 'alumna@example.test');
+  const notificaciones = pagina.getByRole('button', { name: /^Notificaciones/ });
+  await notificaciones.click();
+  const avisoResultado = pagina.getByRole('button', { name: 'Calificación disponible', exact: true });
+  await avisoResultado.press('Enter');
+  const detalle = pagina.getByRole('region', { name: 'Detalle de notificación' });
+  await expect(detalle.getByRole('heading', { name: 'Detalle de notificación' })).toBeFocused();
+  await expect(avisoResultado).toHaveAttribute('aria-expanded', 'true');
+  await expect(detalle).toContainText('Ya puedes consultar tu calificación.');
+  await expect(detalle).toContainText('Caso evaluado');
+  await expect(detalle).toContainText('2.00');
+  await expect(detalle.locator('time')).toHaveAttribute('datetime', fechaCreacion);
+  await detalle.getByRole('button', { name: 'Marcar como leída' }).click();
+  await expect(detalle.getByText('Leída', { exact: true })).toBeVisible();
+  await expect(notificaciones).toHaveAccessibleName('Notificaciones, 1 sin leer');
+  for (const [width, height] of [[1440, 1000], [768, 1024], [390, 844]]) {
+    await pagina.setViewportSize({ width, height });
+    await expect(detalle.getByRole('button', { name: 'Consultar resultado' })).toBeVisible();
+    expect(await pagina.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+  }
+  await detalle.getByRole('button', { name: 'Cerrar detalle de notificación' }).press('Escape');
+  await expect(detalle).toHaveCount(0);
+  await expect(avisoResultado).toBeFocused();
+  await avisoResultado.click();
+  await detalle.getByRole('button', { name: 'Consultar resultado' }).click();
+  await expect(pagina).toHaveURL(/\/estudiante\/resultados$/);
+  await expect(pagina.getByRole('heading', { name: 'Caso evaluado' })).toBeVisible();
+
+  await notificaciones.click();
+  await pagina.getByRole('button', { name: 'Nueva valoración docente', exact: true }).click();
+  await detalle.getByRole('button', { name: 'Ver retroalimentación' }).click();
+  await expect(pagina.getByText('Buen análisis.')).toBeVisible();
+
+  await notificaciones.click();
+  await pagina.getByRole('button', { name: 'Recordatorio de sesión próxima', exact: true }).click();
+  await detalle.getByRole('button', { name: 'Ver actividad' }).click();
+  await expect(pagina.getByRole('alert')).toHaveText('La actividad de este aviso ya no está disponible.');
+  await expect(detalle).toBeVisible();
+
+  await pagina.getByRole('button', { name: 'Nueva convocatoria', exact: true }).click();
+  await expect(detalle).toContainText('Aula virtual');
+  await detalle.getByRole('button', { name: 'Ver actividad' }).click();
+  await expect(pagina).toHaveURL(/\/estudiante\/actividades$/);
+  await expect(pagina.getByRole('heading', { name: 'Actividad de la notificación' })).toBeFocused();
+  await expect(pagina.getByRole('heading', { name: 'Actividad convocada' })).toBeVisible();
+  await expect(pagina.getByRole('heading', { name: 'Otra actividad' })).toHaveCount(0);
+  await expect(pagina.getByRole('button', { name: 'Iniciar actividad' })).toBeVisible();
+  expect(estado.solicitudes.some((solicitud) => solicitud.ruta.endsWith('/iniciar'))).toBe(false);
+  await pagina.getByRole('button', { name: 'Todas las actividades' }).click();
+  await expect(pagina.getByRole('heading', { name: 'Otra actividad' })).toBeVisible();
+});
+
 test('administración: roles, filtros, detalle, edición y errores sin perder el formulario', async ({
   page: pagina,
 }) => {

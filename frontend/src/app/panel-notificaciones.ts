@@ -16,10 +16,13 @@ export class PanelNotificaciones {
   readonly marcandoNotificacion = input<string | null>(null);
   readonly ocupado = input(false);
   readonly totalNoLeidas = input<number | null>(null);
+  readonly permiteSeleccion = input(false);
+  readonly idSeleccionada = input<string | null>(null);
   readonly estadoNotificaciones = model('');
   readonly tipoNotificaciones = model('');
   readonly marcarLeida = output<AvisoNotificacion>();
   readonly marcarTodasLeidas = output<void>();
+  readonly seleccionarAviso = output<{ aviso: AvisoNotificacion; control: HTMLButtonElement }>();
   readonly notificacionesNoLeidas = computed(
     () => this.totalNoLeidas() ?? this.notificaciones().filter((aviso) => !aviso.leida).length,
   );

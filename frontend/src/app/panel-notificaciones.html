@@ -1,4 +1,4 @@
-<section class="panel-notificaciones" aria-labelledby="resumen-notificaciones">
+<section class="panel-notificaciones" [class.con-seleccion]="permiteSeleccion()" aria-labelledby="resumen-notificaciones">
   <div class="resumen-notificaciones">
     <div>
       <h2 id="resumen-notificaciones">
@@ -71,13 +71,29 @@
     </p>
     <div class="lista-notificaciones">
       @for (notificacion of notificacionesVisibles(); track notificacion.id) {
-        <article [class.no-leida]="!notificacion.leida">
+        @let seleccionada = idSeleccionada() === notificacion.id;
+        <article [class.no-leida]="!notificacion.leida" [class.seleccionada]="seleccionada">
           <span class="icono-notificacion" aria-hidden="true">{{
             iconoNotificacion(notificacion.tipo)
           }}</span>
           <div class="contenido-notificacion">
             <div>
-              <h3>{{ tituloNotificacion(notificacion.tipo) }}</h3>
+              <h3>
+                @if (permiteSeleccion()) {
+                  <button
+                    #controlAviso
+                    class="abrir-aviso"
+                    type="button"
+                    [attr.aria-expanded]="seleccionada"
+                    [attr.aria-controls]="seleccionada ? 'detalle-aviso-estudiante' : null"
+                    (click)="seleccionarAviso.emit({ aviso: notificacion, control: controlAviso })"
+                  >
+                    {{ tituloNotificacion(notificacion.tipo) }}
+                  </button>
+                } @else {
+                  {{ tituloNotificacion(notificacion.tipo) }}
+                }
+              </h3>
               @if (!notificacion.leida) {
                 <span class="etiqueta-nueva">Nueva</span>
               }
@@ -87,7 +103,7 @@
               notificacion.fechaCreacion | date: 'medium'
             }}</time>
           </div>
-          @if (!notificacion.leida) {
+          @if (!notificacion.leida && !seleccionada) {
             <button
               class="marcar-leida"
               type="button"
@@ -100,7 +116,7 @@
                   : 'Marcar como leída'
               }}
             </button>
-          } @else {
+          } @else if (notificacion.leida) {
             <span class="estado-notificacion-leida">Leída</span>
           }
         </article>

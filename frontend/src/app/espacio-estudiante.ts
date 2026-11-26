@@ -1,6 +1,9 @@
-import { Component, computed, effect, inject, input, model, signal } from '@angular/core';
+import {
+  afterNextRender, Component, computed, effect, ElementRef, inject, Injector, input, model, signal,
+  viewChild,
+} from '@angular/core';
 import { PanelNotificaciones } from './panel-notificaciones';
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { CambioClave } from './cambio-clave';
 import { Router } from '@angular/router';
 import { TutorialGuiado } from './tutorial-guiado';
@@ -16,7 +19,7 @@ import {
 
 @Component({
   selector: 'psico-espacio-estudiante',
-  imports: [DatePipe, TutorialGuiado, PanelNotificaciones, CambioClave],
+  imports: [DatePipe, DecimalPipe, TutorialGuiado, PanelNotificaciones, CambioClave],
   templateUrl: './espacio-estudiante.html',
   styleUrl: './espacio-estudiante.css',
 })
@@ -26,6 +29,12 @@ export class EspacioEstudiante {
   readonly pasosTutorial = pasosEstudiante;
   readonly api = inject(ServicioApi);
   private readonly enrutador = inject(Router);
+  private readonly inyector = inject(Injector);
+  private readonly tituloDetalleAviso = viewChild<ElementRef<HTMLElement>>('tituloDetalleAviso');
+  private readonly tituloNotificaciones = viewChild<ElementRef<HTMLElement>>('tituloNotificaciones');
+  private readonly tituloActividadNotificada = viewChild<ElementRef<HTMLElement>>('tituloActividadNotificada');
+  private readonly tituloResultado = viewChild<ElementRef<HTMLElement>>('tituloResultado');
+  private controlAviso: HTMLButtonElement | null = null;
   readonly vista = signal<'actividades' | 'simulacion' | 'resultados' | 'notificaciones'>('actividades');
   readonly actividades = signal<ActividadEstudiante[]>([]);
   readonly simulacion = signal<SimulacionEstudiante | null>(null);
@@ -33,6 +42,29 @@ export class EspacioEstudiante {
   readonly resultados = signal<ResultadoEstudiante[]>([]);
   readonly resultadoSeleccionado = signal<ResultadoEstudiante | null>(null);
   readonly notificaciones = signal<AvisoNotificacion[]>([]);
+  readonly idAvisoSeleccionado = signal<string | null>(null);
+  readonly idActividadNotificada = signal<string | null>(null);
+  readonly avisoSeleccionado = computed(() =>
+    this.notificaciones().find((aviso) => aviso.id === this.idAvisoSeleccionado()) ?? null,
+  );
+  readonly resultadoAviso = computed(() => {
+    const id = this.avisoSeleccionado()?.idIntento;
+    return id ? this.resultados().find((resultado) => resultado.idIntento === id) : undefined;
+  });
+  readonly actividadAviso = computed(() => {
+    const id = this.avisoSeleccionado()?.idSesion;
+    return id ? this.actividades().find((actividad) => actividad.idSesion === id) : undefined;
+  });
+  readonly recursoAviso = computed(() => {
+    const aviso = this.avisoSeleccionado();
+    if (!aviso) return null;
+    if (aviso.idIntento) {
+      const etiqueta = aviso.tipo === 'VALORACION' ? 'Ver retroalimentación' : 'Consultar resultado';
+      return { tipo: 'resultado', id: aviso.idIntento, etiqueta };
+    }
+    if (aviso.tipo === 'RESULTADO' || aviso.tipo === 'VALORACION' || !aviso.idSesion) return null;
+    return { tipo: 'actividad', id: aviso.idSesion, etiqueta: 'Ver actividad' };
+  });
   readonly noLeidas = signal<number | null>(null);
   readonly ocupado = signal(false);
   readonly error = signal('');
@@ -51,6 +83,10 @@ export class EspacioEstudiante {
       return actividad.estadoSesion === 'FINALIZADO' || actividad.accion === 'RESULTADO' ? 3 : 2;
     };
     return [...this.actividades()].sort((a, b) => prioridad(a) - prioridad(b));
+  });
+  readonly actividadesVisibles = computed(() => {
+    const id = this.idActividadNotificada();
+    return id ? this.actividades().filter((actividad) => actividad.idSesion === id) : this.actividadesOrdenadas();
   });
   readonly referenciasSesion = computed(() => {
     const grupos = new Map<string, string[]>();
@@ -187,6 +223,7 @@ export class EspacioEstudiante {
   }
 
   async navegar(vista: 'actividades' | 'resultados' | 'notificaciones') {
+    this.idActividadNotificada.set(null);
     this.vista.set(vista);
     this.error.set('');
     await this.enrutador.navigate(['/estudiante', vista]);
@@ -269,6 +306,51 @@ export class EspacioEstudiante {
     this.resultadoSeleccionado.set(resultado);
     this.vista.set('resultados');
     void this.enrutador.navigate(['/estudiante', 'resultados']);
+  }
+
+  seleccionarAviso(aviso: AvisoNotificacion, control: HTMLButtonElement) {
+    this.controlAviso = control;
+    this.idAvisoSeleccionado.set(aviso.id);
+    this.error.set('');
+    afterNextRender(() => this.tituloDetalleAviso()?.nativeElement.focus(), { injector: this.inyector });
+  }
+
+  cerrarDetalleAviso() {
+    this.idAvisoSeleccionado.set(null);
+    this.error.set('');
+    if (this.controlAviso?.isConnected) this.controlAviso.focus();
+    else this.tituloNotificaciones()?.nativeElement.focus();
+    this.controlAviso = null;
+  }
+
+  async abrirRecursoAviso() {
+    const recurso = this.recursoAviso();
+    if (!recurso) return;
+    const idAviso = this.idAvisoSeleccionado();
+    await this.ejecutar(async () => {
+      if (recurso.tipo === 'resultado') {
+        const resultados = await this.api.listarResultadosEstudiante();
+        if (this.vista() !== 'notificaciones' || this.idAvisoSeleccionado() !== idAviso) return;
+        this.resultados.set(resultados);
+        if (!resultados.some((resultado) => resultado.idIntento === recurso.id)) {
+          throw new Error('El resultado de este aviso ya no está disponible.');
+        }
+        this.verResultado(recurso.id);
+        afterNextRender(() => this.tituloResultado()?.nativeElement.focus(), { injector: this.inyector });
+        return;
+      }
+
+      const actividades = await this.api.listarActividadesEstudiante();
+      if (this.vista() !== 'notificaciones' || this.idAvisoSeleccionado() !== idAviso) return;
+      this.actividades.set(actividades);
+      if (!actividades.some((actividad) => actividad.idSesion === recurso.id)) {
+        throw new Error('La actividad de este aviso ya no está disponible.');
+      }
+      this.idActividadNotificada.set(recurso.id);
+      this.vista.set('actividades');
+      afterNextRender(() => this.tituloActividadNotificada()?.nativeElement.focus(), { injector: this.inyector });
+      await this.enrutador.navigate(['/estudiante', 'actividades']);
+    });
   }
 
   async marcarLeida(aviso?: AvisoNotificacion) {

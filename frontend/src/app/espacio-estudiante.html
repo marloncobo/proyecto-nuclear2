@@ -103,9 +103,14 @@
         </article>
       </section>
       <section aria-labelledby="titulo-actividades">
-        <h2 id="titulo-actividades">Mis actividades</h2>
+        @if (idActividadNotificada()) {
+          <button type="button" class="enlace" (click)="navegar('actividades')">← Todas las actividades</button>
+          <h2 #tituloActividadNotificada id="titulo-actividades" tabindex="-1">Actividad de la notificación</h2>
+        } @else {
+          <h2 id="titulo-actividades">Mis actividades</h2>
+        }
         <div class="tarjetas">
-          @for (actividad of actividadesOrdenadas(); track actividad.idSesion) {
+          @for (actividad of actividadesVisibles(); track actividad.idSesion) {
             @let plazoTerminado = plazoIngresoTerminado(actividad);
             @let intentoVencido = actividad.accion === 'CONTINUAR' && plazoVencido(actividad.limiteIntento);
             <article class="tarjeta-actividad">
@@ -324,7 +329,7 @@
         <article class="detalle-resultado">
           <header>
             <div>
-              <h2>{{ resultado.nombreCaso }}</h2>
+            <h2 #tituloResultado tabindex="-1">{{ resultado.nombreCaso }}</h2>
               <p>{{ resultado.fin | date: 'dd/MM/yyyy, HH:mm' }}</p>
             </div>
             <strong>{{ resultado.calificacion ?? 'Pendiente' }}</strong>
@@ -375,16 +380,80 @@
     @if (vista() === 'notificaciones') {
       <header class="encabezado-pagina">
         <span class="sobretitulo-estudiante">Mantente al día</span>
-        <h1>Notificaciones</h1>
+        <h1 #tituloNotificaciones tabindex="-1">Notificaciones</h1>
         <p>Avisos de convocatorias, resultados y valoraciones.</p>
       </header>
-      <psico-panel-notificaciones
-        [notificaciones]="notificaciones()"
-        [totalNoLeidas]="noLeidas()"
-        [ocupado]="ocupado()"
-        (marcarLeida)="marcarLeida($event)"
-        (marcarTodasLeidas)="marcarLeida()"
-      />
+      <div class="notificaciones-estudiante" [class.con-detalle]="avisoSeleccionado()">
+        <psico-panel-notificaciones
+          #panelNotificaciones
+          [notificaciones]="notificaciones()"
+          [totalNoLeidas]="noLeidas()"
+          [ocupado]="ocupado()"
+          [permiteSeleccion]="true"
+          [idSeleccionada]="idAvisoSeleccionado()"
+          (seleccionarAviso)="seleccionarAviso($event.aviso, $event.control)"
+          (marcarLeida)="marcarLeida($event)"
+          (marcarTodasLeidas)="marcarLeida()"
+        />
+        @if (avisoSeleccionado(); as aviso) {
+          <section
+            class="detalle-aviso"
+            id="detalle-aviso-estudiante"
+            aria-labelledby="titulo-detalle-aviso"
+            (keydown.escape)="cerrarDetalleAviso()"
+          >
+            <header class="cabecera-detalle-aviso">
+              <h2 #tituloDetalleAviso id="titulo-detalle-aviso" tabindex="-1">Detalle de notificación</h2>
+              <button type="button" class="cerrar-detalle-aviso" aria-label="Cerrar detalle de notificación" (click)="cerrarDetalleAviso()">×</button>
+            </header>
+            <div class="cuerpo-detalle-aviso">
+              <span class="icono-detalle-aviso" aria-hidden="true">{{ panelNotificaciones.iconoNotificacion(aviso.tipo) }}</span>
+              <h3>{{ panelNotificaciones.tituloNotificacion(aviso.tipo) }}</h3>
+              <time [attr.datetime]="aviso.fechaCreacion">{{ aviso.fechaCreacion | date: 'medium' }}</time>
+              <p>{{ aviso.mensaje }}</p>
+            </div>
+            @let resultado = resultadoAviso();
+            @let actividad = actividadAviso();
+            @let nombreCaso = resultado?.nombreCaso ?? actividad?.nombreCaso;
+            @if (nombreCaso || resultado || actividad) {
+              <dl class="datos-detalle-aviso">
+                @if (nombreCaso) {
+                  <div><dt>Caso</dt><dd>{{ nombreCaso }}</dd></div>
+                }
+                @if (resultado) {
+                  <div>
+                    <dt>Calificación</dt>
+                    <dd>{{ (resultado.calificacion | number: '1.2-2') ?? 'Pendiente' }}</dd>
+                  </div>
+                  <div><dt>Estado</dt><dd>{{ resultado.calificacion === null ? 'Pendiente de calificación' : 'Evaluado' }}</dd></div>
+                } @else if (actividad && recursoAviso()?.tipo === 'actividad') {
+                  <div>
+                    <dt>Apertura programada</dt>
+                    <dd><time [attr.datetime]="actividad.inicioPrevisto">{{ actividad.inicioPrevisto | date: 'dd/MM/yyyy, HH:mm' }}</time></dd>
+                  </div>
+                  @if (actividad.lugar) {
+                    <div><dt>Lugar</dt><dd>{{ actividad.lugar }}</dd></div>
+                  }
+                }
+              </dl>
+            }
+            <footer class="acciones-detalle-aviso">
+              @if (recursoAviso(); as recurso) {
+                <button type="button" class="primario" [disabled]="ocupado()" (click)="abrirRecursoAviso()">
+                  {{ recurso.etiqueta }} <span aria-hidden="true">→</span>
+                </button>
+              }
+              @if (aviso.leida) {
+                <span class="aviso-leido">Leída</span>
+              } @else {
+                <button type="button" class="secundario" [disabled]="ocupado()" (click)="marcarLeida(aviso)">
+                  Marcar como leída
+                </button>
+              }
+            </footer>
+          </section>
+        }
+      </div>
     }
   </main>
 </div>
