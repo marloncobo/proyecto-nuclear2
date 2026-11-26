@@ -120,13 +120,36 @@ class PruebaAutenticacionJwt {
         mvc.perform(put("/api/identidad/clave-inicial").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"clave\":\"ClavePersonal2026!\"}"))
                 .andExpect(status().isNoContent());
-        verify(identidades).cambiarClaveInicial(estudiante.id(), "ClavePersonal2026!");
+        verify(identidades).cambiarClaveInicial(estudiante.id(), "ClavePersonal2026!", false);
 
         when(usuarios.buscarPorId(estudiante.id())).thenReturn(Optional.of(new Usuario(estudiante.id(),
                 estudiante.correo(), estudiante.nombre(), estudiante.rol(), claves.encode("ClavePersonal2026!"),
                 true, estudiante.fechaCreacion(), false)));
         mvc.perform(get("/api/identidad/yo").header("Authorization", "Bearer " + token))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void apiSolicitaConfirmacionParaConservarLaClaveInicial() throws Exception {
+        String clave = "ClaveInicial2026!";
+        var estudiante = new Usuario(UUID.randomUUID(), "inicial@example.test", "Inicial", Rol.ESTUDIANTE,
+                claves.encode(clave), true, Instant.now(), true);
+        when(usuarios.buscarPorCorreo(estudiante.correo())).thenReturn(Optional.of(estudiante));
+        when(usuarios.buscarPorId(estudiante.id())).thenReturn(Optional.of(estudiante));
+        var token = ingresar(estudiante.correo(), clave);
+        doThrow(new com.psicoapp.identity.application.ConfirmacionClaveInicialRequerida())
+                .when(identidades).cambiarClaveInicial(estudiante.id(), clave, false);
+
+        mvc.perform(put("/api/identidad/clave-inicial").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(
+                                new ControladorIdentidad.SolicitudCambioClaveInicial(clave, false))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("CONFIRMAR_CLAVE_INICIAL"));
+        mvc.perform(put("/api/identidad/clave-inicial").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(
+                                new ControladorIdentidad.SolicitudCambioClaveInicial(clave, true))))
+                .andExpect(status().isNoContent());
+        verify(identidades).cambiarClaveInicial(estudiante.id(), clave, true);
     }
 
     private String ingresar(String correo, String clave) throws Exception {

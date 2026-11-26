@@ -31,6 +31,30 @@ class PruebaServicioUsuarios {
     private Usuario docente;
 
     @Test
+    @DisplayName("RF-02: conservar la contraseña inicial requiere confirmación y habilita la cuenta")
+    void conservaClaveInicialSoloConConfirmacion() {
+        String clave = "ClaveInicial2026!";
+        String hashInicial = claves.encode(clave);
+        var estudiante = new Usuario(UUID.randomUUID(), "alumna@universidad.edu.co", "Alumna",
+                Rol.ESTUDIANTE, hashInicial, true, Instant.now(), true);
+        when(usuarios.buscarPorId(estudiante.id())).thenReturn(Optional.of(estudiante));
+
+        assertThrows(ConfirmacionClaveInicialRequerida.class,
+                () -> servicio.cambiarClaveInicial(estudiante.id(), clave));
+        verify(usuarios, never()).actualizarClaveEstudiante(any(), any(), any(), anyBoolean());
+
+        when(usuarios.actualizarClaveEstudiante(eq(estudiante.id()), eq(hashInicial), anyString(), eq(false)))
+                .thenReturn(true);
+        servicio.cambiarClaveInicial(estudiante.id(), clave, true);
+
+        var hashGuardado = ArgumentCaptor.forClass(String.class);
+        verify(usuarios).actualizarClaveEstudiante(eq(estudiante.id()), eq(hashInicial),
+                hashGuardado.capture(), eq(false));
+        assertNotEquals(hashInicial, hashGuardado.getValue());
+        assertTrue(claves.matches(clave, hashGuardado.getValue()));
+    }
+
+    @Test
     @DisplayName("RF-03 / RN-10: edicion usa el puerto sin cambiar credenciales ni rol")
     void editaSoloDatosDelDocente() {
         when(usuarios.buscarPorId(administrador.id())).thenReturn(Optional.of(administrador));

@@ -394,14 +394,15 @@
           <div #avisoError class="error-ingreso" role="alert" tabindex="-1">{{ error() }}</div>
         }
         @if (requiereCambioClave()) {
-          <form #cambio="ngForm" (ngSubmit)="cambiarClaveInicial(cambio)" novalidate>
+          <form #cambio="ngForm" (ngSubmit)="cambiarClaveInicial(cambio, confirmarConservacion)" novalidate>
             <p class="instruccion">
-              Por seguridad, define una contraseña personal antes de entrar a tu espacio.
+              Antes de entrar a tu espacio, te recomendamos elegir una contraseña distinta de la que recibiste.
             </p>
             <div class="campo">
               <label for="nueva-clave">Nueva contraseña</label>
               <input
                 id="nueva-clave"
+                #campoNuevaClave
                 name="nuevaClave"
                 type="password"
                 autocomplete="new-password"
@@ -429,6 +430,31 @@
               <span aria-hidden="true">↗</span>
             </button>
           </form>
+          <dialog
+            #confirmarConservacion
+            class="confirmacion-clave-inicial"
+            aria-labelledby="titulo-conservar-clave"
+            aria-describedby="aviso-conservar-clave"
+            (close)="campoNuevaClave.focus()"
+          >
+            <h3 id="titulo-conservar-clave">¿Conservar tu contraseña inicial?</h3>
+            <p id="aviso-conservar-clave">
+              Escribiste la misma contraseña que recibiste. Por seguridad, te recomendamos elegir una que solo tú conozcas.
+            </p>
+            <div class="acciones-confirmacion-clave">
+              <button type="button" class="boton-ingresar" autofocus (click)="confirmarConservacion.close()">
+                Elegir otra contraseña
+              </button>
+              <button
+                type="button"
+                class="boton-demostracion"
+                [disabled]="ocupado()"
+                (click)="confirmarConservacion.close(); cambiarClaveInicial(cambio, confirmarConservacion, true)"
+              >
+                Conservar contraseña
+              </button>
+            </div>
+          </dialog>
         } @else {
         <form
           #formulario="ngForm"

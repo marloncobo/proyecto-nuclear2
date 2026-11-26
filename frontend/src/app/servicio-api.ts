@@ -52,6 +52,8 @@ export interface ErrorValidacionCaso {
   ruta: string;
   mensaje: string;
 }
+export class ConfirmacionClaveInicialRequerida extends Error {}
+
 export class PublicacionCasoInvalida extends Error {
   constructor(
     mensaje: string,
@@ -237,8 +239,9 @@ export class ServicioApi {
       throw error;
     }
   }
-  cambiarClaveInicial(clave: string) {
-    return this.enviar<void>('/identidad/clave-inicial', { clave }, 'PUT');
+  cambiarClaveInicial(clave: string, conservarClaveInicial = false) {
+    const datos = conservarClaveInicial ? { clave, conservarClaveInicial } : { clave };
+    return this.enviar<void>('/identidad/clave-inicial', datos, 'PUT');
   }
   cambiarClave(actual: string, nueva: string) {
     return this.enviar<void>('/identidad/yo/clave', { actual, nueva }, 'PUT');
@@ -386,6 +389,10 @@ export class ServicioApi {
     const esJson = tipoContenido.includes('application/json') || tipoContenido.includes('+json');
     if (!respuesta.ok) {
       const problema = esJson ? await respuesta.json().catch(() => null) : null;
+      if (ruta === '/identidad/clave-inicial' && respuesta.status === 409 &&
+          problema?.codigo === 'CONFIRMAR_CLAVE_INICIAL') {
+        throw new ConfirmacionClaveInicialRequerida();
+      }
       const sesionExpirada =
         ruta !== '/identidad/ingreso' &&
         respuesta.status === 401 &&

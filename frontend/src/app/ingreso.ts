@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { DatePipe } from '@angular/common';
-import { AvisoNotificacion, Reporte, ServicioApi } from './servicio-api';
+import { AvisoNotificacion, ConfirmacionClaveInicialRequerida, Reporte, ServicioApi } from './servicio-api';
 import { TutorialGuiado } from './tutorial-guiado';
 import { pasosIngreso } from './pasos-tutorial';
 
@@ -268,7 +268,7 @@ export class Ingreso {
     }
   }
 
-  async cambiarClaveInicial(formulario: NgForm) {
+  async cambiarClaveInicial(formulario: NgForm, confirmacion: HTMLDialogElement, conservar = false) {
     if (this.ocupado()) return;
     this.error.set('');
     if (formulario.invalid || this.nuevaClave !== this.confirmarNuevaClave) {
@@ -280,7 +280,7 @@ export class Ingreso {
     this.ocupado.set(true);
     const nuevaClave = this.nuevaClave;
     try {
-      await this.api.cambiarClaveInicial(nuevaClave);
+      await this.api.cambiarClaveInicial(nuevaClave, conservar);
       this.api.salir();
       const ingreso = await this.api.ingresar(this.correo.trim(), nuevaClave);
       if (ingreso.cambioClaveInicial) throw new Error('No fue posible completar el cambio de contraseña.');
@@ -289,7 +289,8 @@ export class Ingreso {
       this.requiereCambioClave.set(false);
       this.autenticado.emit();
     } catch (error) {
-      this.error.set(error instanceof Error ? error.message : 'No fue posible cambiar la contraseña.');
+      if (!conservar && error instanceof ConfirmacionClaveInicialRequerida) confirmacion.showModal();
+      else this.error.set(error instanceof Error && error.message ? error.message : 'No fue posible cambiar la contraseña.');
     } finally {
       this.ocupado.set(false);
     }

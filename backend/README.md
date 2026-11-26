@@ -46,8 +46,9 @@ El frontend ya utiliza este flujo y conserva el token únicamente en memoria.
 Los tokens HS256 duran 900 segundos, validan firma, emisor, audiencia y caducidad.
 Cada petición consulta la cuenta: desactivarla, eliminarla o cambiar su rol invalida
 el token. Los estudiantes también usan una contraseña BCrypt. Si es inicial, el JWT
-solo permite consultar la identidad y ejecutar `PUT /api/identidad/clave-inicial`;
-al sustituirla, ese token deja de ser válido. La autorización de la sesión concreta
+solo permite consultar la identidad y ejecutar `PUT /api/identidad/clave-inicial`.
+El estudiante puede elegir una contraseña nueva o confirmar que conserva la inicial.
+Al completar el flujo, el token temporal deja de ser válido. La autorización de la sesión concreta
 se comprueba contra la convocatoria vigente de la cuenta autenticada.
 
 Configurar `PSICOAPP_JWT_CLAVE` con al menos 32 bytes aleatorios codificados en Base64,

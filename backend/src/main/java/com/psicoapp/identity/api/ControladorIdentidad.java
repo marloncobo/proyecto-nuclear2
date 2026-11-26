@@ -1,5 +1,6 @@
 package com.psicoapp.identity.api;
 
+import com.psicoapp.identity.application.ConfirmacionClaveInicialRequerida;
 import com.psicoapp.identity.application.DirectorioIdentidad.DatosUsuario;
 import com.psicoapp.identity.application.ServicioUsuarios;
 import com.psicoapp.identity.domain.Rol;
@@ -12,6 +13,8 @@ import java.security.Principal;
 import java.util.UUID;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -79,6 +82,10 @@ public class ControladorIdentidad {
     public record SolicitudClave(@NotBlank @Size(min = 8, max = 72) String clave) {
         @Override public String toString() { return "SolicitudClave[PROTEGIDA]"; }
     }
+    public record SolicitudCambioClaveInicial(@NotBlank @Size(min = 8, max = 72) String clave,
+            Boolean conservarClaveInicial) {
+        @Override public String toString() { return "SolicitudCambioClaveInicial[PROTEGIDA]"; }
+    }
     public record SolicitudCambioClave(@NotBlank @Size(max = 72) String actual,
             @NotBlank @Size(min = 8, max = 72) String nueva) {
         @Override public String toString() { return "SolicitudCambioClave[PROTEGIDA]"; }
@@ -99,8 +106,16 @@ public class ControladorIdentidad {
 
     @PutMapping("/clave-inicial")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void cambiarClaveInicial(Principal principal, @Valid @RequestBody SolicitudClave solicitud) {
-        identidades.cambiarClaveInicial(UUID.fromString(principal.getName()), solicitud.clave());
+    public void cambiarClaveInicial(Principal principal, @Valid @RequestBody SolicitudCambioClaveInicial solicitud) {
+        identidades.cambiarClaveInicial(UUID.fromString(principal.getName()), solicitud.clave(),
+                Boolean.TRUE.equals(solicitud.conservarClaveInicial()));
+    }
+
+    @ExceptionHandler(ConfirmacionClaveInicialRequerida.class)
+    ProblemDetail confirmarClaveInicial(ConfirmacionClaveInicialRequerida excepcion) {
+        var detalle = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, excepcion.getMessage());
+        detalle.setProperty("codigo", "CONFIRMAR_CLAVE_INICIAL");
+        return detalle;
     }
     public record SolicitudRol(@NotNull Rol rol) { }
     public record SolicitudPermiso(@NotNull Boolean habilitado) { }
