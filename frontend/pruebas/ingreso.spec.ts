@@ -165,6 +165,7 @@ test('la cuenta administrativa entra únicamente a administración', async ({ pa
 });
 
 test('el estudiante consulta y marca sus notificaciones internas', async ({ page: pagina }) => {
+  let avisoLeido = false;
   const solicitudes: { ruta: string; metodo: string; autorizacion: string }[] = [];
   const erroresNavegador: string[] = [];
   pagina.on('console', (mensaje) => {
@@ -193,6 +194,7 @@ test('el estudiante consulta y marca sus notificaciones internas', async ({ page
       });
     if (url.pathname === '/api/estudiante/actividades') return ruta.fulfill({ json: [] });
     if (url.pathname === '/api/estudiante/resultados') return ruta.fulfill({ json: [] });
+    if (url.pathname === '/api/notificaciones/no-leidas') return ruta.fulfill({ json: avisoLeido ? 0 : 1 });
     if (url.pathname === '/api/notificaciones' && solicitud.method() === 'GET')
       return ruta.fulfill({
         json: [
@@ -203,7 +205,7 @@ test('el estudiante consulta y marca sus notificaciones internas', async ({ page
             tipo: 'RESULTADO',
             mensaje: 'Tu resultado ya está disponible.',
             fechaCreacion: '2026-11-21T15:00:00Z',
-            leida: false,
+            leida: avisoLeido,
           },
           {
             id: 'aviso-leido',
@@ -216,8 +218,10 @@ test('el estudiante consulta y marca sus notificaciones internas', async ({ page
           },
         ],
       });
-    if (url.pathname === '/api/notificaciones/aviso-nuevo/leida' && solicitud.method() === 'PUT')
+    if (url.pathname === '/api/notificaciones/aviso-nuevo/leida' && solicitud.method() === 'PUT') {
+      avisoLeido = true;
       return ruta.fulfill({ status: 204 });
+    }
     return ruta.fulfill({ status: 404, json: { detail: 'Ruta no simulada' } });
   });
 
@@ -225,12 +229,14 @@ test('el estudiante consulta y marca sus notificaciones internas', async ({ page
   await pagina.getByLabel('Correo institucional').fill('estudiante@example.test');
   await pagina.getByLabel('Contraseña', { exact: true }).fill('clave-ficticia');
   await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
-  await pagina.getByRole('button', { name: 'Notificaciones', exact: true }).last().click();
+  const notificaciones = pagina.getByRole('button', { name: 'Notificaciones, 1 sin leer', exact: true });
+  await notificaciones.click();
 
   await expect(pagina.getByRole('heading', { name: 'Notificaciones' })).toBeVisible();
   await expect(pagina.getByText('Tu resultado ya está disponible.')).toBeVisible();
   await pagina.getByRole('button', { name: 'Marcar como leída' }).click();
   await expect(pagina.getByRole('button', { name: 'Marcar como leída' })).toHaveCount(0);
+  await expect(pagina.getByRole('button', { name: 'Notificaciones', exact: true })).toBeVisible();
 
   expect(solicitudes).toContainEqual({
     ruta: '/api/notificaciones?limite=100&desplazamiento=0',
@@ -459,56 +465,84 @@ test('un error de proxy sin JSON informa que el backend no está disponible', as
   );
 });
 
-test('la contraseña inicial se cambia antes de consultar el espacio estudiantil', async ({
-  page: pagina,
-}) => {
-  let ingresos = 0;
-  const solicitudes: { ruta: string; metodo: string; datos: any }[] = [];
-  await pagina.route('**/api/**', async (ruta) => {
-    const solicitud = ruta.request();
-    const url = new URL(solicitud.url());
-    solicitudes.push({
-      ruta: url.pathname,
-      metodo: solicitud.method(),
-      datos: solicitud.postData() ? solicitud.postDataJSON() : null,
+for (const conservar of [false, true]) {
+  test(conservar ? 'permite conservar la contraseña inicial con una confirmación explícita'
+    : 'la contraseña inicial se cambia antes de consultar el espacio estudiantil', async ({
+    page: pagina,
+  }) => {
+    let ingresos = 0;
+    const claveInicial = 'ClaveInicial2026!';
+    const nuevaClave = conservar ? claveInicial : 'ClavePersonal2026!';
+    const solicitudes: { ruta: string; metodo: string; datos: any }[] = [];
+    await pagina.route('**/api/**', async (ruta) => {
+      const solicitud = ruta.request();
+      const url = new URL(solicitud.url());
+      solicitudes.push({
+        ruta: url.pathname,
+        metodo: solicitud.method(),
+        datos: solicitud.postData() ? solicitud.postDataJSON() : null,
+      });
+      if (url.pathname === '/api/identidad/ingreso') {
+        ingresos++;
+        return ruta.fulfill({
+          json: { token: `token-${ingresos}`, cambioClaveInicial: ingresos === 1 },
+        });
+      }
+      if (url.pathname === '/api/identidad/yo')
+        return ruta.fulfill({
+          json: {
+            id: 'estudiante', nombre: 'Estudiante', correo: 'estudiante@example.test',
+            rol: 'ESTUDIANTE', puedeCrearCasos: false,
+          },
+        });
+      if (url.pathname === '/api/identidad/clave-inicial' && solicitud.method() === 'PUT') {
+        const datos = solicitud.postDataJSON();
+        if (datos.clave === claveInicial && datos.conservarClaveInicial !== true) {
+          return ruta.fulfill({ status: 409, json: { codigo: 'CONFIRMAR_CLAVE_INICIAL' } });
+        }
+        return ruta.fulfill({ status: 204 });
+      }
+      if (url.pathname === '/api/estudiante/actividades') return ruta.fulfill({ json: [] });
+      if (url.pathname === '/api/estudiante/resultados') return ruta.fulfill({ json: [] });
+      if (url.pathname === '/api/notificaciones') return ruta.fulfill({ json: [] });
+      return ruta.fulfill({ status: 404, json: { detail: 'Ruta no simulada' } });
     });
-    if (url.pathname === '/api/identidad/ingreso') {
-      ingresos++;
-      return ruta.fulfill({
-        json: { token: `token-${ingresos}`, cambioClaveInicial: ingresos === 1 },
-      });
+
+    await pagina.goto('/ingreso');
+    await pagina.getByLabel('Correo institucional').fill('estudiante@example.test');
+    await pagina.getByLabel('Contraseña', { exact: true }).fill(claveInicial);
+    await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
+    await expect(pagina.getByLabel('Nueva contraseña')).toBeVisible();
+    expect(solicitudes.some((solicitud) => solicitud.ruta === '/api/estudiante/actividades')).toBeFalsy();
+
+    const campoNueva = pagina.getByLabel('Nueva contraseña');
+    await campoNueva.fill(nuevaClave);
+    await pagina.getByLabel('Confirmar contraseña').fill(nuevaClave);
+    const guardar = pagina.getByRole('button', { name: 'Guardar y continuar' });
+    await guardar.click();
+    if (conservar) {
+      const aviso = pagina.getByRole('dialog', { name: '¿Conservar tu contraseña inicial?' });
+      const elegir = aviso.getByRole('button', { name: 'Elegir otra contraseña' });
+      await expect(elegir).toBeFocused();
+      await elegir.click();
+      await expect(campoNueva).toBeFocused();
+      expect(ingresos).toBe(1);
+      expect(solicitudes.filter((solicitud) => solicitud.metodo === 'PUT').map((solicitud) => solicitud.datos))
+        .toEqual([{ clave: claveInicial }]);
+      await pagina.setViewportSize({ width: 390, height: 844 });
+      await guardar.click();
+      await expect(aviso).toBeInViewport();
+      await aviso.getByRole('button', { name: 'Conservar contraseña' }).click();
     }
-    if (url.pathname === '/api/identidad/yo')
-      return ruta.fulfill({
-        json: {
-          id: 'estudiante', nombre: 'Estudiante', correo: 'estudiante@example.test',
-          rol: 'ESTUDIANTE', puedeCrearCasos: false,
-        },
-      });
-    if (url.pathname === '/api/identidad/clave-inicial' && solicitud.method() === 'PUT')
-      return ruta.fulfill({ status: 204 });
-    if (url.pathname === '/api/estudiante/actividades') return ruta.fulfill({ json: [] });
-    if (url.pathname === '/api/estudiante/resultados') return ruta.fulfill({ json: [] });
-    if (url.pathname === '/api/notificaciones') return ruta.fulfill({ json: [] });
-    return ruta.fulfill({ status: 404, json: { detail: 'Ruta no simulada' } });
+    await expect(pagina.getByRole('heading', { name: '¡Bienvenido!' })).toBeVisible();
+    expect(ingresos).toBe(2);
+    expect(solicitudes).toContainEqual({
+      ruta: '/api/identidad/clave-inicial', metodo: 'PUT',
+      datos: conservar ? { clave: nuevaClave, conservarClaveInicial: true } : { clave: nuevaClave },
+    });
+    expect(solicitudes.filter((solicitud) => solicitud.ruta === '/api/identidad/ingreso').at(-1)?.datos.clave).toBe(nuevaClave);
   });
-
-  await pagina.goto('/ingreso');
-  await pagina.getByLabel('Correo institucional').fill('estudiante@example.test');
-  await pagina.getByLabel('Contraseña', { exact: true }).fill('ClaveInicial2026!');
-  await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
-  await expect(pagina.getByLabel('Nueva contraseña')).toBeVisible();
-  expect(solicitudes.some((solicitud) => solicitud.ruta === '/api/estudiante/actividades')).toBeFalsy();
-
-  await pagina.getByLabel('Nueva contraseña').fill('ClavePersonal2026!');
-  await pagina.getByLabel('Confirmar contraseña').fill('ClavePersonal2026!');
-  await pagina.getByRole('button', { name: 'Guardar y continuar' }).click();
-  await expect(pagina.getByRole('heading', { name: '¡Bienvenido!' })).toBeVisible();
-  expect(ingresos).toBe(2);
-  expect(solicitudes).toContainEqual({
-    ruta: '/api/identidad/clave-inicial', metodo: 'PUT', datos: { clave: 'ClavePersonal2026!' },
-  });
-});
+}
 
 test('la ruta real de API no devuelve la página de Angular', async ({ request: solicitud }) => {
   // Sin credenciales ni escrituras: también admite el backend detenido (error de proxy).

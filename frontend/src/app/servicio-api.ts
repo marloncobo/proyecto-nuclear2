@@ -52,6 +52,8 @@ export interface ErrorValidacionCaso {
   ruta: string;
   mensaje: string;
 }
+export class ConfirmacionClaveInicialRequerida extends Error {}
+
 export class PublicacionCasoInvalida extends Error {
   constructor(
     mensaje: string,
@@ -121,6 +123,7 @@ export interface ActividadEstudiante {
   mensaje: string | null;
   idIntento: string | null;
   estadoIntento: string | null;
+  limiteIntento: string | null;
   accion: 'ESPERAR' | 'INICIAR' | 'CONTINUAR' | 'RESULTADO';
 }
 export interface IntentoEstudiante {
@@ -236,8 +239,9 @@ export class ServicioApi {
       throw error;
     }
   }
-  cambiarClaveInicial(clave: string) {
-    return this.enviar<void>('/identidad/clave-inicial', { clave }, 'PUT');
+  cambiarClaveInicial(clave: string, conservarClaveInicial = false) {
+    const datos = conservarClaveInicial ? { clave, conservarClaveInicial } : { clave };
+    return this.enviar<void>('/identidad/clave-inicial', datos, 'PUT');
   }
   cambiarClave(actual: string, nueva: string) {
     return this.enviar<void>('/identidad/yo/clave', { actual, nueva }, 'PUT');
@@ -308,6 +312,24 @@ export class ServicioApi {
       throw new Error('El servicio devolvió una lista de notificaciones inválida.');
     return notificaciones;
   }
+
+  async listarHistorialNotificaciones() {
+    const usuario = this.usuario();
+    const limite = 100;
+    const avisos = new Map<string, AvisoNotificacion>();
+    for (let desplazamiento = 0; this.usuario() === usuario; desplazamiento += limite) {
+      const lote = await this.listarNotificaciones(limite, desplazamiento);
+      if (this.usuario() !== usuario) return [];
+      for (const aviso of lote) avisos.set(aviso.id, aviso);
+      if (lote.length < limite) return [...avisos.values()];
+    }
+    return [];
+  }
+
+  contarNotificacionesNoLeidas() {
+    return this.consultar<number>('/notificaciones/no-leidas');
+  }
+
   marcarNotificacionLeida(id: string) {
     return this.enviar<void>(`/notificaciones/${encodeURIComponent(id)}/leida`, undefined, 'PUT');
   }
@@ -367,6 +389,10 @@ export class ServicioApi {
     const esJson = tipoContenido.includes('application/json') || tipoContenido.includes('+json');
     if (!respuesta.ok) {
       const problema = esJson ? await respuesta.json().catch(() => null) : null;
+      if (ruta === '/identidad/clave-inicial' && respuesta.status === 409 &&
+          problema?.codigo === 'CONFIRMAR_CLAVE_INICIAL') {
+        throw new ConfirmacionClaveInicialRequerida();
+      }
       const sesionExpirada =
         ruta !== '/identidad/ingreso' &&
         respuesta.status === 401 &&

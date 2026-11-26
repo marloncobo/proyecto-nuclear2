@@ -32,7 +32,7 @@ public class ServicioEspacioEstudiante {
     public record Actividad(UUID idSesion, UUID idCaso, String nombreCaso, String contexto,
             Instant inicioPrevisto, Instant finPrevisto, int duracionMaximaMin, String modoNavegacion,
             String estadoSesion, String lugar, String mensaje, UUID idIntento, String estadoIntento,
-            String accion) { }
+            String accion, Instant limiteIntento) { }
 
     public record OpcionVisible(UUID id, String texto) { }
     public record PreguntaVisible(UUID id, String escenario, String contexto, String enunciado,
@@ -145,7 +145,8 @@ public class ServicioEspacioEstudiante {
         return new Actividad(sesion.id(), sesion.idCaso(), caso.nombre(), caso.contexto(), sesion.inicioPrevisto(),
                 sesion.finPrevisto(), sesion.duracionMaximaMin(), sesion.modoNavegacion().name(),
                 sesion.estado().codigo().name(), sesion.lugar(), sesion.mensaje(),
-                intento == null ? null : intento.id(), intento == null ? null : intento.estado().name(), accion);
+                intento == null ? null : intento.id(), intento == null ? null : intento.estado().name(), accion,
+                "CONTINUAR".equals(accion) ? intento.limite() : null);
     }
 
     private String accion(Sesion sesion, Intento intento) {

@@ -100,6 +100,9 @@ export class Aplicacion {
   readonly espacioSesiones = signal('');
   private readonly sesionesPorPagina = 5;
   readonly paginaSesiones = signal(1);
+  readonly proximaSesion = computed(() =>
+    [...this.sesiones()].sort((a, b) => Date.parse(a.inicioPrevisto) - Date.parse(b.inicioPrevisto))[0],
+  );
   readonly sesionesVisibles = computed(() => {
     const consulta = this.busquedaSesiones().trim().toLocaleLowerCase('es');
     return this.sesiones().filter((sesion) => {
@@ -552,7 +555,7 @@ export class Aplicacion {
     this.cargandoNotificaciones.set(true);
     this.errorNotificaciones.set('');
     try {
-      const notificaciones = await this.api.listarNotificaciones(100);
+      const notificaciones = await this.api.listarHistorialNotificaciones();
       if (this.api.usuario() === usuario) this.notificaciones.set(notificaciones);
     } catch (error) {
       if (this.api.usuario() === usuario)
@@ -809,7 +812,8 @@ export class Aplicacion {
       const sesion = this.api.conectado()
         ? await this.api.enviar<Sesion>('/sesiones', datos)
         : { ...datos, id: crypto.randomUUID(), estado: 'SIN_INICIAR', convocatorias: [] };
-      this.sesiones.update((sesiones) => [...sesiones, sesion]);
+      this.sesiones.update((sesiones) => [sesion, ...sesiones]);
+      this.limpiarFiltrosSesiones();
       this.programacion.estudiantes = [];
       this.estudiantesPredeterminados = [];
       this.modal.set('');

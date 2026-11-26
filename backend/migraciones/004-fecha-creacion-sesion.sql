@@ -1,0 +1,1 @@
+ALTER TABLE sesion ADD COLUMN fecha_creacion TIMESTAMP(6) NULL;

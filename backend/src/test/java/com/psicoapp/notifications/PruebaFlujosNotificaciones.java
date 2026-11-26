@@ -10,6 +10,7 @@ import com.psicoapp.sessions.domain.ModoNavegacion;
 import com.psicoapp.participation.application.ServicioGestionParticipacion;
 import com.psicoapp.evaluation.application.*;
 import com.psicoapp.notifications.application.*;
+import com.psicoapp.notifications.domain.ContenidoCorreo;
 import com.psicoapp.notifications.infrastructure.*;
 import com.psicoapp.shared.events.*;
 import com.psicoapp.shared.exceptions.*;
@@ -153,9 +154,20 @@ class PruebaFlujosNotificaciones {
         var servicio = new ServicioEntregaNotificaciones(reconstruido, correo, identidades, reloj);
         new TransactionTemplate(gestor).executeWithoutResult(estadoTransaccion -> servicio.entregar(id));
         entrega.entregar(id);
-        verify(correo, times(1)).enviar(eq(correoEstudiante), eq("Convocatoria academica"), argThat(
-                texto -> !texto.contains(codigo) && texto.contains("Conflicto") && texto.contains("Mensaje del docente")
-                        && texto.contains("https://universidad.example/ingreso")));
+        var mensaje = org.mockito.ArgumentCaptor.forClass(ContenidoCorreo.class);
+        verify(correo, times(1)).enviar(eq(correoEstudiante), eq("Convocatoria académica"), mensaje.capture());
+        var contenido = mensaje.getValue();
+        for (String cuerpo : List.of(contenido.texto(), contenido.html())) {
+            assertFalse(cuerpo.contains(codigo));
+            assertTrue(cuerpo.contains("Conflicto"));
+            assertTrue(cuerpo.contains("08/11/2026, 10:00"));
+            assertTrue(cuerpo.contains("08/11/2026, 11:00"));
+            assertTrue(cuerpo.contains("30 min"));
+            assertTrue(cuerpo.contains("Aula 1"));
+            assertTrue(cuerpo.contains("Mensaje del docente"));
+            assertTrue(cuerpo.contains("https://universidad.example/ingreso?sesion=" + sesion));
+        }
+        assertTrue(contenido.html().contains(">Ver actividad en Psicoapp</a>"));
         assertEquals("ENVIADA", estado(id));
         assertEquals("", contenido(id));
         despachar();
@@ -166,23 +178,37 @@ class PruebaFlujosNotificaciones {
         assertFalse(aviso.mensaje().contains(codigo));
     }
 
+    @Test
+    void entregaUnCorreoPlanoPendienteCreadoAntesDeLaPlantilla() {
+        UUID id = correoConvocatoria();
+        String texto = "Caso: Conflicto\nEnlace original de la convocatoria";
+        jdbc.sql("UPDATE notificacion SET mensaje=? WHERE id_notificacion=?")
+                .params(cifrador.cifrar(texto), id.toString()).update();
+
+        entrega.entregar(id);
+
+        verify(correo).enviar(eq(correoEstudiante), anyString(), eq(new ContenidoCorreo(texto, null)));
+        assertEquals("ENVIADA", estado(id));
+        assertEquals("", contenido(id));
+    }
+
     // CP-NO-005: fallos de Gmail no cambian datos academicos y se reintentan con espera.
     @Test
     void falloGmailConservaConvocatoriaYReintentaSinFiltrarError() {
         UUID id = correoConvocatoria();
         doThrow(new IllegalStateException("dato secreto " + codigo)).doNothing()
-                .when(correo).enviar(anyString(), anyString(), anyString());
+                .when(correo).enviar(anyString(), anyString(), any(ContenidoCorreo.class));
         entrega.entregar(id);
         assertEquals("PENDIENTE", estado(id));
         assertEquals(1, jdbc.sql("SELECT intentos FROM notificacion WHERE id_notificacion=?").param(id.toString()).query(Integer.class).single());
         assertEquals("ENVIO_FALLIDO", jdbc.sql("SELECT ultimo_error FROM notificacion WHERE id_notificacion=?").param(id.toString()).query(String.class).single());
         assertEquals("SIN_INICIAR", sesiones.consultar(docente, sesion).estado());
         entrega.entregar(id); // Todavia no corresponde el reintento.
-        verify(correo, times(1)).enviar(anyString(), anyString(), anyString());
+        verify(correo, times(1)).enviar(anyString(), anyString(), any(ContenidoCorreo.class));
         when(reloj.instant()).thenReturn(AHORA.plusSeconds(30));
         entrega.entregar(id);
         assertEquals("ENVIADA", estado(id));
-        verify(correo, times(2)).enviar(anyString(), anyString(), anyString());
+        verify(correo, times(2)).enviar(anyString(), anyString(), any(ContenidoCorreo.class));
     }
 
     // CP-NO-008: misma transaccion productora, sin red y sin aviso si hay rollback.
@@ -202,7 +228,8 @@ class PruebaFlujosNotificaciones {
     @Test
     void repetirEventoNoCreaOtraEntrega() {
         var evento = new SesionProgramada(UUID.randomUUID(), AHORA, estudiante, sesion,
-                AHORA, "Caso", "Mensaje", URI.create("https://universidad.example/ingreso"), "codigo-ficticio");
+                AHORA, AHORA.plusSeconds(3600), 30, "Caso", null, "Mensaje",
+                URI.create("https://universidad.example/ingreso"), "codigo-ficticio");
         new TransactionTemplate(gestor).executeWithoutResult(estadoTransaccion -> { eventos.publicar(evento); eventos.publicar(evento); });
         assertEquals(2, jdbc.sql("SELECT COUNT(*) FROM notificacion WHERE id_evento=?")
                 .param(evento.idEvento().toString()).query(Integer.class).single());
@@ -216,7 +243,7 @@ class PruebaFlujosNotificaciones {
             var segundo = trabajadores.submit(() -> entrega.entregar(id));
             primero.get(10, TimeUnit.SECONDS); segundo.get(10, TimeUnit.SECONDS);
         }
-        verify(correo, times(1)).enviar(anyString(), anyString(), anyString());
+        verify(correo, times(1)).enviar(anyString(), anyString(), any(ContenidoCorreo.class));
     }
 
     // CP-NO-003: retiro revoca acceso y cancela correo pendiente con codigo obsoleto.
@@ -345,6 +372,11 @@ class PruebaFlujosNotificaciones {
         UUID aviso = avisos.listar(estudiante, 20, 0).getFirst().id();
         mvc.perform(get("/api/notificaciones").with(portador(mvc, correoEstudiante, "clave-estudiante-personal")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(3));
+        mvc.perform(get("/api/notificaciones/no-leidas").with(user(estudiante.toString()).roles("ESTUDIANTE")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").value(3));
+        mvc.perform(get("/api/notificaciones/no-leidas").with(user(docente.toString()).roles("DOCENTE")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").value(0));
+        mvc.perform(get("/api/notificaciones/no-leidas")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/notificaciones")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/notificaciones").with(user(docente.toString()).roles("DOCENTE")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
@@ -356,6 +388,8 @@ class PruebaFlujosNotificaciones {
         for (int vez = 0; vez < 2; vez++) mvc.perform(put("/api/notificaciones/{id}/leida", aviso)
                 .with(user(estudiante.toString()).roles("ESTUDIANTE"))).andExpect(status().isNoContent());
         assertTrue(avisos.listar(estudiante, 20, 0).stream().filter(a -> a.id().equals(aviso)).findFirst().orElseThrow().leida());
+        mvc.perform(get("/api/notificaciones/no-leidas").with(user(estudiante.toString()).roles("ESTUDIANTE")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").value(2));
         mvc.perform(get("/api/evaluaciones/{id}/valoraciones", intento.id()).with(portador(mvc, correoEstudiante, "clave-estudiante-personal")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].mensaje").value("Sugerencia formativa"));
     }

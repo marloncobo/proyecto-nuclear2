@@ -8,6 +8,7 @@ import com.psicoapp.evaluation.application.RepositorioValoraciones;
 import com.psicoapp.identity.application.DirectorioIdentidad;
 import com.psicoapp.participation.application.RepositorioIntentos;
 import com.psicoapp.participation.application.ServicioGestionParticipacion;
+import com.psicoapp.participation.domain.Intento;
 import com.psicoapp.sessions.application.RepositorioConvocatorias;
 import com.psicoapp.sessions.application.RepositorioSesiones;
 import com.psicoapp.sessions.domain.Convocatoria;
@@ -72,8 +73,23 @@ class PruebaServicioEspacioEstudiante {
         var datos = servicio.consultarActividad(estudiante, sesion.id());
         assertNull(datos.intento());
         assertEquals("INICIAR", datos.actividad().accion());
+        assertNull(datos.actividad().limiteIntento());
         verify(participaciones).consultarParaSesion(estudiante, sesion.id());
         verify(participaciones, never()).iniciar(any(), any());
+    }
+
+    @Test
+    void listadoExponeElLimiteGuardadoDelIntentoEnCurso() {
+        var convocatoria = new Convocatoria(UUID.randomUUID(), sesion.id(), estudiante, "a".repeat(64), true);
+        var inicio = Instant.parse("2026-11-24T18:05:00Z");
+        var intento = Intento.iniciar(UUID.randomUUID(), sesion.id(), estudiante, inicio,
+                30, sesion.finPrevisto(), ModoNavegacion.FLEXIBLE, List.of(UUID.randomUUID()));
+        when(convocatorias.listarPorEstudiante(estudiante)).thenReturn(List.of(convocatoria));
+        when(intentos.buscarActivo(sesion.id(), estudiante)).thenReturn(Optional.of(intento));
+
+        var actividad = servicio.listarActividades(estudiante).getFirst();
+        assertEquals("CONTINUAR", actividad.accion());
+        assertEquals(Instant.parse("2026-11-24T18:35:00Z"), actividad.limiteIntento());
     }
 
     @Test

@@ -8,6 +8,7 @@ public interface RepositorioAvisos {
     record Aviso(UUID id, UUID idSesion, UUID idIntento, String tipo, String mensaje,
             Instant fechaCreacion, boolean leida) { }
     List<Aviso> listar(UUID idUsuario, int limite, int desplazamiento);
+    long contarNoLeidas(UUID idUsuario);
     boolean marcarLeida(UUID idUsuario, UUID idAviso);
     void marcarTodasLeidas(UUID idUsuario);
 }

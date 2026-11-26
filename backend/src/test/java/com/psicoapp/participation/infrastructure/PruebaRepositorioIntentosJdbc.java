@@ -68,7 +68,9 @@ class PruebaRepositorioIntentosJdbc {
         jdbc.sql("INSERT INTO opcion_respuesta VALUES (?,?,'Opcion',true,'Justificacion')")
                 .params(opcion.toString(), pregunta.toString()).update();
         jdbc.sql("""
-                INSERT INTO sesion VALUES (?, ?, ?, ?, ?, ?, 30, 'FLEXIBLE', 'EN_CURSO', NULL, NULL)
+                INSERT INTO sesion (id_sesion,id_caso,id_espacio,id_docente,fecha_inicio,fecha_fin,
+                    duracion_maxima_min,modo_navegacion,estado)
+                VALUES (?, ?, ?, ?, ?, ?, 30, 'FLEXIBLE', 'EN_CURSO')
                 """).params(sesion.toString(), caso.toString(), espacio.toString(), docente.toString(),
                 java.sql.Timestamp.from(INICIO), java.sql.Timestamp.from(INICIO.plusSeconds(3600))).update();
     }

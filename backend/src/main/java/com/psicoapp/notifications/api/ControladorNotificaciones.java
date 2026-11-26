@@ -16,6 +16,10 @@ public class ControladorNotificaciones {
             @RequestParam(defaultValue = "20") int limite, @RequestParam(defaultValue = "0") int desplazamiento) {
         return avisos.listar(UUID.fromString(principal.getName()), limite, desplazamiento);
     }
+    @GetMapping("/no-leidas")
+    public long contarNoLeidas(Principal principal) {
+        return avisos.contarNoLeidas(UUID.fromString(principal.getName()));
+    }
     @PutMapping("/{id}/leida")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void marcarLeida(Principal principal, @PathVariable UUID id) {

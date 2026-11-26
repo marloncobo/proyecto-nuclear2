@@ -244,7 +244,7 @@
                   <span aria-hidden="true">◷</span>
                 </div>
                 <h2>El próximo encuentro</h2>
-                @if (sesiones()[0]; as sesion) {
+                @if (proximaSesion(); as sesion) {
                   <div class="fecha-sesion">
                     <strong>{{ sesion.inicioPrevisto | date: 'dd' }}</strong><span
                       >{{ sesion.inicioPrevisto | date: 'MMM' }}<br />{{
@@ -429,6 +429,12 @@
                     <p>
                       {{ sesion.inicioPrevisto | date: 'shortTime' }} ·
                       {{ sesion.duracionMaximaMin }} min · {{ sesion.lugar }}
+                    </p>
+                    <p class="cierre-sesion">
+                      {{ sesion.cierreReal ? 'Cierre real' : 'Cierre programado' }}
+                      <time [attr.datetime]="sesion.cierreReal || sesion.finPrevisto">
+                        {{ (sesion.cierreReal || sesion.finPrevisto) | date: 'dd/MM/yyyy, HH:mm' }}
+                      </time>
                     </p>
                     <small>{{ nombreEspacioAcademico(sesion.idEspacio) }}</small>
                   </div>

@@ -96,14 +96,13 @@
 .acciones-cuenta button:hover { background: var(--salvia); }
 
 .contador-avisos {
-  position: absolute;
-  top: 1px;
-  right: 1px;
-  min-width: 16px;
-  padding: 1px 4px;
+  min-width: 1.2rem;
+  margin-inline-start: auto;
+  padding: 2px 4px;
   border-radius: 99px;
   background: #194a50;
   color: white;
+  text-align: center;
   font-size: .625rem;
   font-weight: 700;
 }
@@ -134,6 +133,14 @@
 .contenido-cuenta { position: relative; padding: 26px; overflow-wrap: anywhere; }
 .contenido-cuenta p { margin: 8px 0; font-size: 13px; }
 .contenido-cuenta .secundario { margin-top: 12px; }
+.acciones-confirmacion {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 8px;
+  margin-top: 16px;
+}
+.acciones-confirmacion .secundario { margin-top: 0; }
 .cerrar-cuenta {
   position: absolute;
   top: 8px;
@@ -523,6 +530,64 @@ main p, main small { color: #536970; overflow-wrap: anywhere; }
 .detalle-resultado small { display: block; margin-top: .35rem; }
 .detalle-resultado .acierto { color: #365d50; font-weight: 700; }
 
+.detalle-aviso {
+  padding: clamp(16px, 2vw, 22px);
+  border: 1px solid var(--borde);
+  border-radius: 15px;
+  background: white;
+}
+.cabecera-detalle-aviso {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--borde);
+}
+.cabecera-detalle-aviso h2 {
+  color: var(--azul);
+  font-size: 15px;
+}
+.cerrar-detalle-aviso {
+  flex: 0 0 44px;
+  height: 44px;
+  border-radius: 8px;
+  color: var(--azul);
+  font-size: 22px;
+}
+.cerrar-detalle-aviso:hover { background: var(--salvia); }
+.cuerpo-detalle-aviso { padding-top: 16px; }
+.icono-detalle-aviso {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 12px;
+  place-items: center;
+  border-radius: 12px;
+  background: #eaf0e6;
+  color: #315f4c;
+  font-size: 20px;
+}
+.cuerpo-detalle-aviso h3 {
+  margin-bottom: 4px;
+  color: var(--azul);
+  font-size: 18px;
+}
+.cuerpo-detalle-aviso time,
+.datos-detalle-aviso dt,
+.aviso-leido { color: #536970; font-size: 12px; }
+.cuerpo-detalle-aviso p { margin: 12px 0 0; font-size: 14px; line-height: 1.55; }
+.datos-detalle-aviso {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--borde);
+}
+.datos-detalle-aviso dd { margin: 3px 0 0; font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
+.acciones-detalle-aviso { display: grid; gap: 8px; margin-top: 16px; }
+.aviso-leido { text-align: center; }
+
 blockquote {
   margin: .85rem 0 0;
   padding: .75rem .95rem;
@@ -576,6 +641,7 @@ blockquote footer { margin-top: .45rem; color: #536970; font-size: .8rem; }
   }
 
   .navegacion .icono { display: none; }
+  .contador-avisos { margin-inline-start: 0; }
   .tarjeta-actividad:has(button) > div:first-child { grid-row: auto; }
   .tarjeta-actividad > button,
   .acciones-ingreso { grid-column: 1 / -1; justify-self: start; }

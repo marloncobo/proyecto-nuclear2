@@ -1,6 +1,7 @@
 package com.psicoapp.notifications.application;
 
 import com.psicoapp.notifications.domain.SolicitudNotificacion;
+import com.psicoapp.notifications.domain.ContenidoCorreo;
 import java.time.Instant;
 import java.util.*;
 
@@ -12,7 +13,7 @@ public interface RepositorioEntregas {
     void registrar(SolicitudNotificacion solicitud);
     List<UUID> pendientes(Instant ahora, int limite);
     Optional<Entrega> bloquearPendiente(UUID id, Instant ahora);
-    String recuperarContenido(Entrega entrega);
+    ContenidoCorreo recuperarContenido(Entrega entrega);
     void confirmar(UUID id, Instant ahora);
     void posponer(UUID id, int intentos, Instant siguiente);
     void cancelarPendientes(UUID idSesion, UUID idEstudiante, String tipo);

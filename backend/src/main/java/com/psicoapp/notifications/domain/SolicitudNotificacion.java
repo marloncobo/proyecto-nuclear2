@@ -6,8 +6,14 @@ import java.util.Objects;
 
 /** Contenido de entrega; no registrar su representacion en logs. */
 public record SolicitudNotificacion(UUID idEvento, UUID idUsuario, UUID idSesion, UUID idIntento,
-        Canal canal, String tipo, String asunto, String mensaje, Instant fecha) {
+        Canal canal, String tipo, String asunto, String mensaje, Instant fecha, String html) {
     public enum Canal { CORREO, INTERNO }
+
+    public SolicitudNotificacion(UUID idEvento, UUID idUsuario, UUID idSesion, UUID idIntento,
+            Canal canal, String tipo, String asunto, String mensaje, Instant fecha) {
+        this(idEvento, idUsuario, idSesion, idIntento, canal, tipo, asunto, mensaje, fecha, null);
+    }
+
     public SolicitudNotificacion {
         Objects.requireNonNull(idEvento); Objects.requireNonNull(idUsuario);
         Objects.requireNonNull(canal); Objects.requireNonNull(fecha);

@@ -68,8 +68,10 @@ class PruebaConsolidacionReporteSesionJdbc {
                 .params(primeraPregunta.toString(), escenario.toString(), segundaPregunta.toString(),
                         escenario.toString()).update();
         jdbc.sql("""
-                INSERT INTO sesion VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP,
-                    DATEADD('HOUR', 1, CURRENT_TIMESTAMP), 30, 'FLEXIBLE', 'FINALIZADO', NULL, NULL)
+                INSERT INTO sesion (id_sesion,id_caso,id_espacio,id_docente,fecha_inicio,fecha_fin,
+                    duracion_maxima_min,modo_navegacion,estado)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP,
+                    DATEADD('HOUR', 1, CURRENT_TIMESTAMP), 30, 'FLEXIBLE', 'FINALIZADO')
                 """).params(sesion.toString(), caso.toString(), espacio.toString(), docente.toString()).update();
         jdbc.sql("""
                 INSERT INTO convocatoria VALUES (?, ?, ?, 'codigo-a', 'AUTORIZADA'),

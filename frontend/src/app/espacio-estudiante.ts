@@ -1,6 +1,9 @@
-import { Component, computed, effect, inject, input, model, signal } from '@angular/core';
+import {
+  afterNextRender, Component, computed, effect, ElementRef, inject, Injector, input, model, signal,
+  viewChild,
+} from '@angular/core';
 import { PanelNotificaciones } from './panel-notificaciones';
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { CambioClave } from './cambio-clave';
 import { Router } from '@angular/router';
 import { TutorialGuiado } from './tutorial-guiado';
@@ -16,7 +19,7 @@ import {
 
 @Component({
   selector: 'psico-espacio-estudiante',
-  imports: [DatePipe, TutorialGuiado, PanelNotificaciones, CambioClave],
+  imports: [DatePipe, DecimalPipe, TutorialGuiado, PanelNotificaciones, CambioClave],
   templateUrl: './espacio-estudiante.html',
   styleUrl: './espacio-estudiante.css',
 })
@@ -26,6 +29,12 @@ export class EspacioEstudiante {
   readonly pasosTutorial = pasosEstudiante;
   readonly api = inject(ServicioApi);
   private readonly enrutador = inject(Router);
+  private readonly inyector = inject(Injector);
+  private readonly tituloDetalleAviso = viewChild<ElementRef<HTMLElement>>('tituloDetalleAviso');
+  private readonly tituloNotificaciones = viewChild<ElementRef<HTMLElement>>('tituloNotificaciones');
+  private readonly tituloActividadNotificada = viewChild<ElementRef<HTMLElement>>('tituloActividadNotificada');
+  private readonly tituloResultado = viewChild<ElementRef<HTMLElement>>('tituloResultado');
+  private controlAviso: HTMLButtonElement | null = null;
   readonly vista = signal<'actividades' | 'simulacion' | 'resultados' | 'notificaciones'>('actividades');
   readonly actividades = signal<ActividadEstudiante[]>([]);
   readonly simulacion = signal<SimulacionEstudiante | null>(null);
@@ -33,6 +42,30 @@ export class EspacioEstudiante {
   readonly resultados = signal<ResultadoEstudiante[]>([]);
   readonly resultadoSeleccionado = signal<ResultadoEstudiante | null>(null);
   readonly notificaciones = signal<AvisoNotificacion[]>([]);
+  readonly idAvisoSeleccionado = signal<string | null>(null);
+  readonly idActividadNotificada = signal<string | null>(null);
+  readonly avisoSeleccionado = computed(() =>
+    this.notificaciones().find((aviso) => aviso.id === this.idAvisoSeleccionado()) ?? null,
+  );
+  readonly resultadoAviso = computed(() => {
+    const id = this.avisoSeleccionado()?.idIntento;
+    return id ? this.resultados().find((resultado) => resultado.idIntento === id) : undefined;
+  });
+  readonly actividadAviso = computed(() => {
+    const id = this.avisoSeleccionado()?.idSesion;
+    return id ? this.actividades().find((actividad) => actividad.idSesion === id) : undefined;
+  });
+  readonly recursoAviso = computed(() => {
+    const aviso = this.avisoSeleccionado();
+    if (!aviso) return null;
+    if (aviso.idIntento) {
+      const etiqueta = aviso.tipo === 'VALORACION' ? 'Ver retroalimentación' : 'Consultar resultado';
+      return { tipo: 'resultado', id: aviso.idIntento, etiqueta };
+    }
+    if (aviso.tipo === 'RESULTADO' || aviso.tipo === 'VALORACION' || !aviso.idSesion) return null;
+    return { tipo: 'actividad', id: aviso.idSesion, etiqueta: 'Ver actividad' };
+  });
+  readonly noLeidas = signal<number | null>(null);
   readonly ocupado = signal(false);
   readonly error = signal('');
   readonly ahora = signal(Date.now());
@@ -51,6 +84,10 @@ export class EspacioEstudiante {
     };
     return [...this.actividades()].sort((a, b) => prioridad(a) - prioridad(b));
   });
+  readonly actividadesVisibles = computed(() => {
+    const id = this.idActividadNotificada();
+    return id ? this.actividades().filter((actividad) => actividad.idSesion === id) : this.actividadesOrdenadas();
+  });
   readonly referenciasSesion = computed(() => {
     const grupos = new Map<string, string[]>();
     for (const actividad of this.actividades()) {
@@ -68,17 +105,13 @@ export class EspacioEstudiante {
     return referencias;
   });
   readonly finalizadas = computed(() => this.resultados().length);
-  readonly noLeidas = computed(() => this.notificaciones().filter((aviso) => !aviso.leida).length);
   readonly indice = computed(() =>
     this.simulacion()?.preguntas.findIndex((pregunta) => pregunta.id === this.intento()?.preguntaActual) ?? -1,
   );
   readonly pregunta = computed(() => this.simulacion()?.preguntas[this.indice()]);
   readonly respondidas = computed(() => Object.keys(this.intento()?.respuestas ?? {}).length);
   readonly segundosRestantes = computed(() =>
-    Math.max(0, Math.ceil((Math.min(
-      Date.parse(this.intento()?.limite ?? ''),
-      Date.parse(this.simulacion()?.actividad.finPrevisto ?? ''),
-    ) - this.ahora()) / 1000)),
+    this.segundosHasta(this.intento()?.limite ?? ''),
   );
   readonly tiempoRestante = computed(() => this.formatearCuentaRegresiva(this.segundosRestantes()));
 
@@ -93,8 +126,9 @@ export class EspacioEstudiante {
         const ahora = Date.now();
         this.ahora.set(ahora);
         if (++pulsos % 5 !== 0 || consultando || this.ocupado() || !this.actividades().some(
-          (actividad) => actividad.estadoSesion === 'SIN_INICIAR' &&
-            Date.parse(actividad.inicioPrevisto) <= ahora && Date.parse(actividad.finPrevisto) > ahora,
+          (actividad) => actividad.accion === 'CONTINUAR' ||
+            (actividad.estadoSesion === 'SIN_INICIAR' &&
+              Date.parse(actividad.inicioPrevisto) <= ahora && Date.parse(actividad.finPrevisto) > ahora),
         )) return;
         consultando = true;
         try {
@@ -117,7 +151,8 @@ export class EspacioEstudiante {
     });
     effect((limpiar) => {
       const intento = this.intento();
-      if (!intento || intento.estado !== 'EN_PROGRESO') return;
+      if (this.vista() !== 'simulacion' || !intento || intento.estado !== 'EN_PROGRESO') return;
+      this.ahora.set(Date.now());
       let pulsos = 0;
       const intervalo = setInterval(() => {
         this.ahora.set(Date.now());
@@ -130,14 +165,21 @@ export class EspacioEstudiante {
   plazoIngresoTerminado(actividad: ActividadEstudiante) {
     if (
       actividad.estadoSesion === 'FINALIZADO' ||
-      actividad.accion === 'RESULTADO'
+      actividad.accion === 'RESULTADO' || actividad.accion === 'CONTINUAR'
     ) return false;
     return this.ahora() >= Date.parse(actividad.finPrevisto);
   }
 
-  tiempoIngresoRestante(actividad: ActividadEstudiante) {
-    const segundos = Math.max(0, Math.ceil((Date.parse(actividad.finPrevisto) - this.ahora()) / 1000));
-    return this.formatearCuentaRegresiva(segundos);
+  cuentaRegresivaHasta(fecha: string) {
+    return this.formatearCuentaRegresiva(this.segundosHasta(fecha));
+  }
+
+  plazoVencido(fecha: string | null) {
+    return fecha !== null && this.segundosHasta(fecha) === 0;
+  }
+
+  private segundosHasta(fecha: string) {
+    return Math.max(0, Math.ceil((Date.parse(fecha) - this.ahora()) / 1000) || 0);
   }
 
   private formatearCuentaRegresiva(segundos: number) {
@@ -150,7 +192,8 @@ export class EspacioEstudiante {
       const [actividades, resultados, notificaciones] = await Promise.all([
         this.api.listarActividadesEstudiante(),
         this.api.listarResultadosEstudiante(),
-        this.api.listarNotificaciones(100),
+        this.api.listarHistorialNotificaciones(),
+        this.actualizarNoLeidas(),
       ]);
       this.actividades.set(actividades);
       this.resultados.set(resultados);
@@ -158,25 +201,41 @@ export class EspacioEstudiante {
     });
   }
 
+  private async actualizarNoLeidas() {
+    try {
+      this.noLeidas.set(await this.api.contarNotificacionesNoLeidas());
+    } catch {
+      // El listado de avisos sigue disponible si falla el contador.
+    }
+  }
+
   async actualizarActividades() {
-    await this.ejecutar(async () => {
-      const [actividades, resultados] = await Promise.all([
-        this.api.listarActividadesEstudiante(),
-        this.api.listarResultadosEstudiante(),
-      ]);
-      this.actividades.set(actividades);
-      this.resultados.set(resultados);
-    });
+    await this.ejecutar(() => this.cargarActividadesYResultados());
+  }
+
+  private async cargarActividadesYResultados() {
+    const [actividades, resultados] = await Promise.all([
+      this.api.listarActividadesEstudiante(),
+      this.api.listarResultadosEstudiante(),
+    ]);
+    this.actividades.set(actividades);
+    this.resultados.set(resultados);
   }
 
   async navegar(vista: 'actividades' | 'resultados' | 'notificaciones') {
+    this.idActividadNotificada.set(null);
     this.vista.set(vista);
     this.error.set('');
     await this.enrutador.navigate(['/estudiante', vista]);
     if (vista === 'actividades') await this.actualizarActividades();
     if (vista === 'resultados') this.resultados.set(await this.api.listarResultadosEstudiante());
     if (vista === 'notificaciones') {
-      await this.ejecutar(async () => this.notificaciones.set(await this.api.listarNotificaciones(100)));
+      await this.ejecutar(async () => {
+        await Promise.all([
+          this.actualizarNoLeidas(),
+          this.api.listarHistorialNotificaciones().then((avisos) => this.notificaciones.set(avisos)),
+        ]);
+      });
     }
   }
 
@@ -212,6 +271,16 @@ export class EspacioEstudiante {
     await this.operar('respuestas', { idPregunta, idOpcion }, 'PUT');
   }
 
+  avanzar(dialogo: HTMLDialogElement, idPregunta: string) {
+    if (this.intento()?.respuestas[idPregunta]) void this.operar('avanzar');
+    else dialogo.showModal();
+  }
+
+  confirmarAccion(dialogo: HTMLDialogElement, accion: 'avanzar' | 'finalizar') {
+    dialogo.close();
+    if (this.segundosRestantes() > 0) void this.operar(accion);
+  }
+
   async operar(accion: string, datos: unknown = {}, metodo = 'POST') {
     const intento = this.intento();
     if (!intento) return;
@@ -223,8 +292,11 @@ export class EspacioEstudiante {
       );
       this.intento.set(actualizado);
       if (actualizado.estado !== 'EN_PROGRESO') {
-        await this.cargarInicio();
-        this.verResultado(actualizado.id);
+        try {
+          await this.cargarActividadesYResultados();
+        } finally {
+          this.verResultado(actualizado.id);
+        }
       }
     });
   }
@@ -236,6 +308,62 @@ export class EspacioEstudiante {
     void this.enrutador.navigate(['/estudiante', 'resultados']);
   }
 
+  seleccionarAviso(aviso: AvisoNotificacion, control: HTMLButtonElement) {
+    const fila = control.closest('article');
+    const posicion = fila?.getBoundingClientRect().top;
+    this.controlAviso = control;
+    this.idAvisoSeleccionado.set(aviso.id);
+    this.error.set('');
+    afterNextRender(() => {
+      if (this.controlAviso !== control || !control.isConnected) return;
+      if (fila && posicion !== undefined) {
+        const desplazamiento = fila.getBoundingClientRect().top - posicion;
+        if (Math.abs(desplazamiento) > 1) window.scrollBy({ top: desplazamiento, behavior: 'instant' });
+      }
+      this.tituloDetalleAviso()?.nativeElement.focus({ preventScroll: true });
+    }, { injector: this.inyector });
+  }
+
+  cerrarDetalleAviso(restaurarFoco = true) {
+    this.idAvisoSeleccionado.set(null);
+    this.error.set('');
+    if (restaurarFoco) {
+      const destino = this.controlAviso?.isConnected ? this.controlAviso : this.tituloNotificaciones()?.nativeElement;
+      destino?.focus({ preventScroll: true });
+    }
+    this.controlAviso = null;
+  }
+
+  async abrirRecursoAviso() {
+    const recurso = this.recursoAviso();
+    if (!recurso) return;
+    const idAviso = this.idAvisoSeleccionado();
+    await this.ejecutar(async () => {
+      if (recurso.tipo === 'resultado') {
+        const resultados = await this.api.listarResultadosEstudiante();
+        if (this.vista() !== 'notificaciones' || this.idAvisoSeleccionado() !== idAviso) return;
+        this.resultados.set(resultados);
+        if (!resultados.some((resultado) => resultado.idIntento === recurso.id)) {
+          throw new Error('El resultado de este aviso ya no está disponible.');
+        }
+        this.verResultado(recurso.id);
+        afterNextRender(() => this.tituloResultado()?.nativeElement.focus(), { injector: this.inyector });
+        return;
+      }
+
+      const actividades = await this.api.listarActividadesEstudiante();
+      if (this.vista() !== 'notificaciones' || this.idAvisoSeleccionado() !== idAviso) return;
+      this.actividades.set(actividades);
+      if (!actividades.some((actividad) => actividad.idSesion === recurso.id)) {
+        throw new Error('La actividad de este aviso ya no está disponible.');
+      }
+      this.idActividadNotificada.set(recurso.id);
+      this.vista.set('actividades');
+      afterNextRender(() => this.tituloActividadNotificada()?.nativeElement.focus(), { injector: this.inyector });
+      await this.enrutador.navigate(['/estudiante', 'actividades']);
+    });
+  }
+
   async marcarLeida(aviso?: AvisoNotificacion) {
     if (aviso?.leida) return;
     await this.ejecutar(async () => {
@@ -244,6 +372,11 @@ export class EspacioEstudiante {
       this.notificaciones.update((lista) =>
         lista.map((item) => (!aviso || item.id === aviso.id ? { ...item, leida: true } : item)),
       );
+      this.noLeidas.update((total) => {
+        if (!aviso) return 0;
+        return total === null ? null : Math.max(0, total - 1);
+      });
+      await this.actualizarNoLeidas();
     });
   }
 
@@ -253,9 +386,11 @@ export class EspacioEstudiante {
   }
 
   private async refrescarIntento(id: string) {
-    if (this.ocupado() || this.intento()?.id !== id) return;
+    const anterior = this.intento();
+    if (this.ocupado() || anterior?.id !== id) return;
     try {
       const intento = await this.api.consultar<IntentoEstudiante>(`/participaciones/${id}`);
+      if (this.vista() !== 'simulacion' || this.ocupado() || this.intento() !== anterior) return;
       this.intento.set(intento);
       if (intento.estado !== 'EN_PROGRESO') {
         await this.cargarInicio();
