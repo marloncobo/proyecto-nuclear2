@@ -7,6 +7,7 @@ export function nombreEtiqueta(valor: string): string {
     ESTUDIANTE: 'Estudiante',
     ACTIVO: 'Activo',
     INACTIVO: 'Inactivo',
+    NO_DISPONIBLE: 'No disponible',
   };
   return nombres[valor] ?? valor;
 }

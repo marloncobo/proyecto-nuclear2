@@ -274,6 +274,10 @@ export class Administracion implements OnInit {
     return usuario.rol !== 'ADMINISTRADOR' || usuario.id === this.api.usuario()?.id;
   }
 
+  estadoCuenta(activo: boolean | undefined) {
+    return activo === true ? 'ACTIVO' : activo === false ? 'INACTIVO' : 'NO_DISPONIBLE';
+  }
+
   editarDetalle(usuario: UsuarioAdministrado) {
     if (!this.puedeEditar(usuario)) return;
     this.nombre = usuario.nombre;

@@ -1232,6 +1232,31 @@ test('docente: consulta y edita un estudiante inactivo desde el listado', async 
   expect(estado.solicitudes.some((solicitud) => solicitud.ruta.startsWith('/api/identidad/usuarios'))).toBe(false);
 });
 
+test('docente: un estado ausente se muestra como no disponible y queda fuera del filtro de inactivos', async ({
+  page: pagina,
+}) => {
+  const estado = await simularApi(pagina, 'DOCENTE');
+  const estudiante = estado.usuarios.find((usuario) => usuario.rol === 'ESTUDIANTE')!;
+  const { activo, ...sinEstado } = estudiante;
+  await pagina.route(/\/api\/identidad\/estudiantes\/listado\?paraEdicion=true$/, (ruta) =>
+    ruta.fulfill({ json: [sinEstado, { ...estudiante, id: 'inactivo', nombre: 'Estudiante inactivo', activo: false }] }),
+  );
+  await ingresar(pagina, 'docente@example.test');
+  await pagina.getByRole('button', { name: 'Estudiantes', exact: true }).click();
+  const tabla = pagina.getByRole('table', { name: 'Listado de estudiantes' });
+  const cuenta = tabla.getByRole('row').filter({ hasText: estudiante.nombre });
+  await expect(cuenta.getByText('No disponible')).toBeVisible();
+  await cuenta.getByRole('button', { name: /Ver detalle/ }).click();
+  const detalle = pagina.getByRole('dialog', { name: 'Detalle de ' + estudiante.nombre });
+  await expect(detalle.getByText('No disponible')).toBeVisible();
+  await detalle.getByRole('button', { name: 'Cerrar detalle de estudiante' }).click();
+  await pagina.getByLabel('Filtrar por estado').selectOption('false');
+  await pagina.getByRole('button', { name: 'Aplicar filtros' }).click();
+  await expect(cuenta).toHaveCount(0);
+  await expect(tabla.getByRole('row').filter({ hasText: 'Estudiante inactivo' })
+    .getByText('Inactivo', { exact: true })).toBeVisible();
+});
+
 test('administración: edita estudiantes y el perfil propio, y protege el de otro administrador', async ({
   page: pagina,
 }) => {

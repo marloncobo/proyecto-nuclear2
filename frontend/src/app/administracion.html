@@ -137,7 +137,7 @@
                 <td class="celda-rol"><psico-etiqueta-usuario [valor]="usuario.rol" /></td>
               }
               <td class="celda-estado">
-                <psico-etiqueta-usuario [valor]="usuario.activo ? 'ACTIVO' : 'INACTIVO'" />
+                <psico-etiqueta-usuario [valor]="estadoCuenta(usuario.activo)" />
               </td>
               <td class="celda-acciones">
                 <div class="acciones">
@@ -282,7 +282,7 @@
         <div>
           <dt>Estado de la cuenta</dt>
           <dd>
-            <psico-etiqueta-usuario [valor]="usuario.activo ? 'ACTIVO' : 'INACTIVO'" />
+            <psico-etiqueta-usuario [valor]="estadoCuenta(usuario.activo)" />
           </dd>
         </div>
         @if (!estudiantes && usuario.rol === 'DOCENTE') {
