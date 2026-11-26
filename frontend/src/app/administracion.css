@@ -38,11 +38,17 @@
   flex: 1;
   min-width: 0;
 }
+.campo-clave input::-ms-reveal {
+  display: none;
+}
 .alternar-clave {
-  font-size: 10px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
   background: #eaf0e8;
   border-radius: 8px;
-  padding: 11px;
 }
 .ventana-detalle > .error,
 .ventana-detalle > .aviso {

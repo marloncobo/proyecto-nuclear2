@@ -437,10 +437,19 @@
           type="button"
           class="alternar-clave"
           [disabled]="ocupado()"
+          [attr.aria-label]="mostrarClave ? 'Ocultar contraseña' : 'Mostrar contraseña'"
           [attr.aria-pressed]="mostrarClave"
           (click)="mostrarClave = !mostrarClave"
         >
-          {{ mostrarClave ? 'Ocultar contraseña' : 'Mostrar contraseña' }}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" />
+            <circle cx="12" cy="12" r="2.5" />
+            @if (mostrarClave) {
+              <path d="m4 3 16 18" />
+            }
+          </svg>
         </button>
       </div>
       <small id="ayuda-clave-docente" class="nota-modal"

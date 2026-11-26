@@ -219,16 +219,20 @@
   position: relative;
 }
 .contenedor-clave input {
-  padding-right: 80px;
+  padding-right: 56px;
+}
+.contenedor-clave input::-ms-reveal {
+  display: none;
 }
 .alternar-clave {
   position: absolute;
   right: 7px;
-  top: 7px;
-  height: 34px;
-  padding: 0 10px;
-  font-size: 10px;
-  font-weight: 600;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
   color: #567063;
   border-radius: 5px;
 }
