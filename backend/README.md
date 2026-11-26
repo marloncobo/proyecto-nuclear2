@@ -385,6 +385,11 @@ mediante la API, sin duplicarlas. Las instalaciones nuevas ya incluyen los cambi
 `schema.sql`. Los intentos
 cerrados antes del cambio conservan su fecha de fin como desconocida.
 
+Aplica una vez [004-fecha-creacion-sesion.sql](migraciones/004-fecha-creacion-sesion.sql)
+antes de iniciar esta versión con una base existente. Las sesiones creadas a partir
+de esta actualización se listan por fecha de creación descendente. Las sesiones
+anteriores aparecen después, ordenadas por inicio programado descendente.
+
 ## API mínima
 
 La ampliacion de gestion del 18-11-2026 agrega las consultas y ediciones de la

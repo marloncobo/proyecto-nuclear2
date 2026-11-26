@@ -121,6 +121,7 @@ export interface ActividadEstudiante {
   mensaje: string | null;
   idIntento: string | null;
   estadoIntento: string | null;
+  limiteIntento: string | null;
   accion: 'ESPERAR' | 'INICIAR' | 'CONTINUAR' | 'RESULTADO';
 }
 export interface IntentoEstudiante {
@@ -308,6 +309,10 @@ export class ServicioApi {
       throw new Error('El servicio devolvió una lista de notificaciones inválida.');
     return notificaciones;
   }
+  contarNotificacionesNoLeidas() {
+    return this.consultar<number>('/notificaciones/no-leidas');
+  }
+
   marcarNotificacionLeida(id: string) {
     return this.enviar<void>(`/notificaciones/${encodeURIComponent(id)}/leida`, undefined, 'PUT');
   }

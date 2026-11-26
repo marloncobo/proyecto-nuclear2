@@ -70,7 +70,7 @@ se conserva en los DTO de `ServicioCreacionCaso`.
 | Método y ruta | Acceso | Entrada | Resultado |
 | --- | --- | --- | --- |
 | `POST /api/sesiones` | Docente | Programación, caso, espacio y lista `estudiantes` | Sesión programada y convocatorias iniciales. |
-| `GET /api/sesiones` | Docente | — | Sesiones del docente. |
+| `GET /api/sesiones` | Docente | — | Sesiones por fecha de creación descendente. Las sesiones históricas sin fecha de creación aparecen después, por inicio programado descendente. |
 | `GET /api/sesiones/{id}` | Docente responsable | — | Programación, estado, convocatorias y horarios de apertura y cierre reales cuando están registrados. |
 | `PUT /api/sesiones/{id}/convocados` | Docente responsable | Listas de UUID `agregar` y `retirar` | Sesión con convocatorias actualizadas. |
 | `POST /api/sesiones/{id}/iniciar` | Docente responsable | — | Sesión en estado `EN_CURSO`. |
@@ -80,7 +80,7 @@ se conserva en los DTO de `ServicioCreacionCaso`.
 
 | Método y ruta | Acceso | Entrada | Resultado |
 | --- | --- | --- | --- |
-| `GET /api/estudiante/actividades` | Estudiante | — | Convocatorias propias con acción disponible; no crea intentos. |
+| `GET /api/estudiante/actividades` | Estudiante | — | Convocatorias propias con la acción disponible y `limiteIntento` si hay un intento en curso. Consultar el listado no crea intentos. |
 | `GET /api/estudiante/actividades/{idSesion}` | Estudiante convocado | — | Caso visible e intento existente, sin claves de corrección ni creación implícita. |
 | `POST /api/estudiante/actividades/{idSesion}/iniciar` | Estudiante convocado | — | Intento creado explícitamente con las preguntas ordenadas del caso. |
 | `GET /api/estudiante/resultados` | Estudiante | — | Intentos finalizados propios, soluciones, explicaciones y valoraciones. |
@@ -114,6 +114,7 @@ Al cerrar una sesión o retirar una convocatoria, se cierra y califica el intent
 | Método y ruta | Acceso | Entrada | Resultado |
 | --- | --- | --- | --- |
 | `GET /api/notificaciones` | Docente o estudiante | `limite` opcional, predeterminado `20`, rango 1–100; `desplazamiento` predeterminado `0` | Avisos internos entregados del usuario, del más reciente al más antiguo. |
+| `GET /api/notificaciones/no-leidas` | Docente o estudiante | — | Número total de avisos internos entregados y sin leer del usuario. |
 | `PUT /api/notificaciones/{id}/leida` | Destinatario del aviso | — | Marca el aviso como leído de forma idempotente. |
 
 ## Reportes

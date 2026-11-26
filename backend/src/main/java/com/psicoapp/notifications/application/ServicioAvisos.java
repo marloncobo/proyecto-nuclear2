@@ -15,6 +15,9 @@ public class ServicioAvisos {
         if (limite < 1 || limite > 100 || desplazamiento < 0) throw new IllegalArgumentException("Paginacion invalida");
         return avisos.listar(usuario, limite, desplazamiento);
     }
+    public long contarNoLeidas(UUID usuario) {
+        return avisos.contarNoLeidas(usuario);
+    }
     @Transactional
     public void marcarLeida(UUID usuario, UUID aviso) {
         if (!avisos.marcarLeida(usuario, aviso)) throw new NoEncontrado("Aviso no encontrado");

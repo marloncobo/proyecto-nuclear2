@@ -147,6 +147,7 @@ CREATE TABLE IF NOT EXISTS sesion (
     estado VARCHAR(20) NOT NULL,
     lugar VARCHAR(160) NULL,
     mensaje TEXT NULL,
+    fecha_creacion TIMESTAMP(6) NULL,
     FOREIGN KEY (id_caso) REFERENCES caso(id_caso),
     FOREIGN KEY (id_espacio) REFERENCES espacio_academico(id_espacio),
     FOREIGN KEY (id_docente) REFERENCES usuario(id_usuario),

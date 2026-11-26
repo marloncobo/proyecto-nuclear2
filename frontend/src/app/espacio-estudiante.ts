@@ -33,6 +33,7 @@ export class EspacioEstudiante {
   readonly resultados = signal<ResultadoEstudiante[]>([]);
   readonly resultadoSeleccionado = signal<ResultadoEstudiante | null>(null);
   readonly notificaciones = signal<AvisoNotificacion[]>([]);
+  readonly noLeidas = signal<number | null>(null);
   readonly ocupado = signal(false);
   readonly error = signal('');
   readonly ahora = signal(Date.now());
@@ -68,17 +69,13 @@ export class EspacioEstudiante {
     return referencias;
   });
   readonly finalizadas = computed(() => this.resultados().length);
-  readonly noLeidas = computed(() => this.notificaciones().filter((aviso) => !aviso.leida).length);
   readonly indice = computed(() =>
     this.simulacion()?.preguntas.findIndex((pregunta) => pregunta.id === this.intento()?.preguntaActual) ?? -1,
   );
   readonly pregunta = computed(() => this.simulacion()?.preguntas[this.indice()]);
   readonly respondidas = computed(() => Object.keys(this.intento()?.respuestas ?? {}).length);
   readonly segundosRestantes = computed(() =>
-    Math.max(0, Math.ceil((Math.min(
-      Date.parse(this.intento()?.limite ?? ''),
-      Date.parse(this.simulacion()?.actividad.finPrevisto ?? ''),
-    ) - this.ahora()) / 1000)),
+    this.segundosHasta(this.intento()?.limite ?? ''),
   );
   readonly tiempoRestante = computed(() => this.formatearCuentaRegresiva(this.segundosRestantes()));
 
@@ -93,8 +90,9 @@ export class EspacioEstudiante {
         const ahora = Date.now();
         this.ahora.set(ahora);
         if (++pulsos % 5 !== 0 || consultando || this.ocupado() || !this.actividades().some(
-          (actividad) => actividad.estadoSesion === 'SIN_INICIAR' &&
-            Date.parse(actividad.inicioPrevisto) <= ahora && Date.parse(actividad.finPrevisto) > ahora,
+          (actividad) => actividad.accion === 'CONTINUAR' ||
+            (actividad.estadoSesion === 'SIN_INICIAR' &&
+              Date.parse(actividad.inicioPrevisto) <= ahora && Date.parse(actividad.finPrevisto) > ahora),
         )) return;
         consultando = true;
         try {
@@ -117,7 +115,8 @@ export class EspacioEstudiante {
     });
     effect((limpiar) => {
       const intento = this.intento();
-      if (!intento || intento.estado !== 'EN_PROGRESO') return;
+      if (this.vista() !== 'simulacion' || !intento || intento.estado !== 'EN_PROGRESO') return;
+      this.ahora.set(Date.now());
       let pulsos = 0;
       const intervalo = setInterval(() => {
         this.ahora.set(Date.now());
@@ -130,14 +129,21 @@ export class EspacioEstudiante {
   plazoIngresoTerminado(actividad: ActividadEstudiante) {
     if (
       actividad.estadoSesion === 'FINALIZADO' ||
-      actividad.accion === 'RESULTADO'
+      actividad.accion === 'RESULTADO' || actividad.accion === 'CONTINUAR'
     ) return false;
     return this.ahora() >= Date.parse(actividad.finPrevisto);
   }
 
-  tiempoIngresoRestante(actividad: ActividadEstudiante) {
-    const segundos = Math.max(0, Math.ceil((Date.parse(actividad.finPrevisto) - this.ahora()) / 1000));
-    return this.formatearCuentaRegresiva(segundos);
+  cuentaRegresivaHasta(fecha: string) {
+    return this.formatearCuentaRegresiva(this.segundosHasta(fecha));
+  }
+
+  plazoVencido(fecha: string | null) {
+    return fecha !== null && this.segundosHasta(fecha) === 0;
+  }
+
+  private segundosHasta(fecha: string) {
+    return Math.max(0, Math.ceil((Date.parse(fecha) - this.ahora()) / 1000) || 0);
   }
 
   private formatearCuentaRegresiva(segundos: number) {
@@ -151,11 +157,20 @@ export class EspacioEstudiante {
         this.api.listarActividadesEstudiante(),
         this.api.listarResultadosEstudiante(),
         this.api.listarNotificaciones(100),
+        this.actualizarNoLeidas(),
       ]);
       this.actividades.set(actividades);
       this.resultados.set(resultados);
       this.notificaciones.set(notificaciones);
     });
+  }
+
+  private async actualizarNoLeidas() {
+    try {
+      this.noLeidas.set(await this.api.contarNotificacionesNoLeidas());
+    } catch {
+      // El listado de avisos sigue disponible si falla el contador.
+    }
   }
 
   async actualizarActividades() {
@@ -176,7 +191,12 @@ export class EspacioEstudiante {
     if (vista === 'actividades') await this.actualizarActividades();
     if (vista === 'resultados') this.resultados.set(await this.api.listarResultadosEstudiante());
     if (vista === 'notificaciones') {
-      await this.ejecutar(async () => this.notificaciones.set(await this.api.listarNotificaciones(100)));
+      await this.ejecutar(async () => {
+        await Promise.all([
+          this.actualizarNoLeidas(),
+          this.api.listarNotificaciones(100).then((avisos) => this.notificaciones.set(avisos)),
+        ]);
+      });
     }
   }
 
@@ -212,6 +232,16 @@ export class EspacioEstudiante {
     await this.operar('respuestas', { idPregunta, idOpcion }, 'PUT');
   }
 
+  avanzar(dialogo: HTMLDialogElement, idPregunta: string) {
+    if (this.intento()?.respuestas[idPregunta]) void this.operar('avanzar');
+    else dialogo.showModal();
+  }
+
+  confirmarAvance(dialogo: HTMLDialogElement) {
+    dialogo.close();
+    if (this.segundosRestantes() > 0) void this.operar('avanzar');
+  }
+
   async operar(accion: string, datos: unknown = {}, metodo = 'POST') {
     const intento = this.intento();
     if (!intento) return;
@@ -244,6 +274,11 @@ export class EspacioEstudiante {
       this.notificaciones.update((lista) =>
         lista.map((item) => (!aviso || item.id === aviso.id ? { ...item, leida: true } : item)),
       );
+      this.noLeidas.update((total) => {
+        if (!aviso) return 0;
+        return total === null ? null : Math.max(0, total - 1);
+      });
+      await this.actualizarNoLeidas();
     });
   }
 
@@ -253,9 +288,11 @@ export class EspacioEstudiante {
   }
 
   private async refrescarIntento(id: string) {
-    if (this.ocupado() || this.intento()?.id !== id) return;
+    const anterior = this.intento();
+    if (this.ocupado() || anterior?.id !== id) return;
     try {
       const intento = await this.api.consultar<IntentoEstudiante>(`/participaciones/${id}`);
+      if (this.vista() !== 'simulacion' || this.ocupado() || this.intento() !== anterior) return;
       this.intento.set(intento);
       if (intento.estado !== 'EN_PROGRESO') {
         await this.cargarInicio();

@@ -165,6 +165,7 @@ test('la cuenta administrativa entra únicamente a administración', async ({ pa
 });
 
 test('el estudiante consulta y marca sus notificaciones internas', async ({ page: pagina }) => {
+  let avisoLeido = false;
   const solicitudes: { ruta: string; metodo: string; autorizacion: string }[] = [];
   const erroresNavegador: string[] = [];
   pagina.on('console', (mensaje) => {
@@ -193,6 +194,7 @@ test('el estudiante consulta y marca sus notificaciones internas', async ({ page
       });
     if (url.pathname === '/api/estudiante/actividades') return ruta.fulfill({ json: [] });
     if (url.pathname === '/api/estudiante/resultados') return ruta.fulfill({ json: [] });
+    if (url.pathname === '/api/notificaciones/no-leidas') return ruta.fulfill({ json: avisoLeido ? 0 : 1 });
     if (url.pathname === '/api/notificaciones' && solicitud.method() === 'GET')
       return ruta.fulfill({
         json: [
@@ -203,7 +205,7 @@ test('el estudiante consulta y marca sus notificaciones internas', async ({ page
             tipo: 'RESULTADO',
             mensaje: 'Tu resultado ya está disponible.',
             fechaCreacion: '2026-11-21T15:00:00Z',
-            leida: false,
+            leida: avisoLeido,
           },
           {
             id: 'aviso-leido',
@@ -216,8 +218,10 @@ test('el estudiante consulta y marca sus notificaciones internas', async ({ page
           },
         ],
       });
-    if (url.pathname === '/api/notificaciones/aviso-nuevo/leida' && solicitud.method() === 'PUT')
+    if (url.pathname === '/api/notificaciones/aviso-nuevo/leida' && solicitud.method() === 'PUT') {
+      avisoLeido = true;
       return ruta.fulfill({ status: 204 });
+    }
     return ruta.fulfill({ status: 404, json: { detail: 'Ruta no simulada' } });
   });
 
@@ -225,12 +229,14 @@ test('el estudiante consulta y marca sus notificaciones internas', async ({ page
   await pagina.getByLabel('Correo institucional').fill('estudiante@example.test');
   await pagina.getByLabel('Contraseña', { exact: true }).fill('clave-ficticia');
   await pagina.getByRole('button', { name: 'Entrar a mi espacio' }).click();
-  await pagina.getByRole('button', { name: 'Notificaciones', exact: true }).last().click();
+  const notificaciones = pagina.getByRole('button', { name: 'Notificaciones, 1 sin leer', exact: true });
+  await notificaciones.click();
 
   await expect(pagina.getByRole('heading', { name: 'Notificaciones' })).toBeVisible();
   await expect(pagina.getByText('Tu resultado ya está disponible.')).toBeVisible();
   await pagina.getByRole('button', { name: 'Marcar como leída' }).click();
   await expect(pagina.getByRole('button', { name: 'Marcar como leída' })).toHaveCount(0);
+  await expect(pagina.getByRole('button', { name: 'Notificaciones', exact: true })).toBeVisible();
 
   expect(solicitudes).toContainEqual({
     ruta: '/api/notificaciones?limite=100&desplazamiento=0',

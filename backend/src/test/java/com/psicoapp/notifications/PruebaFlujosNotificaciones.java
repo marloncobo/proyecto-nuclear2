@@ -345,6 +345,11 @@ class PruebaFlujosNotificaciones {
         UUID aviso = avisos.listar(estudiante, 20, 0).getFirst().id();
         mvc.perform(get("/api/notificaciones").with(portador(mvc, correoEstudiante, "clave-estudiante-personal")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(3));
+        mvc.perform(get("/api/notificaciones/no-leidas").with(user(estudiante.toString()).roles("ESTUDIANTE")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").value(3));
+        mvc.perform(get("/api/notificaciones/no-leidas").with(user(docente.toString()).roles("DOCENTE")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").value(0));
+        mvc.perform(get("/api/notificaciones/no-leidas")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/notificaciones")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/notificaciones").with(user(docente.toString()).roles("DOCENTE")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
@@ -356,6 +361,8 @@ class PruebaFlujosNotificaciones {
         for (int vez = 0; vez < 2; vez++) mvc.perform(put("/api/notificaciones/{id}/leida", aviso)
                 .with(user(estudiante.toString()).roles("ESTUDIANTE"))).andExpect(status().isNoContent());
         assertTrue(avisos.listar(estudiante, 20, 0).stream().filter(a -> a.id().equals(aviso)).findFirst().orElseThrow().leida());
+        mvc.perform(get("/api/notificaciones/no-leidas").with(user(estudiante.toString()).roles("ESTUDIANTE")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").value(2));
         mvc.perform(get("/api/evaluaciones/{id}/valoraciones", intento.id()).with(portador(mvc, correoEstudiante, "clave-estudiante-personal")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].mensaje").value("Sugerencia formativa"));
     }

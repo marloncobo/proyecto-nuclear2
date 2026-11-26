@@ -92,6 +92,8 @@ export async function simularApi(pagina: Page, rol = 'ADMINISTRADOR') {
       return ruta.fulfill({ json: ['ADMINISTRADOR', 'DOCENTE', 'ESTUDIANTE'] });
     if (url.pathname === '/api/notificaciones' && metodo === 'GET')
       return ruta.fulfill({ json: estado.notificaciones });
+    if (url.pathname === '/api/notificaciones/no-leidas' && metodo === 'GET')
+      return ruta.fulfill({ json: estado.notificaciones.filter((aviso) => !aviso.leida).length });
     if (url.pathname === '/api/estudiante/actividades' && metodo === 'GET')
       return ruta.fulfill({ json: [] });
     if (url.pathname === '/api/estudiante/resultados' && metodo === 'GET')

@@ -899,6 +899,8 @@ footer i {
   color: #80908e;
   margin-bottom: 6px;
 }
+.datos-sesion .cierre-sesion { color: var(--azul); font-size: .75rem; }
+.cierre-sesion time { font-weight: 650; }
 .identificador {
   font-size: 9px;
   color: #8b9797;

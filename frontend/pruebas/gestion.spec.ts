@@ -100,14 +100,19 @@ test('estudiante: filtra convocatorias y conserva los avisos leídos', async ({ 
     },
   );
   await ingresar(pagina, 'alumna@example.test');
-  await pagina.getByRole('navigation', { name: 'Secciones del estudiante' })
-    .getByRole('button', { name: /Notificaciones/ }).click();
+  const acceso = pagina.getByRole('button', { name: /Notificaciones/ });
+  await expect(acceso).toHaveCount(1);
+  await expect(acceso).toHaveAccessibleName('Notificaciones, 1 sin leer');
+  await expect(acceso.locator('.contador-avisos')).toHaveText('1');
+  await acceso.click();
   const panel = pagina.locator('psico-panel-notificaciones');
   await expect(panel.getByRole('heading', { name: '1 notificación nueva' })).toBeVisible();
   await panel.getByLabel('Filtrar por tipo').selectOption('CONVOCATORIA');
   await expect(panel.locator('article')).toHaveCount(1);
   await expect(panel.getByText(apertura)).toBeVisible();
   await panel.getByRole('button', { name: 'Marcar todo como leído' }).click();
+  await expect(acceso).toHaveAccessibleName('Notificaciones');
+  await expect(acceso.locator('.contador-avisos')).toHaveCount(0);
   await expect(panel.getByText('Leída', { exact: true })).toBeVisible();
   await panel.getByRole('button', { name: 'Limpiar filtros' }).click();
   await panel.getByLabel('Filtrar por lectura').selectOption('LEIDA');
@@ -356,19 +361,29 @@ test('docente: editar espacio y conservar valores ante conflicto 409', async ({ 
 test('docente: pagina las sesiones de cinco en cinco y vuelve al inicio al filtrar', async ({
   page: pagina,
 }) => {
+  await pagina.clock.install({ time: new Date('2026-11-22T14:00:00Z') });
   await simularApi(pagina, 'DOCENTE');
-  await pagina.route('**/api/sesiones', (ruta) => ruta.fulfill({
-    json: Array.from({ length: 11 }, (_, indice) => ({
+  await pagina.route('**/api/casos', (ruta) => ruta.fulfill({
+    json: [{ id: 'caso', nombre: 'Simulación docente', contexto: 'Contexto', estado: 'PUBLICADO' }],
+  }));
+  const sesiones = Array.from({ length: 11 }, (_, indice) => ({
       id: `sesion-${indice + 1}`,
       idCaso: 'caso',
       idEspacio: 'espacio-real',
       inicioPrevisto: '2026-11-24T14:00:00Z',
+      finPrevisto: '2026-11-24T16:00:00Z',
+      cierreReal: indice < 6 ? '2026-11-24T15:30:00Z' : null,
       duracionMaximaMin: 40,
       lugar: `Aula ${indice + 1}`,
       estado: indice < 6 ? 'FINALIZADO' : 'SIN_INICIAR',
       convocatorias: [],
-    })),
   }));
+  await pagina.route('**/api/sesiones', (ruta) => {
+    if (ruta.request().method() !== 'POST') return ruta.fulfill({ json: sesiones });
+    const nueva = { ...ruta.request().postDataJSON(), id: 'nueva', estado: 'SIN_INICIAR', convocatorias: [] };
+    sesiones.unshift(nueva);
+    return ruta.fulfill({ status: 201, json: nueva });
+  });
   await ingresar(pagina, 'docente@example.test');
   await pagina.getByRole('button', { name: 'Sesiones', exact: true }).click();
   const tarjetas = pagina.locator('.tarjeta-sesion');
@@ -376,12 +391,16 @@ test('docente: pagina las sesiones de cinco en cinco y vuelve al inicio al filtr
   const siguiente = paginacion.getByRole('button', { name: 'Siguiente' });
   const anterior = paginacion.getByRole('button', { name: 'Anterior' });
   await expect(tarjetas).toHaveCount(5);
+  await expect(tarjetas.first().locator('.cierre-sesion')).toContainText('Cierre real');
+  await expect(tarjetas.first().locator('time')).toHaveAttribute('datetime', '2026-11-24T15:30:00Z');
   await expect(anterior).toBeDisabled();
   await siguiente.click();
   await expect(tarjetas.first()).toContainText('Aula 6');
   await siguiente.click();
   await expect(tarjetas).toHaveCount(1);
   await expect(tarjetas.first()).toContainText('Aula 11');
+  await expect(tarjetas.first().locator('.cierre-sesion')).toContainText('Cierre programado');
+  await expect(tarjetas.first().locator('time')).toHaveAttribute('datetime', '2026-11-24T16:00:00Z');
   await expect(siguiente).toBeDisabled();
   await anterior.click();
   await expect(paginacion).toContainText('Página 2 de 3');
@@ -393,6 +412,27 @@ test('docente: pagina las sesiones de cinco en cinco y vuelve al inicio al filtr
   await estado.selectOption('SIN_INICIAR');
   await expect(tarjetas).toHaveCount(5);
   await expect(paginacion).toHaveCount(0);
+
+  await estado.selectOption('FINALIZADO');
+  await siguiente.click();
+  await pagina.getByRole('button', { name: /Programar sesión/ }).click();
+  const formulario = pagina.getByRole('dialog');
+  await formulario.locator('[name="casoSesion"]').selectOption('caso');
+  await formulario.locator('[name="espacioSesion"]').selectOption('espacio-real');
+  await formulario.getByRole('checkbox', { name: /Alumna de prueba/ }).check();
+  await formulario.locator('[name="inicio"]').fill('2026-11-23T09:00');
+  await formulario.locator('[name="fin"]').fill('2026-11-23T10:30');
+  await formulario.getByLabel('Lugar').fill('Aula recién creada');
+  await formulario.getByLabel('Mensaje de convocatoria').fill('Convocatoria de prueba');
+  await formulario.getByRole('button', { name: /Programar sesión/ }).click();
+  await expect(tarjetas.first()).toContainText('Aula recién creada');
+  await expect(tarjetas.first().locator('.cierre-sesion')).toHaveText(/Cierre programado\s+23\/11\/2026, 10:30/);
+  await expect(paginacion).toContainText('Página 1 de 3');
+  for (const [width, height] of [[1440, 1000], [768, 1024], [390, 844]]) {
+    await pagina.setViewportSize({ width, height });
+    await expect(tarjetas.first().locator('time')).toBeVisible();
+    expect(await pagina.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+  }
 });
 
 test('docente: advierte antes de abrir una sesión y refleja la apertura automática', async ({ page }) => {
@@ -1067,4 +1107,68 @@ test('un enlace de convocatoria conserva el destino y el inicio es explícito', 
   await pagina.getByRole('button', { name: 'Ver retroalimentación' }).click();
   await expect(pagina.getByRole('button', { name: 'Todos los intentos' })).toBeVisible();
   await comprobarAncho();
+});
+
+test('estudiante: conserva el plazo al salir y confirma solo si avanza sin respuesta', async ({ page: pagina }) => {
+  const ahora = '2026-11-30T12:00:00Z';
+  await pagina.clock.install({ time: new Date(ahora) });
+  await simularApi(pagina, 'ESTUDIANTE');
+  let intento = {
+    id: 'intento', preguntaActual: 'p1', respuestas: {} as Record<string, string>,
+    estado: 'EN_PROGRESO', modoNavegacion: 'FLEXIBLE', limite: '2026-11-30T12:10:00Z',
+  };
+  const actividad = {
+    idSesion: 'sesion', nombreCaso: 'Simulación flexible', accion: 'CONTINUAR',
+    inicioPrevisto: ahora, finPrevisto: '2026-11-30T13:00:00Z', limiteIntento: intento.limite,
+    estadoSesion: 'EN_CURSO', duracionMaximaMin: 10,
+  };
+  const preguntas = ['p1', 'p2', 'p3'].map((id, indice) => ({
+    id, escenario: 'Escenario', enunciado: `Enunciado ${indice + 1}`,
+    opciones: [{ id: 'o1', texto: 'Escuchar al grupo' }],
+  }));
+  let avances = 0;
+  await pagina.route('**/api/estudiante/actividades', (ruta) => ruta.fulfill({ json: [actividad] }));
+  await pagina.route('**/api/estudiante/actividades/sesion', (ruta) =>
+    ruta.fulfill({ json: { actividad, preguntas, intento } }));
+  await pagina.route('**/api/participaciones/intento', (ruta) => ruta.fulfill({ json: intento }));
+  await pagina.route('**/api/participaciones/intento/avanzar', (ruta) => {
+    intento = { ...intento, preguntaActual: preguntas[++avances].id };
+    return ruta.fulfill({ json: intento });
+  });
+  await pagina.route('**/api/participaciones/intento/respuestas', (ruta) => {
+    intento = { ...intento, respuestas: { p2: 'o1' } };
+    return ruta.fulfill({ json: intento });
+  });
+
+  await ingresar(pagina, 'alumna@example.test');
+  const continuar = pagina.getByRole('button', { name: 'Continuar actividad' });
+  await continuar.click();
+  const siguiente = pagina.getByRole('button', { name: 'Siguiente' });
+  const confirmacion = pagina.getByRole('dialog', { name: '¿Pasar a la siguiente pregunta?' });
+  await siguiente.press('Enter');
+  await expect(confirmacion.getByRole('button', { name: 'Volver a la pregunta' })).toBeFocused();
+  await pagina.keyboard.press('Escape');
+  await expect(confirmacion).toHaveCount(0);
+  await expect(siguiente).toBeFocused();
+  expect(avances).toBe(0);
+
+  await pagina.getByRole('button', { name: '← Mis actividades' }).click();
+  const cuenta = pagina.getByRole('timer', { name: 'Tiempo para entregar' });
+  await expect(cuenta).toHaveText(/^(10:00|09:[0-5]\d)$/);
+  const tiempo = await cuenta.textContent();
+  await pagina.clock.fastForward(10_000);
+  await expect(cuenta).not.toHaveText(tiempo!);
+  await pagina.setViewportSize({ width: 390, height: 844 });
+  await continuar.click();
+  await siguiente.click();
+  await expect(confirmacion).toBeVisible();
+  expect(await confirmacion.evaluate((elemento) => elemento.getBoundingClientRect().width)).toBeLessThan(390);
+  await confirmacion.getByRole('button', { name: 'Pasar sin responder' }).click();
+  await expect(pagina.getByText('Pregunta 2 de 3', { exact: true })).toBeVisible();
+  await pagina.getByRole('radio', { name: 'Escuchar al grupo' }).check();
+  await expect(pagina.getByText('1 de 3 preguntas respondidas')).toBeVisible();
+  await siguiente.click();
+  await expect(pagina.getByText('Pregunta 3 de 3', { exact: true })).toBeVisible();
+  await expect(confirmacion).toHaveCount(0);
+  expect(avances).toBe(2);
 });

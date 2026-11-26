@@ -15,12 +15,13 @@ export class PanelNotificaciones {
   readonly errorNotificaciones = input('');
   readonly marcandoNotificacion = input<string | null>(null);
   readonly ocupado = input(false);
+  readonly totalNoLeidas = input<number | null>(null);
   readonly estadoNotificaciones = model('');
   readonly tipoNotificaciones = model('');
   readonly marcarLeida = output<AvisoNotificacion>();
   readonly marcarTodasLeidas = output<void>();
   readonly notificacionesNoLeidas = computed(
-    () => this.notificaciones().filter((aviso) => !aviso.leida).length,
+    () => this.totalNoLeidas() ?? this.notificaciones().filter((aviso) => !aviso.leida).length,
   );
   readonly tiposNotificaciones = computed(() => [
     ...new Set(this.notificaciones().map((notificacion) => notificacion.tipo)),

@@ -35,8 +35,8 @@ public class RepositorioSesionesJdbc implements RepositorioSesiones {
         }
         jdbc.sql("""
                 INSERT INTO sesion (id_sesion,id_caso,id_espacio,id_docente,fecha_inicio,fecha_fin,
-                    duracion_maxima_min,modo_navegacion,estado,lugar,mensaje)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                    duracion_maxima_min,modo_navegacion,estado,lugar,mensaje,fecha_creacion)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP(6))
                 """).params(java.util.Arrays.asList(sesion.id().toString(), sesion.idCaso().toString(),
                         sesion.idEspacio().toString(), sesion.idDocente().toString(), Timestamp.from(sesion.inicioPrevisto()),
                         Timestamp.from(sesion.finPrevisto()), sesion.duracionMaximaMin(), sesion.modoNavegacion().name(),
@@ -45,7 +45,10 @@ public class RepositorioSesionesJdbc implements RepositorioSesiones {
 
     @Override
     public java.util.List<Sesion> listarPorDocente(UUID idDocente) {
-        return jdbc.sql("SELECT id_sesion FROM sesion WHERE id_docente = ? ORDER BY fecha_inicio, id_sesion")
+        return jdbc.sql("""
+                SELECT id_sesion FROM sesion WHERE id_docente = ?
+                ORDER BY fecha_creacion DESC, fecha_inicio DESC, id_sesion
+                """)
                 .param(idDocente.toString()).query(String.class).list().stream()
                 .map(UUID::fromString).map(this::buscarPorId).flatMap(Optional::stream).toList();
     }

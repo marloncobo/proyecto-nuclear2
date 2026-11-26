@@ -12,7 +12,8 @@
     <button
       type="button"
       class="marcar-leida"
-      [disabled]="ocupado() || cargandoNotificaciones() || marcandoNotificacion() !== null || (!notificacionesNoLeidas() && notificaciones().length < 100)"
+      [disabled]="ocupado() || cargandoNotificaciones() || marcandoNotificacion() !== null ||
+        (!notificacionesNoLeidas() && (totalNoLeidas() !== null || notificaciones().length < 100))"
       (click)="marcarTodasLeidas.emit()"
     >
       {{ marcandoNotificacion() === 'todas' ? 'Marcando…' : 'Marcar todo como leído' }}

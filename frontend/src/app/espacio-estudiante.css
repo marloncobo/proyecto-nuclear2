@@ -96,14 +96,13 @@
 .acciones-cuenta button:hover { background: var(--salvia); }
 
 .contador-avisos {
-  position: absolute;
-  top: 1px;
-  right: 1px;
-  min-width: 16px;
-  padding: 1px 4px;
+  min-width: 1.2rem;
+  margin-inline-start: auto;
+  padding: 2px 4px;
   border-radius: 99px;
   background: #194a50;
   color: white;
+  text-align: center;
   font-size: .625rem;
   font-weight: 700;
 }
@@ -134,6 +133,14 @@
 .contenido-cuenta { position: relative; padding: 26px; overflow-wrap: anywhere; }
 .contenido-cuenta p { margin: 8px 0; font-size: 13px; }
 .contenido-cuenta .secundario { margin-top: 12px; }
+.acciones-confirmacion {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 8px;
+  margin-top: 16px;
+}
+.acciones-confirmacion .secundario { margin-top: 0; }
 .cerrar-cuenta {
   position: absolute;
   top: 8px;
@@ -576,6 +583,7 @@ blockquote footer { margin-top: .45rem; color: #536970; font-size: .8rem; }
   }
 
   .navegacion .icono { display: none; }
+  .contador-avisos { margin-inline-start: 0; }
   .tarjeta-actividad:has(button) > div:first-child { grid-row: auto; }
   .tarjeta-actividad > button,
   .acciones-ingreso { grid-column: 1 / -1; justify-self: start; }

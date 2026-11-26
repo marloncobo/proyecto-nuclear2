@@ -6,6 +6,8 @@ import com.psicoapp.cases.domain.ConstructorCasoAcademico;
 import com.psicoapp.cases.infrastructure.RepositorioCasosJdbc;
 import com.zaxxer.hikari.HikariDataSource;
 import java.util.List;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -119,6 +121,27 @@ class PruebaRepositorioSesionesJdbc {
     @AfterEach
     void cerrar() {
         fuente.close();
+    }
+
+    @Test
+    @DisplayName("RF-18: las sesiones se ordenan por creacion y las antiguas por inicio previsto")
+    void listaSesionesRecientesAunqueSuInicioSeaAnterior() {
+        var nueva = Sesion.programar(UUID.randomUUID(), sesion.idCaso(), sesion.idEspacio(), sesion.idDocente(),
+                INICIO.minusSeconds(3600), FIN.minusSeconds(3600), 30, 40, ModoNavegacion.FLEXIBLE, null, null);
+        var historica = Sesion.programar(UUID.randomUUID(), sesion.idCaso(), sesion.idEspacio(), sesion.idDocente(),
+                INICIO.plusSeconds(3600), FIN.plusSeconds(3600), 30, 40, ModoNavegacion.FLEXIBLE, null, null);
+        var jdbc = JdbcClient.create(fuente);
+        repositorio.guardar(sesion);
+        repositorio.guardar(nueva);
+        repositorio.guardar(historica);
+        assertNotNull(jdbc.sql("SELECT fecha_creacion FROM sesion WHERE id_sesion=?")
+                .param(nueva.id().toString()).query(Timestamp.class).single());
+        jdbc.sql("UPDATE sesion SET fecha_creacion=? WHERE id_sesion=?")
+                .params(Timestamp.from(Instant.EPOCH.plusSeconds(1)), sesion.id().toString()).update();
+        jdbc.sql("UPDATE sesion SET fecha_creacion=NULL WHERE id_sesion=?")
+                .param(historica.id().toString()).update();
+
+        assertEquals(List.of(nueva, sesion, historica), repositorio.listarPorDocente(sesion.idDocente()));
     }
 
     @Test

@@ -72,7 +72,11 @@ class PruebaRepositorioEvaluacionesJdbc {
         jdbc.sql("INSERT INTO criterio_pregunta VALUES (?,?)")
                 .params(criterio.toString(), pregunta.toString()).update();
         sesion = UUID.randomUUID();
-        jdbc.sql("INSERT INTO sesion VALUES (?, ?, ?, ?, ?, ?, 30, 'FLEXIBLE', 'EN_CURSO', NULL, NULL)")
+        jdbc.sql("""
+                INSERT INTO sesion (id_sesion,id_caso,id_espacio,id_docente,fecha_inicio,fecha_fin,
+                    duracion_maxima_min,modo_navegacion,estado)
+                VALUES (?, ?, ?, ?, ?, ?, 30, 'FLEXIBLE', 'EN_CURSO')
+                """)
                 .params(sesion.toString(), caso.toString(), espacio.toString(), docente.toString(),
                 java.sql.Timestamp.from(Instant.parse("2026-01-01T10:00:00Z")),
                 java.sql.Timestamp.from(Instant.parse("2026-01-01T11:00:00Z"))).update();

@@ -74,6 +74,12 @@ public class RepositorioNotificacionesJdbc implements RepositorioEntregas, Repos
                     identificador(fila.getString("id_intento")), fila.getString("tipo"), fila.getString("mensaje"),
                     fila.getTimestamp("fecha_creacion").toInstant(), fila.getBoolean("leida"))).list();
     }
+    @Override public long contarNoLeidas(UUID usuario) {
+        return jdbc.sql("""
+                SELECT COUNT(*) FROM notificacion WHERE id_usuario=? AND canal='INTERNO'
+                AND estado_envio='ENVIADA' AND leida=false
+                """).param(usuario.toString()).query(Long.class).single();
+    }
     @Override public boolean marcarLeida(UUID usuario, UUID aviso) {
         // Una lectura repetida sigue siendo exitosa, tambien con MySQL configurado para contar cambios.
         var ids = jdbc.sql("""
