@@ -4,9 +4,10 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 /** Cuerpo del correo y destinatario fijo opcional. Los datos no deben aparecer en logs. */
 public record ContenidoCorreo(String texto, String html,
-        @JsonInclude(JsonInclude.Include.NON_NULL) String destinatario) {
+        @JsonInclude(JsonInclude.Include.NON_NULL) String destinatario,
+        @JsonInclude(JsonInclude.Include.NON_NULL) Long vencimientoEpoch) {
     public ContenidoCorreo(String texto, String html) {
-        this(texto, html, null);
+        this(texto, html, null, null);
     }
 
     @Override

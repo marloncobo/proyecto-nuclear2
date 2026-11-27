@@ -24,6 +24,8 @@ las rutas requieren `Authorization: Bearer <token>` y cuerpos JSON con
 | Método y ruta | Acceso | Entrada | Resultado |
 | --- | --- | --- | --- |
 | `POST /api/identidad/ingreso` | Público | `correo`, `clave` | Token JWT Bearer, tipo, vencimiento y estado de cambio de contraseña inicial. |
+| `POST /api/identidad/recuperacion` | Público | `correo` | 202 para una solicitud válida, con la misma respuesta para cuentas activas, inactivas e inexistentes. |
+| `POST /api/identidad/recuperacion/restablecer` | Público | `token`, `clave` | 204 tras guardar la nueva contraseña y revocar los JWT anteriores. 400 si el enlace venció, fue usado o dejó de ser válido. |
 | `GET /api/identidad/yo` | Autenticado | — | Identidad y rol de la cuenta actual. |
 | `PUT /api/identidad/yo/clave` | Autenticado con acceso completo | `actual`, `nueva` | Verifica la contraseña actual y actualiza la de la propia cuenta. |
 | `PUT /api/identidad/clave-inicial` | Estudiante pendiente | `clave`, `conservarClaveInicial` opcional | Completa el flujo e invalida el token temporal. Si la contraseña coincide con la inicial, responde 409 con `codigo: "CONFIRMAR_CLAVE_INICIAL"` hasta que se confirme con `conservarClaveInicial: true`. |

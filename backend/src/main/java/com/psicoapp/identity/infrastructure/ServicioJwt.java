@@ -3,6 +3,8 @@ package com.psicoapp.identity.infrastructure;
 import com.psicoapp.identity.application.RepositorioUsuarios;
 import com.psicoapp.identity.domain.Rol;
 import com.psicoapp.identity.domain.Usuario;
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
@@ -10,6 +12,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.Mac;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
@@ -29,6 +32,7 @@ public class ServicioJwt {
     private final NimbusJwtEncoder codificador;
     private final NimbusJwtDecoder decodificador;
     private final RepositorioUsuarios usuarios;
+    private final SecretKeySpec secreto;
     private final Duration duracion;
 
     public ServicioJwt(Environment entorno, RepositorioUsuarios usuarios,
@@ -56,7 +60,7 @@ public class ServicioJwt {
             }
             if (bytes.length < 32) throw new IllegalArgumentException("La clave JWT requiere al menos 32 bytes");
         }
-        var secreto = new SecretKeySpec(bytes, "HmacSHA256");
+        secreto = new SecretKeySpec(bytes, "HmacSHA256");
         codificador = NimbusJwtEncoder.withSecretKey(secreto).algorithm(MacAlgorithm.HS256).build();
         decodificador = NimbusJwtDecoder.withSecretKey(secreto).macAlgorithm(MacAlgorithm.HS256).build();
         decodificador.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
@@ -70,13 +74,14 @@ public class ServicioJwt {
     public Jwt emitir(Authentication identidad, String credencial) {
         var usuario = usuarios.buscarPorId(UUID.fromString(identidad.getName()))
                 .filter(Usuario::activo).orElseThrow(this::invalido);
+        if (!(identidad.getDetails() instanceof Usuario autenticado)
+                || usuario.hashClave() == null || !usuario.hashClave().equals(autenticado.hashClave())) throw invalido();
         Instant ahora = Instant.now();
         var datos = JwtClaimsSet.builder().issuer(EMISOR).audience(List.of(EMISOR))
                 .subject(usuario.id().toString()).issuedAt(ahora).expiresAt(ahora.plus(duracion))
-                .id(UUID.randomUUID().toString()).claim("rol", usuario.rol().name());
+                .id(UUID.randomUUID().toString()).claim("rol", usuario.rol().name())
+                .claim("versionClave", versionClave(usuario));
         if (usuario.rol() == Rol.ESTUDIANTE) {
-            if (!(identidad.getDetails() instanceof Usuario autenticado)
-                    || !java.util.Objects.equals(autenticado.hashClave(), usuario.hashClave())) throw invalido();
             datos.claim("claveInicial", usuario.claveInicial());
         }
         return codificador.encode(JwtEncoderParameters.from(
@@ -96,6 +101,7 @@ public class ServicioJwt {
         }
         var usuario = usuarios.buscarPorId(id).filter(Usuario::activo).orElseThrow(this::invalido);
         if (!usuario.rol().name().equals(token.getClaimAsString("rol"))) throw invalido();
+        if (usuario.hashClave() == null || !versionClave(usuario).equals(token.getClaimAsString("versionClave"))) throw invalido();
         String autoridad = "ROLE_" + usuario.rol().name();
         if (usuario.rol() == Rol.ESTUDIANTE) {
             if (usuario.hashClave() == null || !Boolean.valueOf(usuario.claveInicial())
@@ -108,6 +114,17 @@ public class ServicioJwt {
 
     private InvalidBearerTokenException invalido() {
         return new InvalidBearerTokenException("Token invalido");
+    }
+
+    private String versionClave(Usuario usuario) {
+        try {
+            Mac firma = Mac.getInstance("HmacSHA256");
+            firma.init(secreto);
+            byte[] datos = ("version-clave:" + usuario.id() + ":" + usuario.hashClave()).getBytes(StandardCharsets.UTF_8);
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(firma.doFinal(datos));
+        } catch (GeneralSecurityException excepcion) {
+            throw new IllegalStateException("No se pudo calcular la versión de las credenciales", excepcion);
+        }
     }
 
 }

@@ -15,6 +15,8 @@ public interface RepositorioEntregas {
     Optional<Entrega> bloquearPendiente(UUID id, Instant ahora);
     ContenidoCorreo recuperarContenido(Entrega entrega);
     void confirmar(UUID id, Instant ahora);
+    void cancelar(UUID id);
+    void cancelarCorreoPendiente(UUID usuario, String tipo);
     void posponer(UUID id, int intentos, Instant siguiente);
     void cancelarPendientes(UUID idSesion, UUID idEstudiante, String tipo);
 }

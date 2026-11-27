@@ -301,7 +301,7 @@ public class ServicioUsuarios implements DirectorioIdentidad {
         return claves.encode(clave);
     }
 
-    private void validarClave(String clave) {
+    static void validarClave(String clave) {
         if (clave == null || clave.isBlank() || clave.length() < 8
                 || clave.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) {
             throw new IllegalArgumentException("La contraseña debe tener al menos 8 caracteres y hasta 72 bytes");

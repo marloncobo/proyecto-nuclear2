@@ -3,6 +3,7 @@ package com.psicoapp.notifications.application;
 import com.psicoapp.identity.application.NotificadorCredencialesIniciales;
 import com.psicoapp.notifications.domain.SolicitudNotificacion;
 import java.time.Clock;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -24,17 +25,11 @@ public class CorreoCredencialesIniciales implements NotificadorCredencialesInici
 
     @Override
     public void encolar(UUID idUsuario, String correo, String clave) {
-        String mensaje = """
-                Tu cuenta de Psicoapp está lista.
-
-                Usuario: %s
-                Contraseña inicial: %s
-
-                Ingresa a Psicoapp: %s
-
-                Cambia tu contraseña después de iniciar sesión y evita compartirla.
-                """.formatted(correo, clave, urlAcceso);
+        String titulo = "Tu acceso a Psicoapp";
+        var contenido = PlantillaCorreo.preparar(titulo, "Tu cuenta de Psicoapp está lista.", "Datos de acceso",
+                List.of(new PlantillaCorreo.Dato("Usuario", correo), new PlantillaCorreo.Dato("Contraseña inicial", clave)),
+                null, urlAcceso, "Ingresar a Psicoapp", "Cambia tu contraseña después de iniciar sesión y evita compartirla.");
         entregas.registrar(new SolicitudNotificacion(idUsuario, idUsuario, null, null, CORREO,
-                "CREDENCIALES_INICIALES", "Tu acceso a Psicoapp", mensaje, reloj.instant(), null, correo));
+                "CREDENCIALES_INICIALES", titulo, contenido.texto(), reloj.instant(), contenido.html(), correo));
     }
 }

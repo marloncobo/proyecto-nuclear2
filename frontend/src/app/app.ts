@@ -32,6 +32,7 @@ import { nombreEtiqueta } from './etiqueta-usuario';
 })
 export class Aplicacion {
   readonly sesionEstudiante = signal<string | null>(null);
+  readonly tokenRecuperacion = signal<string | null>(null);
   readonly destinoEstudiante = signal<string | null>(null);
   readonly api = inject(ServicioApi);
   private readonly enrutador = inject(Router);
@@ -240,6 +241,10 @@ export class Aplicacion {
       if (!(evento instanceof NavigationEnd)) return;
       const direccion = this.enrutador.parseUrl(evento.urlAfterRedirects);
       const segmentos = direccion.root.children['primary']?.segments.map((segmento) => segmento.path) ?? [];
+      const fragmento = direccion.fragment;
+      this.tokenRecuperacion.set(segmentos[0] === 'ingreso' && fragmento?.startsWith('recuperar=')
+        ? fragmento.slice('recuperar='.length) : null);
+      if (this.tokenRecuperacion() !== null) return;
       const sesion = direccion.queryParams['sesion'];
       this.sesionEstudiante.set(
         direccion.root.children['primary']?.segments[0]?.path === 'ingreso' &&

@@ -1,6 +1,38 @@
 ﻿import { Page } from '@playwright/test';
 import { test, expect } from './soporte/sin-tutorial-automatico';
 
+test('recupera la contraseña desde el ingreso y elimina el enlace de la URL', async ({ page }) => {
+  const token = '00000000-0000-0000-0000-000000000000.' + 'a'.repeat(43);
+  const correo = 'estudiante@example.test';
+  await page.route('**/api/identidad/recuperacion', (ruta) => {
+    expect(ruta.request().postDataJSON()).toEqual({ correo });
+    return ruta.fulfill({ status: 202 });
+  });
+  let vigente = false;
+  await page.route('**/api/identidad/recuperacion/restablecer', (ruta) => {
+    expect(ruta.request().postDataJSON()).toEqual({ token, clave: 'ContraseñaFicticia2026!' });
+    return vigente ? ruta.fulfill({ status: 204 }) : ruta.fulfill({
+      status: 400, json: { detail: 'El enlace ya no es válido. Solicita uno nuevo.' },
+    });
+  });
+  await page.goto('/ingreso');
+  await page.getByRole('button', { name: '¿Olvidaste tu contraseña?' }).click();
+  await page.getByLabel('Correo de la cuenta').fill(correo);
+  await page.getByRole('button', { name: 'Enviar enlace de recuperación' }).click();
+  await expect(page.getByRole('status')).toContainText('Si el correo corresponde a una cuenta activa');
+  await page.goto('/ingreso#recuperar=' + token);
+  await expect(page.getByRole('heading', { name: 'Elige una nueva contraseña.' })).toBeVisible();
+  await page.getByLabel('Nueva contraseña', { exact: true }).fill('ContraseñaFicticia2026!');
+  await page.getByLabel('Confirmar contraseña').fill('ContraseñaFicticia2026!');
+  await page.getByRole('button', { name: 'Guardar nueva contraseña' }).click();
+  await expect(page.getByRole('alert')).toContainText('El enlace ya no es válido');
+  vigente = true;
+  await page.getByRole('button', { name: 'Guardar nueva contraseña' }).click();
+  await expect(page.getByRole('status')).toContainText('Contraseña actualizada');
+  await expect(page).toHaveURL(/\/ingreso$/);
+  await expect(page.getByRole('button', { name: 'Entrar a mi espacio' })).toBeVisible();
+});
+
 async function simularCuenta(pagina: Page, rol = 'DOCENTE') {
   await pagina.route('**/api/**', (ruta) => {
     if (new URL(ruta.request().url()).pathname.endsWith('/ingreso')) {

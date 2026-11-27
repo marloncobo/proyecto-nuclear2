@@ -195,7 +195,9 @@ class PruebaFlujosNotificaciones {
 
         verify(correo).enviar(eq(correoDocente), eq("Tu acceso a Psicoapp"), argThat(contenido ->
                 contenido.texto().contains("Usuario: " + correoDocente)
-                        && contenido.texto().contains("Contraseña inicial: clave-ficticia")));
+                        && contenido.texto().contains("Contraseña inicial: clave-ficticia")
+                        && contenido.html().contains("Datos de acceso")
+                        && contenido.html().contains("Ingresar a Psicoapp")));
         verify(correo).enviar(eq(correoEstudiante), eq("Tu acceso a Psicoapp"), argThat(contenido ->
                 contenido.texto().contains("Usuario: " + correoEstudiante)
                         && contenido.texto().contains("Contraseña inicial: clave-estudiante\n")
@@ -205,6 +207,62 @@ class PruebaFlujosNotificaciones {
             assertEquals("ENVIADA", estado(id));
             assertEquals("", contenido(id));
         }
+    }
+
+    @Test
+    void recuperacionPublicaUsaUnEnlaceUnaVezYRevocaElAccesoAnterior() throws Exception {
+        var viejo = portador(mvc, correoEstudiante, "clave-estudiante-personal");
+        solicitarRecuperacion("ausente@universidad.example");
+        solicitarRecuperacion(correoEstudiante);
+        solicitarRecuperacion(correoEstudiante);
+        UUID id = correoRecuperacion();
+        entrega.entregar(id);
+        var mensaje = org.mockito.ArgumentCaptor.forClass(ContenidoCorreo.class);
+        verify(correo).enviar(eq(correoEstudiante), eq("Restablece tu contraseña"), mensaje.capture());
+        String enlace = mensaje.getValue().texto().lines().filter(linea -> linea.contains("#recuperar="))
+                .findFirst().orElseThrow();
+        String token = URI.create(enlace).getFragment().substring("recuperar=".length());
+        assertTrue(mensaje.getValue().html().contains("Elegir nueva contraseña"));
+        assertTrue(mensaje.getValue().html().contains(enlace));
+        assertEquals("", contenido(id));
+
+        var restablecer = post("/api/identidad/recuperacion/restablecer")
+                .contentType("application/json").content("""
+                        {"token":"%s","clave":"clave-recuperada"}
+                        """.formatted(token));
+        mvc.perform(restablecer).andExpect(status().isNoContent());
+        mvc.perform(restablecer).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/identidad/yo").with(viejo)).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/identidad/yo").with(portador(mvc, correoEstudiante, "clave-recuperada")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void enlaceVencidoNoSeEntregaNiCambiaLaClave() throws Exception {
+        solicitarRecuperacion(correoEstudiante);
+        UUID id = correoRecuperacion();
+        String texto = cifrador.descifrar(contenido(id));
+        var token = java.util.regex.Pattern.compile("#recuperar=([a-f0-9-]{36}\\.[A-Za-z0-9_-]{43})").matcher(texto);
+        assertTrue(token.find());
+        when(reloj.instant()).thenReturn(AHORA.plus(Duration.ofMinutes(30)));
+        entrega.entregar(id);
+        assertEquals("CANCELADA", estado(id));
+        assertEquals("", contenido(id));
+        verifyNoInteractions(correo);
+        mvc.perform(post("/api/identidad/recuperacion/restablecer").contentType("application/json").content("""
+                {"token":"%s","clave":"clave-recuperada"}
+                """.formatted(token.group(1)))).andExpect(status().isBadRequest());
+    }
+
+    private void solicitarRecuperacion(String direccion) throws Exception {
+        mvc.perform(post("/api/identidad/recuperacion").contentType("application/json")
+                .content("{\"correo\":\"" + direccion + "\"}"))
+                .andExpect(status().isAccepted()).andExpect(content().string(""));
+    }
+
+    private UUID correoRecuperacion() {
+        return jdbc.sql("SELECT id_notificacion FROM notificacion WHERE id_usuario=? AND tipo='RECUPERACION_CLAVE'")
+                .param(estudiante.toString()).query((fila, indice) -> UUID.fromString(fila.getString(1))).single();
     }
 
     @Test

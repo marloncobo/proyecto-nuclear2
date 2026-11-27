@@ -269,6 +269,27 @@
   color: #647a6c;
   margin: 0;
 }
+.enlace-recuperacion {
+  justify-self: start;
+  padding: 5px 0;
+  color: var(--azul);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.enlace-recuperacion:disabled {
+  opacity: 0.6;
+}
+.aviso-recuperacion {
+  margin: 0 0 22px;
+  padding: 13px 15px;
+  border-radius: 9px;
+  background: var(--salvia);
+  color: var(--azul);
+  font-size: 13px;
+  line-height: 1.6;
+}
 .separador {
   display: flex;
   align-items: center;

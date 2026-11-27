@@ -1,11 +1,15 @@
-@if (api.conectado() && api.usuario()?.rol === 'ESTUDIANTE') {
+@if (tokenRecuperacion() !== null || (!api.conectado() && !demostracion())) {
+  <psico-ingreso
+    [tokenRecuperacion]="tokenRecuperacion()"
+    (autenticado)="completarIngreso()"
+    (explorar)="iniciarDemostracion()"
+  />
+} @else if (api.conectado() && api.usuario()?.rol === 'ESTUDIANTE') {
   <psico-espacio-estudiante
     [sesionDestino]="destinoEstudiante() ?? sesionEstudiante()"
     [tutorialInicial]="inicioTutorial()"
     (tutorialInicialChange)="inicioTutorial.set($event)"
   />
-} @else if (!api.conectado() && !demostracion()) {
-  <psico-ingreso (autenticado)="completarIngreso()" (explorar)="iniciarDemostracion()" />
 } @else {
   <a class="saltar-contenido" href="#principal">Ir al contenido</a>
   <div class="aplicacion">

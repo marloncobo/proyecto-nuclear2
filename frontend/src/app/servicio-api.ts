@@ -370,6 +370,12 @@ export class ServicioApi {
   async enviar<T>(ruta: string, datos: unknown, metodo = 'POST'): Promise<T> {
     return this.peticion<T>(ruta, metodo, datos);
   }
+  solicitarRecuperacion(correo: string) {
+    return this.peticion<void>('/identidad/recuperacion', 'POST', { correo });
+  }
+  restablecerClave(token: string, clave: string) {
+    return this.peticion<void>('/identidad/recuperacion/restablecer', 'POST', { token, clave });
+  }
   private async peticion<T>(
     ruta: string,
     metodo: string,
@@ -377,7 +383,7 @@ export class ServicioApi {
     cabeceras: Record<string, string> = {},
     restaurandoSesion = false,
   ): Promise<T> {
-    const autorizacion = this.autorizacion;
+    const autorizacion = ruta.startsWith('/identidad/recuperacion') ? '' : this.autorizacion;
     const generacionSesion = this.generacionSesion;
     let respuesta: Response;
     try {
@@ -452,7 +458,8 @@ export class ServicioApi {
           'No se pudo completar la solicitud. Revisa los datos y la conexión.',
       );
     }
-    if (respuesta.status === 204) return undefined as T;
+    if (respuesta.status === 204 || (ruta === '/identidad/recuperacion' && respuesta.status === 202))
+      return undefined as T;
     if (!esJson) {
       throw new Error(
         'La conexión devolvió una página web en lugar de datos de la plataforma. Reinicia el frontend y verifica su conexión con el backend.',

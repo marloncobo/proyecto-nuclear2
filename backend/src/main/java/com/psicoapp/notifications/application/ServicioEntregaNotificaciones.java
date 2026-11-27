@@ -28,6 +28,10 @@ public class ServicioEntregaNotificaciones {
         if ("CORREO".equals(entrega.canal())) {
             try {
                 var contenido = entregas.recuperarContenido(entrega);
+                if (contenido.vencimientoEpoch() != null && ahora.getEpochSecond() >= contenido.vencimientoEpoch()) {
+                    entregas.cancelar(id);
+                    return;
+                }
                 String destinatario = contenido.destinatario() != null ? contenido.destinatario()
                         : identidades.consultarIdentidad(entrega.idUsuario()).correo();
                 correo.enviar(destinatario, entrega.asunto(), contenido);

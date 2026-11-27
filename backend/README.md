@@ -45,7 +45,9 @@ El frontend ya utiliza este flujo y conserva el token únicamente en memoria.
 
 Los tokens HS256 duran 900 segundos, validan firma, emisor, audiencia y caducidad.
 Cada petición consulta la cuenta: desactivarla, eliminarla o cambiar su rol invalida
-el token. Los estudiantes también usan una contraseña BCrypt. Si es inicial, el JWT
+el token. Cambiar o recuperar la contraseña también invalida los JWT emitidos con
+la contraseña anterior. Los JWT emitidos antes de incorporar esta verificación
+requieren volver a iniciar sesión. Los estudiantes también usan una contraseña BCrypt. Si es inicial, el JWT
 solo permite consultar la identidad y ejecutar `PUT /api/identidad/clave-inicial`.
 El estudiante puede elegir una contraseña nueva o confirmar que conserva la inicial.
 Al completar el flujo, el token temporal deja de ser válido. La autorización de la sesión concreta
@@ -395,6 +397,11 @@ Aplica una vez [004-fecha-creacion-sesion.sql](migraciones/004-fecha-creacion-se
 antes de iniciar esta versión con una base existente. Las sesiones creadas a partir
 de esta actualización se listan por fecha de creación descendente. Las sesiones
 anteriores aparecen después, ordenadas por inicio programado descendente.
+
+Si el despliegue administra el esquema de forma manual, ejecuta
+[005-recuperacion-clave.sql](migraciones/005-recuperacion-clave.sql) antes de
+habilitar la recuperación. Con la inicialización SQL activa, el esquema crea
+la tabla automáticamente.
 
 ## API mínima
 

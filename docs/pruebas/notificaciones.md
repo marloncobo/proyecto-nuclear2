@@ -67,6 +67,17 @@ en la cuenta. El correo de alta fija como destinatario la dirección registrada
 en ese momento. La cola cifra el destinatario y el contenido y los elimina al
 confirmar la entrega.
 
+El correo de alta comparte la plantilla HTML de las convocatorias y conserva
+una alternativa de texto plano. La recuperación usa la misma plantilla con un
+botón para elegir una contraseña nueva. Desde **¿Olvidaste tu contraseña?** en
+`/ingreso`, cualquier cuenta activa puede solicitar el enlace a su correo registrado.
+La API devuelve 202 con la misma respuesta para cuentas inexistentes o inactivas
+y espera dos minutos entre correos para la misma cuenta. El enlace más reciente
+vence en 30 minutos y solo puede usarse una vez. El código se guarda como resumen,
+se invalida si cambia el correo o la contraseña y viaja en el fragmento de la
+URL del frontend. La cola elimina enlaces pendientes vencidos o sustituidos.
+El restablecimiento revoca los JWT anteriores y permite ingresar con la nueva clave.
+
 El hash de convocatoria permanece
 en `sessions`. Retirar cancela convocatorias pendientes; reincorporar rota el
 codigo y cancela retiros pendientes obsoletos para no enviar mensajes contradictorios.

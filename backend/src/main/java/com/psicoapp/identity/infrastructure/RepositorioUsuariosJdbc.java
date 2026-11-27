@@ -60,6 +60,21 @@ public class RepositorioUsuariosJdbc implements RepositorioUsuarios {
     }
 
     @Override
+    public Optional<Usuario> bloquear(UUID id) {
+        return jdbc.sql("""
+                SELECT u.*, (SELECT r.nombre FROM rol r WHERE r.id_rol = u.id_rol) AS rol
+                FROM usuario u WHERE u.id_usuario = ? FOR UPDATE
+                """)
+                .param(id.toString()).query(this::mapear).optional();
+    }
+
+    @Override
+    public void restablecerClave(UUID id, String hashNuevo) {
+        jdbc.sql("UPDATE usuario SET contrasena_hash = ?, clave_inicial = FALSE WHERE id_usuario = ?")
+                .params(hashNuevo, id.toString()).update();
+    }
+
+    @Override
     public void guardar(Usuario usuario) {
         if (buscarPorId(usuario.id()).isPresent()) {
             jdbc.sql("UPDATE usuario SET id_rol = (SELECT id_rol FROM rol WHERE nombre = ?) WHERE id_usuario = ?")
