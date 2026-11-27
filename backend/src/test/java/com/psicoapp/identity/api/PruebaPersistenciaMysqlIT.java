@@ -4,7 +4,6 @@ import com.jayway.jsonpath.JsonPath;
 import com.psicoapp.PsicoappApplication;
 import com.psicoapp.academic.application.FachadaAdministracion;
 import com.psicoapp.identity.application.ServicioUsuarios;
-import com.psicoapp.identity.domain.Rol;
 import java.sql.DriverManager;
 import java.util.Map;
 import java.util.UUID;

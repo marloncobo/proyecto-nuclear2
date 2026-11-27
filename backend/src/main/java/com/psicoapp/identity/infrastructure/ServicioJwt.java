@@ -1,20 +1,15 @@
 package com.psicoapp.identity.infrastructure;
 
 import com.psicoapp.identity.application.RepositorioUsuarios;
-import com.psicoapp.identity.application.VerificadorAccesoEstudiante;
 import com.psicoapp.identity.domain.Rol;
 import com.psicoapp.identity.domain.Usuario;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 import javax.crypto.spec.SecretKeySpec;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
@@ -34,16 +29,13 @@ public class ServicioJwt {
     private final NimbusJwtEncoder codificador;
     private final NimbusJwtDecoder decodificador;
     private final RepositorioUsuarios usuarios;
-    private final ObjectProvider<VerificadorAccesoEstudiante> accesoEstudiantil;
     private final Duration duracion;
 
     public ServicioJwt(Environment entorno, RepositorioUsuarios usuarios,
-            ObjectProvider<VerificadorAccesoEstudiante> accesoEstudiantil,
             @Value("${psicoapp.identidad.jwt.clave:${PSICOAPP_JWT_CLAVE:}}") String clave,
             @Value("${psicoapp.identidad.jwt.duracion-segundos:900}") long duracionSegundos,
             @Value("${psicoapp.identidad.jwt.clave-requerida:false}") boolean claveRequerida) {
         this.usuarios = usuarios;
-        this.accesoEstudiantil = accesoEstudiantil;
         if (duracionSegundos < 1 || duracionSegundos > 3600)
             throw new IllegalArgumentException("La duracion JWT debe estar entre 1 y 3600 segundos");
         duracion = Duration.ofSeconds(duracionSegundos);

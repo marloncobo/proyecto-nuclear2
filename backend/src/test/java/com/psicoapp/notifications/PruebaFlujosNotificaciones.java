@@ -1,7 +1,6 @@
 package com.psicoapp.notifications;
 
 import com.psicoapp.identity.application.*;
-import com.psicoapp.identity.domain.Rol;
 import com.psicoapp.academic.application.FachadaAdministracion;
 import com.psicoapp.cases.DatosPruebaCasos;
 import com.psicoapp.cases.application.*;
