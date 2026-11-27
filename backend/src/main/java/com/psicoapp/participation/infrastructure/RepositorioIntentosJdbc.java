@@ -138,6 +138,8 @@ public class RepositorioIntentosJdbc implements RepositorioIntentos, Repositorio
 
     @Override
     public void actualizar(Intento intento) {
+        // Las respuestas se escriben mientras el intento sigue abierto en la base.
+        guardarRespuestas(intento);
         if (jdbc.sql("""
                 UPDATE intento SET posicion_actual=?, estado=?, fecha_limite=?, fecha_fin=?
                 WHERE id_intento=?
@@ -145,7 +147,6 @@ public class RepositorioIntentosJdbc implements RepositorioIntentos, Repositorio
                 aTimestamp(intento.fin()), intento.id().toString())).update() != 1) {
             throw new IllegalStateException("El intento no existe");
         }
-        guardarRespuestas(intento);
     }
 
     @Override

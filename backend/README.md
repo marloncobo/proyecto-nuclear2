@@ -403,6 +403,68 @@ Si el despliegue administra el esquema de forma manual, ejecuta
 habilitar la recuperación. Con la inicialización SQL activa, el esquema crea
 la tabla automáticamente.
 
+### Activar la protección de integridad en MySQL
+
+Aplica una vez [006-integridad-academica.sql](migraciones/006-integridad-academica.sql)
+después de inicializar el esquema y de aplicar las migraciones pendientes. Este paso
+también se requiere en instalaciones nuevas. Hazlo con el backend detenido y con
+una cuenta de migraciones persistente que pueda crear índices, vistas y triggers.
+Si el servidor exige privilegios adicionales para crear triggers con registro binario,
+usa la cuenta de administración de la base. Consulta el
+[manual de MySQL sobre registro binario](https://dev.mysql.com/doc/refman/8.4/en/stored-programs-logging.html).
+El cliente `mysql` interpreta el cambio de delimitador que usa el archivo.
+
+Antes de instalar, revisa si hay estudiantes con más de un intento activo. El índice
+único requiere resolver primero esos duplicados. Para conservar el historial, regulariza
+los intentos según su estado real antes de ejecutar la migración.
+
+```sql
+SELECT id_estudiante, COUNT(*) AS intentos_activos
+FROM intento
+WHERE estado = 'EN_PROGRESO'
+GROUP BY id_estudiante
+HAVING COUNT(*) > 1;
+```
+
+Desde la raíz del repositorio, usa el cliente MySQL con el servidor y el esquema de
+la instalación. El parámetro `--password` solicita la clave de manera interactiva.
+
+```powershell
+mysql --host=localhost --user=USUARIO_MIGRACIONES --password --database=psicoapp --execute="SOURCE backend/migraciones/006-integridad-academica.sql"
+```
+
+En Docker Compose, con el servicio MySQL activo y el esquema ya inicializado,
+ejecuta lo siguiente desde la raíz.
+
+```powershell
+docker compose stop backend
+docker compose cp backend/migraciones/006-integridad-academica.sql mysql:/tmp/006-integridad-academica.sql
+docker compose exec mysql mysql --user=root --password --database=psicoapp --execute="SOURCE /tmp/006-integridad-academica.sql"
+docker compose start backend
+```
+
+Los triggers rechazan con `SQLSTATE 45000` escrituras incoherentes sobre la
+publicación de casos, la programación y el ciclo de sesiones, las convocatorias
+al abrir un intento, las relaciones entre preguntas y opciones, y las evaluaciones.
+El índice único permite un solo intento activo por estudiante entre todas las
+sesiones, incluso con altas concurrentes. La aplicación valida el DSL completo,
+autoriza y consume los reintentos, y coordina los cierres y el cálculo de notas.
+
+Las vistas muestran incidencias identificadas por sus claves e incluyen datos
+históricos. Su consulta requiere permisos de lectura sobre las tablas consultadas.
+
+| Vista | Incidencias |
+| --- | --- |
+| `v_integridad_casos` | Casos publicados con estructura incompleta o ponderaciones inválidas, y vínculos entre criterios y preguntas de distintos casos. |
+| `v_integridad_participacion` | Configuración incoherente de sesiones, intentos sin convocatoria, límites incorrectos y preguntas u opciones ajenas. |
+| `v_integridad_resultados` | Evaluaciones de intentos activos, detalles inconsistentes o faltantes y ausencias incompatibles con las convocatorias o los intentos. |
+
+```sql
+SELECT * FROM v_integridad_casos;
+SELECT * FROM v_integridad_participacion;
+SELECT * FROM v_integridad_resultados;
+```
+
 ## API mínima
 
 La ampliacion de gestion del 18-11-2026 agrega las consultas y ediciones de la
@@ -520,6 +582,11 @@ El perfil falla si faltan o MySQL no está disponible. Sin el perfil, `verify`
 conserva las pruebas que no requieren base de datos; los archivos `*IT.java`
 se reservan para Failsafe. Los informes de integración quedan en
 `target/failsafe-reports/`. Consulta la [cobertura MySQL y sus resultados](../docs/pruebas/cobertura-mysql.md).
+
+Con esas variables y `PSICOAPP_PRUEBAS_MYSQL_URL` configurada, ejecuta
+`.\mvnw.cmd -Dtest=PruebaFlujosNotificacionesMySql test` para aplicar la migración
+en otro esquema temporal y verificar los flujos de participación, las escrituras
+SQL rechazadas y las vistas de integridad.
 
 Las pruebas se ubican en `src/test/java/com/psicoapp`, siguiendo los mismos
 módulos y capas cuando se incorporen funcionalidades. Las instrucciones de
