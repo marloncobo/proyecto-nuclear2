@@ -28,9 +28,9 @@ public class RepositorioNotificacionesJdbc implements RepositorioEntregas, Repos
                 .getBytes(StandardCharsets.UTF_8));
         String contenido = solicitud.mensaje();
         if (solicitud.canal() == SolicitudNotificacion.Canal.CORREO) {
-            if (solicitud.html() != null) {
+            if (solicitud.html() != null || solicitud.destinatario() != null) {
                 contenido = PREFIJO_CORREO + FORMATO_CORREO.writeValueAsString(
-                        new ContenidoCorreo(solicitud.mensaje(), solicitud.html()));
+                        new ContenidoCorreo(solicitud.mensaje(), solicitud.html(), solicitud.destinatario()));
             }
             contenido = cifrador.cifrar(contenido);
         }

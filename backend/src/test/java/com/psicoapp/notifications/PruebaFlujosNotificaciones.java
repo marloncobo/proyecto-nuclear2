@@ -179,6 +179,51 @@ class PruebaFlujosNotificaciones {
     }
 
     @Test
+    void altasEntreganCredencialesAlCorreoRegistradoYEliminanElContenidoCifrado() {
+        String correoDocente = identidades.consultarIdentidad(docente).correo();
+        UUID correoAltaDocente = correoCredenciales(docente);
+        UUID correoAltaEstudiante = correoCredenciales(estudiante);
+        assertFalse(contenido(correoAltaDocente).contains("clave-ficticia"));
+        assertFalse(contenido(correoAltaEstudiante).contains("clave-estudiante"));
+        assertFalse(contenido(correoAltaEstudiante).contains(correoEstudiante));
+        verifyNoInteractions(correo);
+
+        identidades.editarEstudiante(docente, estudiante,
+                "nuevo-" + UUID.randomUUID() + "@universidad.example", "Estudiante");
+        entrega.entregar(correoAltaDocente);
+        entrega.entregar(correoAltaEstudiante);
+        entrega.entregar(correoAltaEstudiante);
+
+        verify(correo).enviar(eq(correoDocente), eq("Tu acceso a Psicoapp"), argThat(contenido ->
+                contenido.texto().contains("Usuario: " + correoDocente)
+                        && contenido.texto().contains("Contraseña inicial: clave-ficticia")));
+        verify(correo).enviar(eq(correoEstudiante), eq("Tu acceso a Psicoapp"), argThat(contenido ->
+                contenido.texto().contains("Usuario: " + correoEstudiante)
+                        && contenido.texto().contains("Contraseña inicial: clave-estudiante\n")
+                        && contenido.texto().contains("https://universidad.example/ingreso")));
+        verifyNoMoreInteractions(correo);
+        for (UUID id : List.of(correoAltaDocente, correoAltaEstudiante)) {
+            assertEquals("ENVIADA", estado(id));
+            assertEquals("", contenido(id));
+        }
+    }
+
+    @Test
+    void rollbackDelAltaRevierteLaCuentaYElCorreoDeCredenciales() {
+        String correoNuevo = "nuevo-" + UUID.randomUUID() + "@universidad.example";
+        UUID id = new TransactionTemplate(gestor).execute(transaccion -> {
+            UUID nuevo = identidades.registrarEstudiante(docente, correoNuevo, "Estudiante", "clave-inicial").id();
+            UUID correoPendiente = correoCredenciales(nuevo);
+            transaccion.setRollbackOnly();
+            return correoPendiente;
+        });
+        assertTrue(usuarios.buscarPorCorreo(correoNuevo).isEmpty());
+        assertTrue(jdbc.sql("SELECT estado_envio FROM notificacion WHERE id_notificacion=?")
+                .param(id.toString()).query(String.class).optional().isEmpty());
+        verifyNoInteractions(correo);
+    }
+
+    @Test
     void entregaUnCorreoPlanoPendienteCreadoAntesDeLaPlantilla() {
         UUID id = correoConvocatoria();
         String texto = "Caso: Conflicto\nEnlace original de la convocatoria";
@@ -519,6 +564,11 @@ class PruebaFlujosNotificaciones {
     }
 
     private void despachar() { for (UUID id : ids()) entrega.entregar(id); }
+    private UUID correoCredenciales(UUID usuario) {
+        return jdbc.sql("SELECT id_notificacion FROM notificacion WHERE id_usuario=? AND tipo='CREDENCIALES_INICIALES'")
+                .param(usuario.toString()).query((fila, indice) -> UUID.fromString(fila.getString(1))).single();
+    }
+
     private UUID correoConvocatoria() {
         return jdbc.sql("SELECT id_notificacion FROM notificacion WHERE id_sesion=? AND canal='CORREO' AND tipo='CONVOCATORIA'")
                 .param(sesion.toString()).query((fila, indice) -> UUID.fromString(fila.getString(1))).single();

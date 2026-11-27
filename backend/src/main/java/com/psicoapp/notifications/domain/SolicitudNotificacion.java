@@ -6,12 +6,17 @@ import java.util.Objects;
 
 /** Contenido de entrega; no registrar su representacion en logs. */
 public record SolicitudNotificacion(UUID idEvento, UUID idUsuario, UUID idSesion, UUID idIntento,
-        Canal canal, String tipo, String asunto, String mensaje, Instant fecha, String html) {
+        Canal canal, String tipo, String asunto, String mensaje, Instant fecha, String html, String destinatario) {
     public enum Canal { CORREO, INTERNO }
 
     public SolicitudNotificacion(UUID idEvento, UUID idUsuario, UUID idSesion, UUID idIntento,
             Canal canal, String tipo, String asunto, String mensaje, Instant fecha) {
-        this(idEvento, idUsuario, idSesion, idIntento, canal, tipo, asunto, mensaje, fecha, null);
+        this(idEvento, idUsuario, idSesion, idIntento, canal, tipo, asunto, mensaje, fecha, null, null);
+    }
+
+    public SolicitudNotificacion(UUID idEvento, UUID idUsuario, UUID idSesion, UUID idIntento,
+            Canal canal, String tipo, String asunto, String mensaje, Instant fecha, String html) {
+        this(idEvento, idUsuario, idSesion, idIntento, canal, tipo, asunto, mensaje, fecha, html, null);
     }
 
     public SolicitudNotificacion {

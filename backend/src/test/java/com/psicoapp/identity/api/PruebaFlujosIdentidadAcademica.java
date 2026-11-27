@@ -5,6 +5,7 @@ import com.psicoapp.academic.api.ControladorEspaciosAcademicos;
 import com.psicoapp.academic.application.FachadaAdministracion;
 import com.psicoapp.academic.application.RepositorioEspaciosAcademicos;
 import com.psicoapp.academic.domain.EspacioAcademico;
+import com.psicoapp.identity.application.NotificadorCredencialesIniciales;
 import com.psicoapp.identity.application.PermisosUsuario;
 import com.psicoapp.identity.application.RepositorioUsuarios;
 import com.psicoapp.identity.application.ServicioUsuarios;
@@ -64,6 +65,7 @@ class PruebaFlujosIdentidadAcademica {
     @Autowired PasswordEncoder claves;
     @MockitoBean RepositorioUsuarios usuarios;
     @MockitoBean PermisosUsuario permisos;
+    @MockitoBean NotificadorCredencialesIniciales credencialesIniciales;
     @MockitoBean RepositorioEspaciosAcademicos espacios;
     @MockitoBean com.psicoapp.academic.application.ConsultaUsoEspacios usoEspacios;
     private final Map<UUID, Usuario> cuentas = new LinkedHashMap<>();

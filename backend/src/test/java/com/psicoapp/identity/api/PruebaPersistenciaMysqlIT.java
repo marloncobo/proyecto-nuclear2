@@ -81,6 +81,8 @@ class PruebaPersistenciaMysqlIT {
         propiedades.add("psicoapp.identidad.dominios-institucionales", () -> "universidad.example");
         propiedades.add("psicoapp.identidad.correo-administrador", () -> "");
         propiedades.add("psicoapp.identidad.clave-administrador", () -> "");
+        propiedades.add("psicoapp.notificaciones.clave-cifrado", () -> "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
+        propiedades.add("psicoapp.notificaciones.despacho-habilitado", () -> false);
     }
 
     @AfterAll
@@ -101,6 +103,7 @@ class PruebaPersistenciaMysqlIT {
     void prepararDatos() {
         assertEquals(ESQUEMA, jdbc.sql("SELECT DATABASE()").query(String.class).single());
         // Estas operaciones solo se hacen sobre el esquema aleatorio creado arriba.
+        jdbc.sql("DELETE FROM notificacion").update();
         jdbc.sql("DELETE FROM permiso_creacion_casos").update();
         jdbc.sql("DELETE FROM rol_permiso").update();
         jdbc.sql("DELETE FROM usuario").update();
@@ -353,6 +356,7 @@ class PruebaPersistenciaMysqlIT {
                 "spring.datasource.password", CLAVE_BD, "server.port", "0",
                 "psicoapp.identidad.dominios-institucionales", "universidad.example",
                 "psicoapp.identidad.correo-administrador", "", "psicoapp.identidad.clave-administrador", "",
+                "psicoapp.notificaciones.despacho-habilitado", "false",
                 "spring.sql.init.mode", "always")));
         var aplicacion = new SpringApplication(PsicoappApplication.class);
         aplicacion.setEnvironment(entorno);

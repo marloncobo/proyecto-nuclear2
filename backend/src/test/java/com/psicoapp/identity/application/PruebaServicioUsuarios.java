@@ -25,6 +25,7 @@ import static org.mockito.Mockito.*;
 class PruebaServicioUsuarios {
     @Mock RepositorioUsuarios usuarios;
     @Mock PermisosUsuario permisos;
+    @Mock NotificadorCredencialesIniciales notificador;
     private final BCryptPasswordEncoder claves = new BCryptPasswordEncoder(4);
     private ServicioUsuarios servicio;
     private Usuario administrador;
@@ -90,7 +91,7 @@ class PruebaServicioUsuarios {
 
     @BeforeEach
     void preparar() {
-        servicio = new ServicioUsuarios(usuarios, claves, permisos, "universidad.edu.co, otra.edu.co");
+        servicio = new ServicioUsuarios(usuarios, claves, permisos, notificador, "universidad.edu.co, otra.edu.co");
         administrador = usuario(Rol.ADMINISTRADOR, "administrador@universidad.edu.co");
         docente = usuario(Rol.DOCENTE, "docente@universidad.edu.co");
     }
@@ -120,6 +121,9 @@ class PruebaServicioUsuarios {
         assertTrue(guardado.getValue().activo());
         assertTrue(claves.matches("clave-ficticia", guardado.getValue().hashClave()));
         assertNotEquals("clave-ficticia", guardado.getValue().hashClave());
+        var orden = inOrder(usuarios, notificador);
+        orden.verify(usuarios).guardar(guardado.getValue());
+        orden.verify(notificador).encolar(resultado.id(), resultado.correo(), "clave-ficticia");
     }
 
     @Test
@@ -140,6 +144,7 @@ class PruebaServicioUsuarios {
         when(usuarios.buscarPorCorreo(docente.correo())).thenReturn(Optional.of(docente));
         assertThrows(Conflicto.class, () -> servicio.registrarDocente(administrador.id(), docente.correo(), "Otro", "clave-ficticia"));
         verify(usuarios, never()).guardar(any());
+        verifyNoInteractions(notificador);
     }
 
     @Test

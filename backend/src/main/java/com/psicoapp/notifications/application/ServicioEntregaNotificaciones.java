@@ -27,8 +27,10 @@ public class ServicioEntregaNotificaciones {
         var entrega = pendiente.get();
         if ("CORREO".equals(entrega.canal())) {
             try {
-                String destinatario = identidades.consultarIdentidad(entrega.idUsuario()).correo();
-                correo.enviar(destinatario, entrega.asunto(), entregas.recuperarContenido(entrega));
+                var contenido = entregas.recuperarContenido(entrega);
+                String destinatario = contenido.destinatario() != null ? contenido.destinatario()
+                        : identidades.consultarIdentidad(entrega.idUsuario()).correo();
+                correo.enviar(destinatario, entrega.asunto(), contenido);
             } catch (RuntimeException excepcion) {
                 // No conservar mensaje/stack del proveedor: pueden contener codigo o destinatario.
                 int intentos = Math.min(entrega.intentos() + 1, 1000000);
