@@ -90,7 +90,7 @@
 
 ## RN-13 — Tiempo de participación
 
-**Regla:** La duración máxima configurada para una sesión no podrá superar el tiempo estimado del caso. El intento termina cuando se agota el tiempo asignado o se cierra la sesión, lo que ocurra primero.
+**Regla:** La duración máxima configurada para una sesión no podrá superar el tiempo estimado del caso ni el intervalo entre la apertura y el cierre programados. El intento termina cuando se agota el tiempo asignado o se cierra la sesión, lo que ocurra primero.
 
 - **Patrón recomendado en Google Sheets:** Sin patrón específico
 - **Justificación en Google Sheets:** El límite temporal es una validación de negocio, sin patrón específico seleccionado.
