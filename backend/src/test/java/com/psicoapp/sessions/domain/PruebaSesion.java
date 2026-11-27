@@ -86,6 +86,22 @@ class PruebaSesion {
     }
 
     @Test
+    @DisplayName("RF-18 / RN-13: el intervalo programado cubre la duración máxima")
+    void exigeTiempoSuficienteAlProgramar() {
+        var finExacto = INICIO.plusSeconds(30 * 60);
+        for (var fin : new java.time.Instant[]{INICIO.plusSeconds(6 * 60), finExacto.minusSeconds(1)}) {
+            var error = assertThrows(IllegalArgumentException.class, () -> Sesion.programar(UUID.randomUUID(),
+                    sesion.idCaso(), sesion.idEspacio(), sesion.idDocente(), INICIO, fin,
+                    30, 40, ModoNavegacion.FLEXIBLE, null, null));
+            assertTrue(error.getMessage().contains("al menos 30 minutos"));
+        }
+        assertDoesNotThrow(() -> Sesion.programar(UUID.randomUUID(), sesion.idCaso(), sesion.idEspacio(),
+                sesion.idDocente(), INICIO, finExacto, 30, 40, ModoNavegacion.FLEXIBLE, null, null));
+        assertDoesNotThrow(() -> new Sesion(sesion.id(), sesion.idCaso(), sesion.idEspacio(), sesion.idDocente(),
+                INICIO, INICIO.plusSeconds(6 * 60), 30, ModoNavegacion.FLEXIBLE, null, null, SinIniciar.INSTANCIA));
+    }
+
+    @Test
     @DisplayName("RF-18: rechaza datos nulos, textos fuera de limites y precision temporal no persistible")
     void validaDatosYReconstruccion() {
         assertThrows(IllegalArgumentException.class, () -> Sesion.programar(null, sesion.idCaso(), sesion.idEspacio(),

@@ -783,13 +783,20 @@ export class Aplicacion {
   }
   async programar() {
     await this.ejecutar(async () => {
+      const inicio = new Date(this.programacion.inicioPrevisto);
+      const fin = new Date(this.programacion.finPrevisto);
       const datos = {
         ...this.programacion,
-        inicioPrevisto: new Date(this.programacion.inicioPrevisto).toISOString(),
-        finPrevisto: new Date(this.programacion.finPrevisto).toISOString(),
+        inicioPrevisto: inicio.toISOString(),
+        finPrevisto: fin.toISOString(),
       };
-      if (new Date(datos.finPrevisto) <= new Date(datos.inicioPrevisto))
-        throw new Error('La fecha final debe ser posterior al inicio.');
+      const intervaloMs = fin.getTime() - inicio.getTime();
+      if (intervaloMs <= 0) throw new Error('La fecha final debe ser posterior al inicio.');
+      if (intervaloMs < datos.duracionMaximaMin * 60_000) {
+        throw new Error(
+          `El intervalo entre el inicio y el fin debe ser de al menos ${datos.duracionMaximaMin} minutos. Amplía el intervalo o reduce la duración individual.`,
+        );
+      }
       const sesion = this.api.conectado()
         ? await this.api.enviar<Sesion>('/sesiones', datos)
         : { ...datos, id: crypto.randomUUID(), estado: 'SIN_INICIAR', convocatorias: [] };

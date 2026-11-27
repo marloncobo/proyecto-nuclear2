@@ -71,7 +71,7 @@ se conserva en los DTO de `ServicioCreacionCaso`.
 
 | Método y ruta | Acceso | Entrada | Resultado |
 | --- | --- | --- | --- |
-| `POST /api/sesiones` | Docente | Programación, caso, espacio y lista `estudiantes` | Sesión programada y convocatorias iniciales. |
+| `POST /api/sesiones` | Docente | Programación, caso, espacio y lista `estudiantes` | Sesión programada y convocatorias iniciales. Devuelve 400 si el intervalo entre `inicioPrevisto` y `finPrevisto` es menor que `duracionMaximaMin`. |
 | `GET /api/sesiones` | Docente | — | Sesiones por fecha de creación descendente. Las sesiones históricas sin fecha de creación aparecen después, por inicio programado descendente. |
 | `GET /api/sesiones/{id}` | Docente responsable | — | Programación, estado, convocatorias y horarios de apertura y cierre reales cuando están registrados. |
 | `PUT /api/sesiones/{id}/convocados` | Docente responsable | Listas de UUID `agregar` y `retirar` | Sesión con convocatorias actualizadas. |
