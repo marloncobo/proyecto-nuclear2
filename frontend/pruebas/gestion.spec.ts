@@ -590,12 +590,18 @@ test('docente: pagina las sesiones de cinco en cinco y vuelve al inicio al filtr
   await formulario.locator('[name="espacioSesion"]').selectOption('espacio-real');
   await formulario.getByRole('checkbox', { name: /Alumna de prueba/ }).check();
   await formulario.locator('[name="inicio"]').fill('2026-11-23T09:00');
-  await formulario.locator('[name="fin"]').fill('2026-11-23T10:30');
+  await formulario.locator('[name="fin"]').fill('2026-11-23T09:06');
+  await formulario.locator('[name="duracion"]').fill('30');
   await formulario.getByLabel('Lugar').fill('Aula recién creada');
   await formulario.getByLabel('Mensaje de convocatoria').fill('Convocatoria de prueba');
-  await formulario.getByRole('button', { name: /Programar sesión/ }).click();
+  const programar = formulario.getByRole('button', { name: /Programar sesión/ });
+  await programar.click();
+  await expect(formulario.getByRole('alert')).toContainText('debe ser de al menos 30 minutos');
+  expect(sesiones).toHaveLength(11);
+  await formulario.locator('[name="fin"]').fill('2026-11-23T09:30');
+  await programar.click();
   await expect(tarjetas.first()).toContainText('Aula recién creada');
-  await expect(tarjetas.first().locator('.cierre-sesion')).toHaveText(/Cierre programado\s+23\/11\/2026, 10:30/);
+  await expect(tarjetas.first().locator('.cierre-sesion')).toHaveText(/Cierre programado\s+23\/11\/2026, 09:30/);
   await expect(paginacion).toContainText('Página 1 de 3');
   for (const [width, height] of [[1440, 1000], [768, 1024], [390, 844]]) {
     await pagina.setViewportSize({ width, height });

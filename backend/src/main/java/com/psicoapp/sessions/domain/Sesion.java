@@ -1,5 +1,6 @@
 package com.psicoapp.sessions.domain;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -39,7 +40,12 @@ public record Sesion(UUID id, UUID idCaso, UUID idEspacio, UUID idDocente,
         if (duracion > tiempoEstimadoCaso) {
             throw new IllegalArgumentException("La duracion no puede superar el tiempo estimado del caso");
         }
-        return new Sesion(id, idCaso, idEspacio, idDocente, inicio, fin, duracion, modo, lugar, mensaje, SinIniciar.INSTANCIA);
+        Sesion sesion = new Sesion(id, idCaso, idEspacio, idDocente, inicio, fin, duracion, modo, lugar, mensaje, SinIniciar.INSTANCIA);
+        if (Duration.between(inicio, fin).compareTo(Duration.ofMinutes(duracion)) < 0) {
+            throw new IllegalArgumentException("El intervalo entre el inicio y el fin debe ser de al menos "
+                    + duracion + " minutos para cubrir la duración máxima.");
+        }
+        return sesion;
     }
 
     public Sesion iniciar(Instant ahora) {
