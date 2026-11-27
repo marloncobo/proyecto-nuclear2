@@ -58,7 +58,8 @@ public class ConfiguracionIdentidad {
                         .jwtAuthenticationConverter(tokens::autenticar)))
                 .authorizeHttpRequests(acceso -> acceso
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/identidad/ingreso").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/identidad/ingreso",
+                                "/api/identidad/recuperacion", "/api/identidad/recuperacion/restablecer").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/identidad/clave-inicial").hasAuthority("CAMBIO_CLAVE_INICIAL")
                         .requestMatchers(HttpMethod.PUT, "/api/identidad/yo/clave")
                                 .hasAnyRole("DOCENTE", "ADMINISTRADOR", "ESTUDIANTE")

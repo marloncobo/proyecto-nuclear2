@@ -13,7 +13,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import static com.psicoapp.AutenticacionPruebas.portador;
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 

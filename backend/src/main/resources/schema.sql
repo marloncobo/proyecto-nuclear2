@@ -27,6 +27,12 @@ CREATE TABLE IF NOT EXISTS usuario (
     id_rol CHAR(36) NOT NULL,
     FOREIGN KEY (id_rol) REFERENCES rol(id_rol)
 );
+CREATE TABLE IF NOT EXISTS recuperacion_clave (
+    id_usuario CHAR(36) PRIMARY KEY,
+    resumen CHAR(64) NOT NULL,
+    vence TIMESTAMP NOT NULL,
+    FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario) ON DELETE CASCADE
+);
 CREATE TABLE IF NOT EXISTS permiso_creacion_casos (
     id_usuario CHAR(36) PRIMARY KEY,
     FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario)

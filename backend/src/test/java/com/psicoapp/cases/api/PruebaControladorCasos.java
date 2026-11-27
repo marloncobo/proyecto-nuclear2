@@ -3,7 +3,6 @@ package com.psicoapp.cases.api;
 import com.psicoapp.cases.application.RepositorioCasos;
 import com.psicoapp.cases.application.ServicioCreacionCaso;
 import com.psicoapp.cases.domain.ConstructorCasoAcademico;
-import com.psicoapp.identity.application.DirectorioIdentidad;
 import com.psicoapp.identity.application.ServicioUsuarios;
 import com.psicoapp.identity.application.RepositorioUsuarios;
 import com.psicoapp.identity.infrastructure.ConfiguracionIdentidad;

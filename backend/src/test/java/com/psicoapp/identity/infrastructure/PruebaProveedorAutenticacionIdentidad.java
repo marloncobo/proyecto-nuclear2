@@ -1,6 +1,5 @@
 package com.psicoapp.identity.infrastructure;
 
-import com.psicoapp.identity.application.VerificadorAccesoEstudiante;
 import com.psicoapp.identity.application.RepositorioUsuarios;
 import com.psicoapp.identity.domain.Rol;
 import com.psicoapp.identity.domain.Usuario;
@@ -13,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -24,14 +22,12 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class PruebaProveedorAutenticacionIdentidad {
     @Mock RepositorioUsuarios usuarios;
-    @Mock ObjectProvider<VerificadorAccesoEstudiante> proveedorVerificador;
-    @Mock VerificadorAccesoEstudiante verificador;
     private final BCryptPasswordEncoder claves = new BCryptPasswordEncoder(4);
     private ProveedorAutenticacionIdentidad proveedor;
 
     @BeforeEach
     void preparar() {
-        proveedor = new ProveedorAutenticacionIdentidad(usuarios, claves, proveedorVerificador);
+        proveedor = new ProveedorAutenticacionIdentidad(usuarios, claves);
     }
 
     @Test
@@ -44,7 +40,6 @@ class PruebaProveedorAutenticacionIdentidad {
         assertEquals(docente.id().toString(), resultado.getName());
         assertNull(resultado.getCredentials());
         assertEquals("ROLE_DOCENTE", resultado.getAuthorities().iterator().next().getAuthority());
-        verifyNoInteractions(proveedorVerificador);
     }
 
     @Test
@@ -71,7 +66,6 @@ class PruebaProveedorAutenticacionIdentidad {
         Usuario estudiante = usuario(Rol.ESTUDIANTE, true);
         when(usuarios.buscarPorCorreo(estudiante.correo())).thenReturn(Optional.of(estudiante));
         assertTrue(proveedor.authenticate(credenciales(estudiante.correo(), "clave-ficticia")).isAuthenticated());
-        verifyNoInteractions(proveedorVerificador, verificador);
     }
 
     @Test

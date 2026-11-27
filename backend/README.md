@@ -45,7 +45,9 @@ El frontend ya utiliza este flujo y conserva el token únicamente en memoria.
 
 Los tokens HS256 duran 900 segundos, validan firma, emisor, audiencia y caducidad.
 Cada petición consulta la cuenta: desactivarla, eliminarla o cambiar su rol invalida
-el token. Los estudiantes también usan una contraseña BCrypt. Si es inicial, el JWT
+el token. Cambiar o recuperar la contraseña también invalida los JWT emitidos con
+la contraseña anterior. Los JWT emitidos antes de incorporar esta verificación
+requieren volver a iniciar sesión. Los estudiantes también usan una contraseña BCrypt. Si es inicial, el JWT
 solo permite consultar la identidad y ejecutar `PUT /api/identidad/clave-inicial`.
 El estudiante puede elegir una contraseña nueva o confirmar que conserva la inicial.
 Al completar el flujo, el token temporal deja de ser válido. La autorización de la sesión concreta
@@ -173,11 +175,13 @@ controles independientes de convocatoria, estado y ventana temporal.
 
 Se agregan las tablas `notificacion` y `valoracion_docente` al esquema.
 El adaptador de infraestructura implementa el puerto de correo mediante la API HTTPS de Gmail.
+Al dar de alta a un docente o estudiante, se encola un correo con la contraseña
+inicial y el usuario en la dirección registrada durante el alta.
 Los correos de convocatoria y retiro tienen una versión HTML y una alternativa de texto plano.
 La convocatoria muestra la apertura y el cierre en hora de Colombia, el tiempo para resolver,
 el lugar y el mensaje del docente cuando se proporcionan, y el botón de acceso a la actividad.
-**Antes de convocar:** configurar clave AES persistente, URL de acceso y Gmail
-segun la [guia de notificaciones](../docs/pruebas/notificaciones.md).
+Antes de registrar usuarios o convocar estudiantes, configura la clave AES
+persistente, la URL de acceso y Gmail. [Guía de notificaciones](../docs/pruebas/notificaciones.md).
 El correo identifica la sesión mediante el enlace de ingreso. El estudiante se autentica con su cuenta institucional.
 Los avisos docentes se reconstruyen de forma idempotente desde sesiones, intentos
 y evaluaciones persistidos: recordatorio próximo, finalización, estudiantes que no
@@ -393,6 +397,11 @@ Aplica una vez [004-fecha-creacion-sesion.sql](migraciones/004-fecha-creacion-se
 antes de iniciar esta versión con una base existente. Las sesiones creadas a partir
 de esta actualización se listan por fecha de creación descendente. Las sesiones
 anteriores aparecen después, ordenadas por inicio programado descendente.
+
+Si el despliegue administra el esquema de forma manual, ejecuta
+[005-recuperacion-clave.sql](migraciones/005-recuperacion-clave.sql) antes de
+habilitar la recuperación. Con la inicialización SQL activa, el esquema crea
+la tabla automáticamente.
 
 ## API mínima
 

@@ -158,6 +158,6 @@ class PruebaAutenticacionJwt {
                 .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
                 .andExpect(jsonPath("$.tipo").value("Bearer")).andExpect(jsonPath("$.venceEn").exists())
                 .andExpect(jsonPath("$.clave").doesNotExist()).andReturn();
-        return json.readTree(respuesta.getResponse().getContentAsString()).get("token").asText();
+        return json.readTree(respuesta.getResponse().getContentAsString()).get("token").asString();
     }
 }

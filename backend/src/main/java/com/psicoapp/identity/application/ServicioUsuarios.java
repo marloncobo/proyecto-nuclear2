@@ -26,13 +26,16 @@ public class ServicioUsuarios implements DirectorioIdentidad {
     private final RepositorioUsuarios usuarios;
     private final PasswordEncoder claves;
     private final PermisosUsuario permisos;
+    private final NotificadorCredencialesIniciales credencialesIniciales;
     private final Set<String> dominiosInstitucionales;
 
     public ServicioUsuarios(RepositorioUsuarios usuarios, PasswordEncoder claves, PermisosUsuario permisos,
+            NotificadorCredencialesIniciales credencialesIniciales,
             @Value("${psicoapp.identidad.dominios-institucionales}") String dominios) {
         this.usuarios = usuarios;
         this.claves = claves;
         this.permisos = permisos;
+        this.credencialesIniciales = credencialesIniciales;
         this.dominiosInstitucionales = Arrays.stream(dominios.split(","))
                 .map(String::strip).filter(s -> !s.isEmpty()).map(s -> s.toLowerCase(Locale.ROOT))
                 .collect(Collectors.toUnmodifiableSet());
@@ -143,7 +146,7 @@ public class ServicioUsuarios implements DirectorioIdentidad {
     }
     public DatosUsuario registrarDocente(UUID idActor, String correo, String nombre, String clave) {
         exigirRol(idActor, Rol.ADMINISTRADOR);
-        return crearUsuario(validarCorreoInstitucional(correo), nombre, Rol.DOCENTE, clave);
+        return registrarConCredenciales(correo, nombre, Rol.DOCENTE, clave);
     }
 
     public DatosUsuario cambiarRol(UUID idActor, UUID idUsuario, Rol rol) {
@@ -238,7 +241,7 @@ public class ServicioUsuarios implements DirectorioIdentidad {
 
     public DatosUsuario registrarEstudiante(UUID actor, String correo, String nombre, String clave) {
         exigirGestorEstudiantes(actor);
-        return crearUsuario(validarCorreoInstitucional(correo), nombre, Rol.ESTUDIANTE, clave);
+        return registrarConCredenciales(correo, nombre, Rol.ESTUDIANTE, clave);
     }
 
     public void asignarClaveInicial(UUID actor, UUID estudiante, String clave) {
@@ -298,11 +301,18 @@ public class ServicioUsuarios implements DirectorioIdentidad {
         return claves.encode(clave);
     }
 
-    private void validarClave(String clave) {
+    static void validarClave(String clave) {
         if (clave == null || clave.isBlank() || clave.length() < 8
                 || clave.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) {
             throw new IllegalArgumentException("La contraseña debe tener al menos 8 caracteres y hasta 72 bytes");
         }
+    }
+
+    private DatosUsuario registrarConCredenciales(String correo, String nombre, Rol rol, String clave) {
+        validarClave(clave);
+        DatosUsuario nuevo = crearUsuario(validarCorreoInstitucional(correo), nombre, rol, clave);
+        credencialesIniciales.encolar(nuevo.id(), nuevo.correo(), clave);
+        return nuevo;
     }
 
     private DatosUsuario crearUsuario(String correo, String nombre, Rol rol, String clave) {

@@ -20,7 +20,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static com.psicoapp.sessions.DatosPruebaSesiones.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-import static org.mockito.ArgumentMatchers.*;
 
 @ExtendWith(MockitoExtension.class)
 class PruebaServicioGestionSesiones {

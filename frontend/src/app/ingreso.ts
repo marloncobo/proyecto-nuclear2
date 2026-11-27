@@ -10,6 +10,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
+import { Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { AvisoNotificacion, ConfirmacionClaveInicialRequerida, Reporte, ServicioApi } from './servicio-api';
 import { TutorialGuiado } from './tutorial-guiado';
@@ -44,6 +45,7 @@ interface Simulacion {
 })
 export class Ingreso {
   private readonly api = inject(ServicioApi);
+  private readonly enrutador = inject(Router);
   readonly autenticado = output<void>();
   readonly pasosTutorial = pasosIngreso;
   readonly explorar = output<void>();
@@ -52,6 +54,11 @@ export class Ingreso {
   readonly mostrarClave = signal(false);
   readonly requiereCambioClave = signal(false);
   readonly avisoError = viewChild<ElementRef<HTMLElement>>('avisoError');
+  readonly tokenRecuperacion = input<string | null>(null);
+  readonly solicitandoRecuperacion = signal(false);
+  readonly avisoRecuperacion = signal('');
+  readonly encabezadoRecuperacion = viewChild<ElementRef<HTMLElement>>('encabezadoRecuperacion');
+  readonly correoIngreso = viewChild<ElementRef<HTMLInputElement>>('correoIngreso');
   correo = '';
   clave = '';
   nuevaClave = '';
@@ -62,6 +69,14 @@ export class Ingreso {
   idSesion = '';
 
   constructor() {
+    effect(() => {
+      if (this.tokenRecuperacion() === null) return;
+      this.avisoRecuperacion.set('');
+      this.error.set('');
+      this.nuevaClave = '';
+      this.confirmarNuevaClave = '';
+      setTimeout(() => this.encabezadoRecuperacion()?.nativeElement.focus());
+    });
     effect(() => {
       this.idSesion = this.sesionEstudiante() ?? '';
     });
@@ -242,6 +257,53 @@ export class Ingreso {
       this.ocupado.set(false);
     }
   }
+  abrirRecuperacion() {
+    this.error.set('');
+    this.avisoRecuperacion.set('');
+    this.clave = '';
+    this.mostrarClave.set(false);
+    this.solicitandoRecuperacion.set(true);
+    if (this.tokenRecuperacion() !== null) {
+      this.api.salir();
+      this.nuevaClave = '';
+      this.confirmarNuevaClave = '';
+      void this.enrutador.navigate(['/ingreso'], { replaceUrl: true });
+    }
+    setTimeout(() => this.encabezadoRecuperacion()?.nativeElement.focus());
+  }
+
+  volverAlIngreso() {
+    this.error.set('');
+    this.avisoRecuperacion.set('');
+    this.solicitandoRecuperacion.set(false);
+    this.nuevaClave = '';
+    this.confirmarNuevaClave = '';
+    if (this.tokenRecuperacion() !== null) void this.enrutador.navigate(['/ingreso'], { replaceUrl: true });
+    setTimeout(() => this.correoIngreso()?.nativeElement.focus());
+  }
+
+  async solicitarRecuperacion(formulario: NgForm) {
+    if (formulario.invalid) return;
+    await this.ejecutar(async () => {
+      await this.api.solicitarRecuperacion(this.correo.trim());
+      this.avisoRecuperacion.set('Si el correo corresponde a una cuenta activa, recibirás un enlace para restablecer tu contraseña.');
+    });
+  }
+
+  async restablecerClave(formulario: NgForm) {
+    const token = this.tokenRecuperacion();
+    if (formulario.invalid || token === null) return;
+    await this.ejecutar(async () => {
+      if (this.nuevaClave !== this.confirmarNuevaClave)
+        throw new Error('Las contraseñas nuevas no coinciden.');
+      await this.api.restablecerClave(token, this.nuevaClave);
+      this.api.salir();
+      this.requiereCambioClave.set(false);
+      this.volverAlIngreso();
+      this.avisoRecuperacion.set('Contraseña actualizada. Ya puedes iniciar sesión.');
+    });
+  }
+
   async ingresar(formulario: NgForm) {
     if (this.ocupado()) return;
     this.error.set('');

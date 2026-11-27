@@ -387,13 +387,59 @@
         <span class="sello-campus">TU CAMPUS VIRTUAL <span aria-hidden="true">↗</span></span>
       </div>
       <div class="formulario-ingreso">
-        <p class="antetitulo">QUÉ BUENO VERTE AQUÍ</p>
-        <h2 id="titulo-ingreso">Tu próxima <em>perspectiva.</em></h2>
-        <p class="instruccion">Ingresa con tu cuenta institucional para continuar.</p>
+        @if (tokenRecuperacion() !== null) {
+          <h2 id="titulo-ingreso" #encabezadoRecuperacion tabindex="-1">Elige una <em>nueva contraseña.</em></h2>
+          <p class="instruccion">Usa al menos 8 caracteres para tu nueva contraseña.</p>
+        } @else if (solicitandoRecuperacion()) {
+          <h2 id="titulo-ingreso" #encabezadoRecuperacion tabindex="-1">Recupera tu <em>contraseña.</em></h2>
+          <p class="instruccion">Escribe el correo con el que ingresas a Psicoapp.</p>
+        } @else {
+          <p class="antetitulo">QUÉ BUENO VERTE AQUÍ</p>
+          <h2 id="titulo-ingreso">Tu próxima <em>perspectiva.</em></h2>
+          <p class="instruccion">Ingresa con tu cuenta institucional para continuar.</p>
+        }
+        @if (avisoRecuperacion(); as aviso) {
+          <p class="aviso-recuperacion" role="status">{{ aviso }}</p>
+        }
         @if (error()) {
           <div #avisoError class="error-ingreso" role="alert" tabindex="-1">{{ error() }}</div>
         }
-        @if (requiereCambioClave()) {
+        @if (tokenRecuperacion() !== null) {
+          <form #restablecimiento="ngForm" (ngSubmit)="restablecerClave(restablecimiento)" [attr.aria-busy]="ocupado()">
+            <div class="campo">
+              <label for="clave-recuperacion">Nueva contraseña</label>
+              <input id="clave-recuperacion" name="nuevaClave" type="password" autocomplete="new-password"
+                [(ngModel)]="nuevaClave" required minlength="8" maxlength="72" [readOnly]="ocupado()" />
+            </div>
+            <div class="campo">
+              <label for="confirmar-recuperacion">Confirmar contraseña</label>
+              <input id="confirmar-recuperacion" name="confirmarNuevaClave" type="password" autocomplete="new-password"
+                [(ngModel)]="confirmarNuevaClave" required minlength="8" maxlength="72" [readOnly]="ocupado()" />
+            </div>
+            <button class="boton-ingresar" type="submit" [disabled]="ocupado() || restablecimiento.invalid">
+              {{ ocupado() ? 'Guardando…' : 'Guardar nueva contraseña' }}
+            </button>
+            <button class="enlace-recuperacion" type="button" [disabled]="ocupado()" (click)="abrirRecuperacion()">
+              Solicitar otro enlace
+            </button>
+          </form>
+        } @else if (solicitandoRecuperacion()) {
+          @if (!avisoRecuperacion()) {
+            <form #recuperacion="ngForm" (ngSubmit)="solicitarRecuperacion(recuperacion)" [attr.aria-busy]="ocupado()">
+              <div class="campo">
+                <label for="correo-recuperacion">Correo de la cuenta</label>
+                <input id="correo-recuperacion" name="correo" type="email" autocomplete="email"
+                  [(ngModel)]="correo" required email maxlength="180" [readOnly]="ocupado()" />
+              </div>
+              <button class="boton-ingresar" type="submit" [disabled]="ocupado() || recuperacion.invalid">
+                {{ ocupado() ? 'Enviando…' : 'Enviar enlace de recuperación' }}
+              </button>
+            </form>
+          }
+          <button class="enlace-recuperacion" type="button" [disabled]="ocupado()" (click)="volverAlIngreso()">
+            Volver al ingreso
+          </button>
+        } @else if (requiereCambioClave()) {
           <form #cambio="ngForm" (ngSubmit)="cambiarClaveInicial(cambio, confirmarConservacion)" novalidate>
             <p class="instruccion">
               Antes de entrar a tu espacio, te recomendamos elegir una contraseña distinta de la que recibiste.
@@ -466,6 +512,7 @@
             <label for="correo-ingreso">Correo institucional</label>
             <input
               id="correo-ingreso"
+              #correoIngreso
               name="correo"
               type="email"
               autocomplete="username"
@@ -538,12 +585,12 @@
               <span aria-hidden="true">↗</span>
             }
           </button>
-          <p class="ayuda-acceso">
-            Acceso para docentes y administradores.<br />¿Necesitas ayuda con tu cuenta? Contacta al
-            administrador de tu institución.
-          </p>
+          <button class="enlace-recuperacion" type="button" [disabled]="ocupado()" (click)="abrirRecuperacion()">
+            ¿Olvidaste tu contraseña?
+          </button>
         </form>
         }
+        @if (!solicitandoRecuperacion() && tokenRecuperacion() === null) {
         <p class="ayuda-acceso">
           Estudiantes, docentes y administradores usan este mismo acceso.
         </p>
@@ -558,6 +605,7 @@
           Explorar la demostración <span aria-hidden="true">↗</span>
         </button>
         <p class="nota-demostracion">Un recorrido con datos ficticios, sin iniciar sesión.</p>
+        }
       </div>
       <footer class="pie-ingreso">
         Simulador académico de psicología social.<br />Un espacio para aprender, no para

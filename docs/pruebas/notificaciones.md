@@ -59,6 +59,25 @@ Ambas versiones se cifran juntas con AES-256-GCM y un vector aleatorio por
 mensaje. El enlace de convocatoria identifica la sesión sin incluir contraseñas
 ni códigos. El contenido cifrado se elimina al confirmar o cancelar la entrega.
 Los correos pendientes creados con el formato anterior conservan su texto plano.
+
+Al crear una cuenta de docente o estudiante desde el formulario de alta, la misma
+transacción encola un correo con el usuario (correo de inicio de sesión), la
+contraseña inicial y el enlace de acceso. La contraseña se guarda como hash BCrypt
+en la cuenta. El correo de alta fija como destinatario la dirección registrada
+en ese momento. La cola cifra el destinatario y el contenido y los elimina al
+confirmar la entrega.
+
+El correo de alta comparte la plantilla HTML de las convocatorias y conserva
+una alternativa de texto plano. La recuperación usa la misma plantilla con un
+botón para elegir una contraseña nueva. Desde **¿Olvidaste tu contraseña?** en
+`/ingreso`, cualquier cuenta activa puede solicitar el enlace a su correo registrado.
+La API devuelve 202 con la misma respuesta para cuentas inexistentes o inactivas
+y espera dos minutos entre correos para la misma cuenta. El enlace más reciente
+vence en 30 minutos y solo puede usarse una vez. El código se guarda como resumen,
+se invalida si cambia el correo o la contraseña y viaja en el fragmento de la
+URL del frontend. La cola elimina enlaces pendientes vencidos o sustituidos.
+El restablecimiento revoca los JWT anteriores y permite ingresar con la nueva clave.
+
 El hash de convocatoria permanece
 en `sessions`. Retirar cancela convocatorias pendientes; reincorporar rota el
 codigo y cancela retiros pendientes obsoletos para no enviar mensajes contradictorios.
@@ -109,12 +128,13 @@ fechaCreacion y leida. No exponen el contenido cifrado de los correos ni codigos
 
 ## Configuracion local
 
-Se mantienen las variables MySQL y de identidad del README. Antes de programar
-convocatorias, configurar una clave AES persistente de **32 bytes en Base64**:
+Se mantienen las variables MySQL y de identidad del README. Antes de registrar
+cuentas con contraseña o programar convocatorias, configurar una clave AES
+persistente de **32 bytes en Base64**:
 `PSICOAPP_NOTIFICACIONES_CLAVE_CIFRADO`. No se incluye una clave de produccion ni
 se genera otra automaticamente al reiniciar, pues perderia los pendientes.
 Una clave ausente/invalida impide encolar correos; la transaccion productora se
-revierte sin dejar convocatorias a medias. No cambiarla mientras existan pendientes:
+revierte sin guardar el alta o la convocatoria. No cambiarla mientras existan pendientes:
 para rotarla, entregar/cancelar los pendientes o migrarlos con ambas claves.
 No registrar solicitudes, respuestas, tokens OAuth ni cuerpos de eventos de Gmail.
 
@@ -130,7 +150,7 @@ $env:PSICOAPP_NOTIFICACIONES_CLAVE_CIFRADO = [Convert]::ToBase64String($claveNot
 
 | Variable | Valor / funcion |
 | --- | --- |
-| PSICOAPP_NOTIFICACIONES_URL_ACCESO | URL HTTP(S) sin credenciales; por defecto http://localhost:3000/ingreso. Debe apuntar al acceso real del frontend cuando exista. |
+| PSICOAPP_NOTIFICACIONES_URL_ACCESO | URL HTTP(S) de ingreso usada en correos de alta y convocatoria. Por defecto, http://localhost:3000/ingreso. |
 | PSICOAPP_NOTIFICACIONES_REMITENTE | Direccion de la cuenta Gmail que autorizo el envio. |
 | PSICOAPP_GMAIL_ID_CLIENTE | ID del cliente OAuth de Google Cloud. |
 | PSICOAPP_GMAIL_SECRETO_CLIENTE | Secreto de ese cliente OAuth. |

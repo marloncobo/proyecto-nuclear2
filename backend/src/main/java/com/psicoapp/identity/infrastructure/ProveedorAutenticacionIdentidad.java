@@ -1,12 +1,9 @@
 package com.psicoapp.identity.infrastructure;
 
-import com.psicoapp.identity.application.VerificadorAccesoEstudiante;
 import com.psicoapp.identity.application.RepositorioUsuarios;
-import com.psicoapp.identity.domain.Rol;
 import com.psicoapp.identity.domain.Usuario;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -19,13 +16,10 @@ import org.springframework.stereotype.Component;
 public class ProveedorAutenticacionIdentidad implements AuthenticationProvider {
     private final RepositorioUsuarios usuarios;
     private final PasswordEncoder claves;
-    private final ObjectProvider<VerificadorAccesoEstudiante> accesoEstudiantil;
 
-    public ProveedorAutenticacionIdentidad(RepositorioUsuarios usuarios, PasswordEncoder claves,
-            ObjectProvider<VerificadorAccesoEstudiante> accesoEstudiantil) {
+    public ProveedorAutenticacionIdentidad(RepositorioUsuarios usuarios, PasswordEncoder claves) {
         this.usuarios = usuarios;
         this.claves = claves;
-        this.accesoEstudiantil = accesoEstudiantil;
     }
 
     @Override

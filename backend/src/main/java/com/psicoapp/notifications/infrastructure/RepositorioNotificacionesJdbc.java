@@ -28,9 +28,10 @@ public class RepositorioNotificacionesJdbc implements RepositorioEntregas, Repos
                 .getBytes(StandardCharsets.UTF_8));
         String contenido = solicitud.mensaje();
         if (solicitud.canal() == SolicitudNotificacion.Canal.CORREO) {
-            if (solicitud.html() != null) {
+            if (solicitud.html() != null || solicitud.destinatario() != null || solicitud.vence() != null) {
                 contenido = PREFIJO_CORREO + FORMATO_CORREO.writeValueAsString(
-                        new ContenidoCorreo(solicitud.mensaje(), solicitud.html()));
+                        new ContenidoCorreo(solicitud.mensaje(), solicitud.html(), solicitud.destinatario(),
+                                solicitud.vence() == null ? null : solicitud.vence().getEpochSecond()));
             }
             contenido = cifrador.cifrar(contenido);
         }
@@ -72,6 +73,16 @@ public class RepositorioNotificacionesJdbc implements RepositorioEntregas, Repos
     @Override public void posponer(UUID id, int intentos, Instant siguiente) {
         jdbc.sql("UPDATE notificacion SET intentos=?,proximo_intento=?,ultimo_error='ENVIO_FALLIDO' WHERE id_notificacion=?")
                 .params(intentos, Timestamp.from(siguiente), id.toString()).update();
+    }
+    @Override public void cancelar(UUID id) {
+        jdbc.sql("UPDATE notificacion SET estado_envio='CANCELADA',mensaje='' WHERE id_notificacion=? AND estado_envio='PENDIENTE'")
+                .param(id.toString()).update();
+    }
+    @Override public void cancelarCorreoPendiente(UUID usuario, String tipo) {
+        jdbc.sql("""
+                UPDATE notificacion SET estado_envio='CANCELADA',mensaje='' WHERE id_usuario=?
+                AND canal='CORREO' AND tipo=? AND estado_envio='PENDIENTE'
+                """).params(usuario.toString(), tipo).update();
     }
     @Override public void cancelarPendientes(UUID sesion, UUID estudiante, String tipo) {
         jdbc.sql("""

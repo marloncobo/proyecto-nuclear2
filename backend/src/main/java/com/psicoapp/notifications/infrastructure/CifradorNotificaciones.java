@@ -38,6 +38,6 @@ public class CifradorNotificaciones {
         } catch (Exception excepcion) { throw new IllegalStateException("No se pudo recuperar la notificacion cifrada"); }
     }
     private void exigirClave() {
-        if (clave == null) throw new IllegalStateException("Configure PSICOAPP_NOTIFICACIONES_CLAVE_CIFRADO antes de convocar estudiantes");
+        if (clave == null) throw new IllegalStateException("Configure PSICOAPP_NOTIFICACIONES_CLAVE_CIFRADO para encolar correos");
     }
 }

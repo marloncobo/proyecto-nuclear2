@@ -1,7 +1,6 @@
 package com.psicoapp.identity.infrastructure;
 
 import com.psicoapp.identity.application.RepositorioUsuarios;
-import com.psicoapp.identity.application.VerificadorAccesoEstudiante;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
@@ -9,7 +8,6 @@ import java.util.UUID;
 import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.env.Environment;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.*;
@@ -22,8 +20,6 @@ class PruebaServicioJwt {
     private final byte[] clave = new byte[32];
     private final RepositorioUsuarios usuarios = mock(RepositorioUsuarios.class);
     private final Environment entorno = mock(Environment.class);
-    @SuppressWarnings("unchecked")
-    private final ObjectProvider<VerificadorAccesoEstudiante> convocatorias = mock(ObjectProvider.class);
 
     @Test
     void rechazaVencidosEmisorAudienciaIncorrectosYTokensSinExpiracion() {
@@ -38,25 +34,25 @@ class PruebaServicioJwt {
     @Test
     void rechazaConfiguracionesDebiles() {
         when(entorno.getActiveProfiles()).thenReturn(new String[0]);
-        assertThrows(IllegalArgumentException.class, () -> new ServicioJwt(entorno, usuarios, convocatorias, "no-base64!", 900, false));
-        assertThrows(IllegalArgumentException.class, () -> new ServicioJwt(entorno, usuarios, convocatorias, "YQ==", 900, false));
-        assertThrows(IllegalArgumentException.class, () -> new ServicioJwt(entorno, usuarios, convocatorias, "", 0, false));
-        assertThrows(IllegalArgumentException.class, () -> new ServicioJwt(entorno, usuarios, convocatorias, "", 3601, false));
-        assertThrows(IllegalArgumentException.class, () -> new ServicioJwt(entorno, usuarios, convocatorias, "", 900, true));
+        assertThrows(IllegalArgumentException.class, () -> new ServicioJwt(entorno, usuarios, "no-base64!", 900, false));
+        assertThrows(IllegalArgumentException.class, () -> new ServicioJwt(entorno, usuarios, "YQ==", 900, false));
+        assertThrows(IllegalArgumentException.class, () -> new ServicioJwt(entorno, usuarios, "", 0, false));
+        assertThrows(IllegalArgumentException.class, () -> new ServicioJwt(entorno, usuarios, "", 3601, false));
+        assertThrows(IllegalArgumentException.class, () -> new ServicioJwt(entorno, usuarios, "", 900, true));
         when(entorno.getActiveProfiles()).thenReturn(new String[] {"prod"});
-        assertThrows(IllegalArgumentException.class, () -> new ServicioJwt(entorno, usuarios, convocatorias, "", 900, false));
+        assertThrows(IllegalArgumentException.class, () -> new ServicioJwt(entorno, usuarios, "", 900, false));
     }
 
     @Test
     void claveEfimeraNoAceptaTokensDeOtraInstancia() {
         when(entorno.getActiveProfiles()).thenReturn(new String[0]);
-        var servicio = new ServicioJwt(entorno, usuarios, convocatorias, "", 900, false);
+        var servicio = new ServicioJwt(entorno, usuarios, "", 900, false);
         assertThrows(JwtException.class, () -> servicio.decodificar(firmar("psicoapp", "psicoapp", Instant.now().plusSeconds(60))));
     }
 
     private ServicioJwt servicio() {
         when(entorno.getActiveProfiles()).thenReturn(new String[0]);
-        return new ServicioJwt(entorno, usuarios, convocatorias, Base64.getEncoder().encodeToString(clave), 900, true);
+        return new ServicioJwt(entorno, usuarios, Base64.getEncoder().encodeToString(clave), 900, true);
     }
 
     private String firmar(String emisor, String audiencia, Instant vencimiento) {

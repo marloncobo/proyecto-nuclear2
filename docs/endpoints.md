@@ -24,13 +24,15 @@ las rutas requieren `Authorization: Bearer <token>` y cuerpos JSON con
 | Método y ruta | Acceso | Entrada | Resultado |
 | --- | --- | --- | --- |
 | `POST /api/identidad/ingreso` | Público | `correo`, `clave` | Token JWT Bearer, tipo, vencimiento y estado de cambio de contraseña inicial. |
+| `POST /api/identidad/recuperacion` | Público | `correo` | 202 para una solicitud válida, con la misma respuesta para cuentas activas, inactivas e inexistentes. |
+| `POST /api/identidad/recuperacion/restablecer` | Público | `token`, `clave` | 204 tras guardar la nueva contraseña y revocar los JWT anteriores. 400 si el enlace venció, fue usado o dejó de ser válido. |
 | `GET /api/identidad/yo` | Autenticado | — | Identidad y rol de la cuenta actual. |
 | `PUT /api/identidad/yo/clave` | Autenticado con acceso completo | `actual`, `nueva` | Verifica la contraseña actual y actualiza la de la propia cuenta. |
 | `PUT /api/identidad/clave-inicial` | Estudiante pendiente | `clave`, `conservarClaveInicial` opcional | Completa el flujo e invalida el token temporal. Si la contraseña coincide con la inicial, responde 409 con `codigo: "CONFIRMAR_CLAVE_INICIAL"` hasta que se confirme con `conservarClaveInicial: true`. |
 | `GET /api/identidad/usuarios` | Administrador | Filtros opcionales `rol`, `activo`, `busqueda` | Usuarios administrables ordenados. |
 | `GET /api/identidad/usuarios/{idUsuario}` | Administrador | — | Detalle del usuario, sin credenciales. |
-| `POST /api/identidad/docentes` | Administrador | `correo`, `nombre`, `clave` | Docente creado. |
-| `POST /api/identidad/estudiantes` | Docente o administrador | `correo`, `nombre`, `clave` | Estudiante creado con contraseña inicial, sin exponer credenciales. |
+| `POST /api/identidad/docentes` | Administrador | `correo`, `nombre`, `clave` | Docente creado y correo de credenciales encolado para la dirección registrada. |
+| `POST /api/identidad/estudiantes` | Docente o administrador | `correo`, `nombre`, `clave` | Estudiante creado y correo de credenciales encolado para la dirección registrada. |
 | `PUT /api/identidad/estudiantes/{id}/clave-inicial` | Docente o administrador | `clave` | Asigna contraseña inicial solo a una cuenta estudiantil que aún no tiene. |
 | `PUT /api/identidad/estudiantes/{idUsuario}` | Docente o administrador | `correo`, `nombre` | Actualiza los datos de una cuenta estudiantil. El correo debe pertenecer a un dominio institucional configurado. |
 | `PUT /api/identidad/docentes/{idUsuario}` | Administrador | `correo`, `nombre` | Docente actualizado. |
@@ -39,7 +41,6 @@ las rutas requieren `Authorization: Bearer <token>` y cuerpos JSON con
 | `PUT /api/identidad/usuarios/{idUsuario}/rol` | Administrador | `rol` | Usuario con el rol actualizado. |
 | `GET /api/identidad/roles` | Administrador | — | Roles disponibles. |
 | `PUT /api/identidad/usuarios/{idUsuario}/creacion-casos` | Administrador | `habilitado` | Configura el permiso individual de un docente y devuelve su perfil actualizado. |
-| `POST /api/identidad/estudiantes` | Docente | `correo`, `nombre` | Estudiante creado o cuenta estudiantil existente. |
 | `GET /api/identidad/estudiantes?correo={correo}` | Docente | Correo institucional exacto | Estudiante activo encontrado. |
 | `GET /api/identidad/estudiantes/listado` | Docente o administrador | `paraEdicion` opcional | Lista estudiantes activos con correo institucional. Con `paraEdicion=true` incluye las cuentas estudiantiles inactivas y devuelve el campo `activo` de cada cuenta. |
 

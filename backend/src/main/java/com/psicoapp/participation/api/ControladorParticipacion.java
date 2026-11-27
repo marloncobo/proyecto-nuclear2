@@ -4,7 +4,6 @@ import com.psicoapp.participation.application.ServicioGestionParticipacion;
 import com.psicoapp.participation.application.ServicioGestionParticipacion.DatosIntento;
 import com.psicoapp.participation.domain.TransicionIntentoInvalida;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.security.Principal;
 import java.util.UUID;

@@ -10,7 +10,14 @@ final class PlantillaCorreo {
     private PlantillaCorreo() { }
 
     static ContenidoCorreo preparar(String titulo, String introduccion, List<Dato> datos, String nota, String enlace) {
-        var texto = new StringBuilder(titulo).append("\n\n").append(introduccion).append("\n\nDatos de la sesión\n");
+        return preparar(titulo, introduccion, "Datos de la sesión", datos, nota, enlace,
+                "Ver actividad en Psicoapp", "Ingresa con tu correo institucional y tu contraseña.");
+    }
+
+    static ContenidoCorreo preparar(String titulo, String introduccion, String tituloDatos, List<Dato> datos,
+            String nota, String enlace, String accion, String ayuda) {
+        var texto = new StringBuilder(titulo).append("\n\n").append(introduccion).append('\n');
+        if (!datos.isEmpty()) texto.append('\n').append(tituloDatos).append('\n');
         var filas = new StringBuilder();
         for (Dato dato : datos) {
             texto.append(dato.etiqueta()).append(": ").append(dato.valor()).append('\n');
@@ -21,18 +28,22 @@ final class PlantillaCorreo {
                     </tr>
                     """.formatted(escapar(dato.etiqueta()), escapar(dato.valor())));
         }
+        String panelDatos = datos.isEmpty() ? "" : """
+                <h2 style="margin:0 0 8px;color:#14374d;font-size:17px;">%s</h2>
+                <table width="100%%" cellpadding="0" cellspacing="0" bgcolor="#edf3ee" style="border-radius:8px;">%s</table>
+                """.formatted(escapar(tituloDatos), filas);
         String accesoHtml = "";
         if (enlace != null) {
-            texto.append("\nVer actividad en Psicoapp\n").append(enlace)
-                    .append("\n\nIngresa con tu correo institucional y tu contraseña.\n");
+            texto.append('\n').append(accion).append('\n').append(enlace)
+                    .append("\n\n").append(ayuda).append('\n');
             accesoHtml = """
                     <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0 12px;">
                       <tr><td bgcolor="#14374d" style="border-radius:8px;">
-                        <a href="%s" style="display:inline-block;padding:13px 20px;color:#ffffff;font-size:15px;font-weight:bold;text-decoration:none;">Ver actividad en Psicoapp</a>
+                        <a href="%s" style="display:inline-block;padding:13px 20px;color:#ffffff;font-size:15px;font-weight:bold;text-decoration:none;">%s</a>
                       </td></tr>
                     </table>
-                    <p style="margin:0;color:#405962;font-size:14px;line-height:1.5;">Ingresa con tu correo institucional y tu contraseña.</p>
-                    """.formatted(escapar(enlace));
+                    <p style="margin:0;color:#405962;font-size:14px;line-height:1.5;">%s</p>
+                    """.formatted(escapar(enlace), escapar(accion), escapar(ayuda));
         }
         String notaHtml = "";
         if (nota != null && !nota.isBlank()) {
@@ -58,8 +69,7 @@ final class PlantillaCorreo {
                         <tr><td style="padding:24px 22px;">
                           <h1 style="margin:0 0 12px;color:#14374d;font-size:26px;line-height:1.2;">%s</h1>
                           <p style="margin:0 0 20px;color:#405962;font-size:15px;line-height:1.6;">%s</p>
-                          <h2 style="margin:0 0 8px;color:#14374d;font-size:17px;">Datos de la sesión</h2>
-                          <table width="100%%" cellpadding="0" cellspacing="0" bgcolor="#edf3ee" style="border-radius:8px;">%s</table>
+                          %s
                           %s
                           %s
                         </td></tr>
@@ -69,7 +79,7 @@ final class PlantillaCorreo {
                   </table>
                 </body>
                 </html>
-                """.formatted(escapar(titulo), escapar(titulo), escapar(introduccion), filas, accesoHtml, notaHtml);
+                """.formatted(escapar(titulo), escapar(titulo), escapar(introduccion), panelDatos, accesoHtml, notaHtml);
         return new ContenidoCorreo(texto.append("\nMensaje automático de Psicoapp\n").toString(), html);
     }
 
